@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.light-dict" path="/org/gnome/shell/extensions/light-dict/">
+    <key type="b" name="sensitive-mode">
+        <default>true</default>
+        <summary>sensitive mode</summary>
+    </key>
+    <key type="b" name="hide-panel-title">
+        <default>true</default>
+        <summary>hide panel title</summary>
+    </key>
+    <key type="b" name="command-editable">
+        <default>true</default>
+        <summary>command editable</summary>
+    </key>
+    <key type="b" name="enable-shortcut">
+        <default>true</default>
+        <summary>enable shortcut</summary>
+    </key>
+    <key type="b" name="enable-strip">
+        <default>false</default>
+        <summary>enable text strip</summary>
+    </key>
+    <key type="as" name="short-cut">
+        <default><![CDATA[['<Control><Shift>z']]]></default>
+        <summary>short-cuts to trigger popup</summary>
+    </key>
+    <key type="as" name="autopopup-trigger">
+        <default><![CDATA[['<Control><Alt>a']]]></default>
+        <summary>short-cuts to trigger popup</summary>
+    </key>
+    <key type="u" name="autohide-timeout">
+        <default>2500</default>
+        <summary>autohide popup</summary>
+    </key>
+    <key type="u" name="icon-pagesize">
+        <default>0</default>
+        <summary>icon page size</summary>
+    </key>
+    <key type="u" name="trigger-style">
+        <default>0</default>
+        <summary>toogle style</summary>
+    </key>
+    <key type="u" name="log-level">
+        <default>0</default>
+        <summary>log level</summary>
+    </key>
+    <key type="i" name="x-offset">
+        <default>0</default>
+        <summary>x offset</summary>
+    </key>
+    <key type="i" name="y-offset">
+        <default>0</default>
+        <summary>y offset</summary>
+    </key>
+    <key type="s" name="selection-filter">
+        <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
+        <summary>sellection filter</summary>
+    </key>
+    <key type="s" name="open-url">
+        <default>"https://www.google.com/search?q=LDWORD"</default>
+        <summary>open-url</summary>
+    </key>
+    <key type="s" name="white-list">
+        <default>"*"</default>
+        <summary>white list</summary>
+    </key>
+    <key type="s" name="dict-command">
+        <default>"dict -- 'LDWORD'"</default>
+        <summary>dict command</summary>
+    </key>
+    <key type="s" name="click-command">
+        <default>""</default>
+        <summary>click command</summary>
+    </key>
+    <key type="as" name="icon-commands">
+        <default>[]</default>
+        <summary>icon command</summary>
+    </key>
+    <key type="as" name="icon-commands-active">
+        <default>[]</default>
+        <summary>icon command</summary>
+    </key>
+  </schema>
+</schemalist>

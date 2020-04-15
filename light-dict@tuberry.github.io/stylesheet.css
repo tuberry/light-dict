@@ -1,0 +1,51 @@
+/* vim:fdm=syntax
+ by:tuberry@github
+ Add your custom extension styling here */
+
+.dict-popup-content {
+    color: rgba(255, 255, 255, 1);
+    background-color: rgba(98, 98, 98, 0.80);
+    border-radius: 3px;
+    font-size: 14pt;
+    box-shadow: 0;
+    max-width: 900px !important;
+    text-align: left;
+    padding: 4px 8px;
+}
+
+.dict-popup-word {
+    border-width: 0;
+    font-size: 16pt;
+    border-color: rgba(0, 0, 0, 0.38);
+    border-style: dashed;
+    border-bottom-width: 2px;
+}
+
+.dict-popup-info {
+
+}
+
+.dict-popup-iconbox {
+    background-color: rgba(255, 255, 255, 0.95);
+    border-radius: 2px;
+    box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.34);
+}
+
+.dict-popup-button {
+    font-size: 15pt;
+    padding: 5px 2px;
+}
+
+.dict-popup-button:hover {
+    background-color: #ddd;
+    border-width: 0;
+    border-color: #3385ef;
+    border-style: double;
+    border-bottom-width: 3px;
+    padding: 2px 2px 5px 2px;
+}
+
+.dict-popup-button-icon {
+    padding: 0 3px;
+    icon-size: 28px;
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Light Dict",
+  "gettext-domain": "light-dict",
+  "settings-schema": "org.gnome.shell.extensions.light-dict",
+  "description": "Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary.",
+  "uuid": "light-dict@tuberry.github.io",
+  "shell-version": [
+    "3.36"
+  ]
+}
