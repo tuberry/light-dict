@@ -1,7 +1,7 @@
 # Light Dict
 Lightweight selection-popup extension of gnome shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
 
->L, you know what? The death eats apple only. —— *Light Yagami*<br>
+>L, you know what? The Death eats apple only. —— *Light Yagami*<br>
 [![license]](/LICENSE)
 
 <br>
