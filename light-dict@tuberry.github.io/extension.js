@@ -249,7 +249,6 @@ class DictPopup extends BoxPointer.BoxPointer {
                                         }
                                         if(clip&exit) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, lines.join('\n'));
                                     }
-                                    GLib.close(err_fd);
                                 } else {
                                     if(!exit) return;
                                     read_all(new Gio.DataInputStream({base_stream: proc.get_stderr_pipe()}), false);

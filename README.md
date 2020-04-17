@@ -1,6 +1,11 @@
 # Light Dict
 Lightweight selection-popup extension of gnome shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
 
+>L, you know what? The death eats apple only. —— *Light Yagami*<br>
+[![license]](/LICENSE)
+
+<br>
+
 ## Installation
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
@@ -26,3 +31,4 @@ The inspiration comes from two lovely extensions, [SSS](https://github.com/Canis
 * [gsconnect](https://github.com/andyholmes/gnome-shell-extension-gsconnect): fake keyboard input
 
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
+[license]:https://img.shields.io/badge/license-GPLv3-green.svg
