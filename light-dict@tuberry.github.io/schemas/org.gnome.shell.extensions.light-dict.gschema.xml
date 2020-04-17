@@ -11,7 +11,7 @@
     </key>
     <key type="b" name="command-editable">
         <default>true</default>
-        <summary>command editable</summary>
+        <summary>enable command edit</summary>
     </key>
     <key type="b" name="enable-shortcut">
         <default>true</default>
@@ -27,59 +27,59 @@
     </key>
     <key type="as" name="autopopup-trigger">
         <default><![CDATA[['<Control><Alt>a']]]></default>
-        <summary>short-cuts to trigger popup</summary>
+        <summary>short-cuts to trigger iconbar</summary>
     </key>
     <key type="u" name="autohide-timeout">
         <default>2500</default>
-        <summary>autohide popup</summary>
+        <summary>autohide popup interval</summary>
     </key>
     <key type="u" name="icon-pagesize">
         <default>0</default>
-        <summary>icon page size</summary>
+        <summary>icon bar page size</summary>
     </key>
     <key type="u" name="trigger-style">
         <default>0</default>
-        <summary>toogle style</summary>
+        <summary>trigger style of popup panel</summary>
     </key>
     <key type="u" name="log-level">
         <default>0</default>
-        <summary>log level</summary>
+        <summary>log level in auto mode</summary>
     </key>
     <key type="i" name="x-offset">
         <default>0</default>
-        <summary>x offset</summary>
+        <summary>x offset of icon bar</summary>
     </key>
     <key type="i" name="y-offset">
         <default>0</default>
-        <summary>y offset</summary>
+        <summary>y offset of icon bar</summary>
     </key>
     <key type="s" name="selection-filter">
         <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
-        <summary>sellection filter</summary>
+        <summary>selection filter in auto mode</summary>
     </key>
     <key type="s" name="open-url">
         <default>"https://www.google.com/search?q=LDWORD"</default>
-        <summary>open-url</summary>
+        <summary>open-url when right click on panel</summary>
     </key>
     <key type="s" name="white-list">
         <default>"*"</default>
-        <summary>white list</summary>
+        <summary>application white list</summary>
     </key>
     <key type="s" name="dict-command">
-        <default>"dict -- 'LDWORD'"</default>
-        <summary>dict command</summary>
+        <default>"dict -- LDWORD"</default>
+        <summary>command in auto mode</summary>
     </key>
     <key type="s" name="click-command">
         <default>""</default>
-        <summary>click command</summary>
+        <summary>command when clicking popup panel</summary>
     </key>
     <key type="as" name="icon-commands">
         <default>[]</default>
-        <summary>icon command</summary>
+        <summary>icon bar commands</summary>
     </key>
     <key type="as" name="icon-commands-active">
         <default>[]</default>
-        <summary>icon command</summary>
+        <summary>active icon bar commands</summary>
     </key>
   </schema>
 </schemalist>

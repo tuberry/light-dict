@@ -6,7 +6,9 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
-const Fields = {
+'use strict';
+
+var Fields = {
     SENSITIVE:    'sensitive-mode',
     AUTOHIDE:     'autohide-timeout',
     LOGSLEVEL:    'log-level',
@@ -82,7 +84,7 @@ class LightDictBasic extends Gtk.Grid {
         this._field_hide_panel_title = new Gtk.Switch();
         this._field_enable_strip = new Gtk.Switch();
 
-        this._field_auto_hide = this._spinMaker(500, 5000, 250);
+        this._field_auto_hide = this._spinMaker(500, 10000, 250);
         this._field_log_level = this._comboMaker(_('Never/Click/Hover/Always'));
         this._field_trigger_style = this._comboMaker(_('Icon/Keyboard/Auto'));
 
@@ -97,7 +99,7 @@ class LightDictBasic extends Gtk.Grid {
         this._field_filter = this._entryMaker('^[^\\n\\.\\t\\/:]{3,50}$', _('Text RegExp filter for auto mode'));
         this._field_click_command = this._entryMaker('notify-send hello', _('Command to run when clicking panel'));
         this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Search: open in default browser'));
-        this._field_dict_command = this._entryMaker("dict -- 'LDWORD' | sed -e 1,6d#trans -no-ansi :zh-cn -- 'LDWORD'", _('Command to run in auto mode'));
+        this._field_dict_command = this._entryMaker("dict -- LDWORD | sed -e 1,6d # trans -no-ansi :zh-cn -- LDWORD", _('Command to run in auto mode'));
 
         this._field_command_editable.connect("notify::active", widget => {
             this._field_white_list.set_sensitive(widget.active);

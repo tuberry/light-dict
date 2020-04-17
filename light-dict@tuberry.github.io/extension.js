@@ -1,19 +1,22 @@
 // vim:fdm=syntax
 // by: tuberry@gtihub.io
-const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gtk, Gdk, Atspi } = imports.gi;
+
+const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk, Atspi } = imports.gi;
 const BoxPointer = imports.ui.boxpointer;
-const Main = imports.ui.main;
 const ByteArray = imports.byteArray;
+const Main = imports.ui.main;
 
 const ExtensionUtils = imports.misc.extensionUtils;
-const gsettings = ExtensionUtils.getSettings();
 const Me = ExtensionUtils.getCurrentExtension();
+const gsettings = ExtensionUtils.getSettings();
 const Prefs = Me.imports.prefs;
 
 const APPNAME = 'Light Dict';
 
 const LOGSLEVEL = { NEVER: 0, HOVER: 1, CLICK: 2, ALWAYS: 3 };
 const TRIGGER = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
+
+'use strict';
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -153,6 +156,7 @@ const DictIconBar = GObject.registerClass({
                 x[1].disconnect(x[0]);
             x[0] = null;
             this.remove_child(x[1]);
+            x[1].destroy();
         });
         this._iconsBox.length = 0;
     }
@@ -166,6 +170,8 @@ const DictIconBar = GObject.registerClass({
             GLib.source_remove(this._autohideDelayId), this._autohideDelayId = 0;
         if(this._settingChangedId)
             gsettings.disconnect(this._settingChangedId), this._settingChangedId = 0;
+        this._iconBarEraser();
+        super.destroy();
     }
 });
 
@@ -218,9 +224,11 @@ class DictPopup extends BoxPointer.BoxPointer {
         let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title.toString()));
         try {
             if(popup|clip|paste) {
-                let [ok, pid, in_fd, out_fd, err_fd] = GLib.spawn_async_with_pipes(null, ['/bin/bash', '-c', rcmd], null, 0, null);
-                if(!ok) return;
-                GLib.close(in_fd);
+                let proc = new Gio.Subprocess({
+                    argv: ['/bin/bash', '-c', rcmd],
+                    flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
+                });
+                proc.init(null);
                 let that = this, lines = [], line, read = (() => {
                     return function read_all(stream, exit) {
                         stream.read_line_async(GLib.PRIORITY_LOW, null, (source, res) => {
@@ -244,19 +252,29 @@ class DictPopup extends BoxPointer.BoxPointer {
                                     GLib.close(err_fd);
                                 } else {
                                     if(!exit) return;
-                                    read_all(new Gio.DataInputStream({base_stream: new Gio.UnixInputStream({fd:err_fd, close_fd:true})}), false);
+                                    read_all(new Gio.DataInputStream({base_stream: proc.get_stderr_pipe()}), false);
                                 }
                             }
                         });
                     }
                 })();
-                read(new Gio.DataInputStream({base_stream: new Gio.UnixInputStream({fd:out_fd, close_fd:true})}), true);
+                read(new Gio.DataInputStream({base_stream: proc.get_stdout_pipe()}), true);
+                proc.wait_check(null);
             } else {
-                GLib.spawn_async(null, ['/bin/bash', '-c', rcmd], null, 0, null);
+                this._spawnWithGio(rcmd);
             }
         } catch (e) {
             Main.notifyError(APPNAME, e.message);
         }
+    }
+
+    _spawnWithGio(rcmd) {
+        let proc = new Gio.Subprocess({
+            argv: ['/bin/bash', '-c', rcmd],
+            flags: (Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE)
+        });
+        proc.init(null);
+        proc.wait_check(null);
     }
 
     _runWithEval(popup, clip, paste, cmd) {
@@ -309,7 +327,7 @@ class DictPopup extends BoxPointer.BoxPointer {
             if(event.get_button() === 1 && this._ccommand)
                 this._ccommand.split('#').forEach(x => {
                     try {
-                        GLib.spawn_command_line_async(x.split('LDWORD').join(GLib.shell_quote(this._selection)));
+                        this._spawnWithGio(x.split('LDWORD').join(GLib.shell_quote(this._selection)));
                     } catch (e) {
                         Main.notifyError(APPNAME, 'Failed: ' + e.message);
                     }
@@ -323,7 +341,7 @@ class DictPopup extends BoxPointer.BoxPointer {
                 break;
             case 3:
                 try {
-                    GLib.spawn_command_line_async('gio open "' + this._openurl.replace('LDWORD', GLib.shell_quote(this._selection)) + '"');
+                    this._spawnWithGio('gio open "' + this._openurl.replace('LDWORD', GLib.shell_quote(this._selection)) + '"');
                 } catch (e) {
                     Main.notifyError(APPNAME, 'Failed to open: ' + e.message);
                 }
@@ -480,9 +498,11 @@ class DictPopup extends BoxPointer.BoxPointer {
     _lookUp(text) {
         try {
             let rcmd = this._dcommand.split('LDWORD').join(GLib.shell_quote(text));
-            let [ok, pid, in_fd, out_fd, err_fd] = GLib.spawn_async_with_pipes(null, ['/bin/bash', '-c', rcmd], null, 0, null);
-            if(!ok) return;
-            GLib.close(in_fd);
+            let proc = new Gio.Subprocess({
+                argv: ['/bin/bash', '-c', rcmd],
+                flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
+            });
+            proc.init(null);
             // so-called Y combinator
             // var Y = gen => (f => f(f)) (f => gen (x => f(f)(x)));
             let that = this, lines = [], line, read = (() => {
@@ -499,16 +519,16 @@ class DictPopup extends BoxPointer.BoxPointer {
                                 that._showPanel();
                                 that._notFound = !exit;
                                 if(that._logslevel === LOGSLEVEL.ALWAYS) that._recordLog();
-                                GLib.close(err_fd);
                             } else {
                                 if(!exit) return;
-                                read_all(new Gio.DataInputStream({base_stream: new Gio.UnixInputStream({fd:err_fd, close_fd:true})}), false);
+                                read_all(new Gio.DataInputStream({base_stream: proc.get_stderr_pipe()}), false);
                             }
                         }
                     });
                 }
             })();
-            read(new Gio.DataInputStream({base_stream: new Gio.UnixInputStream({fd:out_fd, close_fd:true})}), true);
+            read(new Gio.DataInputStream({base_stream: proc.get_stdout_pipe()}), true);
+            proc.wait_check(null);
         } catch (e) {
             Main.notifyError(APPNAME, e.message);
         }
@@ -571,10 +591,12 @@ class DictPopup extends BoxPointer.BoxPointer {
         if(this._settingChangedId)
             gsettings.disconnect(this._settingChangedId), this._settingChangedId = 0;
 
+        this._removeDummyCursor();
         Main.layoutManager.removeChrome(this._iconBar);
         this._iconBar.destory();
-        this._removeDummyCursor();
+        this._panelBox.destroy();
         Main.layoutManager.removeChrome(this);
+        super.destroy();
     }
 });
 
@@ -642,7 +664,6 @@ class DictEditable extends GObject.Object {
         this._stroke('Control_L+x');
     }
 
-
     destroy() {
         try {
             Atspi.exit();
@@ -652,8 +673,10 @@ class DictEditable extends GObject.Object {
     }
 });
 
-class Extension {
-    constructor() {
+const LightDict = GObject.registerClass(
+class LightDict extends GObject.Object {
+    _init() {
+        super._init();
         let logfilePath = Gio.file_new_for_path(GLib.get_home_dir()+ '/.cache/gnome-shell-extension-light-dict/');
         if(!logfilePath.query_exists(null))
             logfilePath.make_directory(Gio.Cancellable.new());
@@ -666,9 +689,9 @@ class Extension {
     disable() {
         this._dictPopup.destory();
     }
-}
+});
 
 function init() {
-    return new Extension();
+    return new LightDict();
 }
 
