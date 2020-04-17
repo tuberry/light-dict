@@ -2,6 +2,9 @@
 Lightweight selection-popup extension of gnome shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
 
 ## Installation
+[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
+
+or manually:
 ```
 git clone git@github.com:tuberry/light-dict.git
 cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/extensions/
@@ -21,3 +24,5 @@ The inspiration comes from two lovely extensions, [SSS](https://github.com/Canis
 * [swift-selection-search](https://github.com/CanisLupus/swift-selection-search): stylesheet of iconbar
 * [clipboard-indicator](https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator): some UI widgets of prefs page
 * [gsconnect](https://github.com/andyholmes/gnome-shell-extension-gsconnect): fake keyboard input
+
+[EGO]:https://extensions.gnome.org/extension/2959/light-dict/
