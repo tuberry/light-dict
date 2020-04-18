@@ -13,7 +13,7 @@ const Prefs = Me.imports.prefs;
 
 const APPNAME = 'Light Dict';
 
-const LOGSLEVEL = { NEVER: 0, HOVER: 1, CLICK: 2, ALWAYS: 3 };
+const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const TRIGGER = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 
 'use strict';
@@ -184,7 +184,6 @@ class DictPopup extends BoxPointer.BoxPointer {
         Main.layoutManager.addChrome(this);
 
         this._panelClicked = false;
-        this._keyboardToggle = false;
         this._notFound = false;
         this._pointerX = 0;
         this._pointerY = 0;
@@ -198,108 +197,48 @@ class DictPopup extends BoxPointer.BoxPointer {
         this._listenSelection(this._trigger);
     }
 
-    _onWindowChanged() {
-        this._hidePanel();
-        this._iconBar.hide();
-        // TODO: better app whitelist
+    _loadSettings() {
+        this._fetchSettings();
+        this._settingChangedId = gsettings.connect('changed', this._onSettingChanged.bind(this));
+        if(this._shortcut)
+            this._addKeyBindings();
     }
 
-    _runCommand(tag, cmd) {
-        let [popup, clip, type] = Array.from(tag, i => i === '1');
-        let paste = cmd[0] === '@', command = cmd;
-        if(paste) {
-            command = cmd.substr(6);
-            popup = false;
-            clip = true;
-        }
-        if(type) {
-            this._runWithEval(popup, clip, paste, command);
-        } else {
-            this._runWithBash(popup, clip, paste, command);
-        }
+    _fetchSettings() {
+        this._logslevel  = gsettings.get_uint(Prefs.Fields.LOGSLEVEL);
+        this._autohide   = gsettings.get_uint(Prefs.Fields.AUTOHIDE);
+        this._trigger    = gsettings.get_uint(Prefs.Fields.TRIGGER);
+        this._hidetitle  = gsettings.get_boolean(Prefs.Fields.HIDETITLE);
+        this._sensitive  = gsettings.get_boolean(Prefs.Fields.SENSITIVE);
+        this._shortcut   = gsettings.get_boolean(Prefs.Fields.SHORTCUT);
+        this._textstrip  = gsettings.get_boolean(Prefs.Fields.TEXTSTRIP);
+        this._blackwhite = gsettings.get_boolean(Prefs.Fields.BLACKWHITE);
+        this._openurl    = gsettings.get_string(Prefs.Fields.OPENURL);
+        this._dcommand   = gsettings.get_string(Prefs.Fields.DCOMMAND);
+        this._ccommand   = gsettings.get_string(Prefs.Fields.CCOMMAND);
+        this._filter     = gsettings.get_string(Prefs.Fields.FILTER);
+        this._appslist   = gsettings.get_string(Prefs.Fields.APPSLIST);
     }
 
-    _runWithBash(popup, clip, paste, cmd) {
-        let title = global.display.get_focus_window().title;
-        let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title.toString()));
-        try {
-            if(popup|clip|paste) {
-                let proc = new Gio.Subprocess({
-                    argv: ['/bin/bash', '-c', rcmd],
-                    flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
-                });
-                proc.init(null);
-                let that = this, lines = [], line, read = (() => {
-                    return function read_all(stream, exit) {
-                        stream.read_line_async(GLib.PRIORITY_LOW, null, (source, res) => {
-                            if((line = source.read_line_finish(res)) !== null && line[0] !== null) {
-                                lines.push(ByteArray.toString(line[0]));
-                                read_all(source, exit);
-                            } else {
-                                if(lines.length) {
-                                    if(paste&exit) {
-                                        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, lines.join('\n'));
-                                        that._edit.paste();
-                                    } else {
-                                        if(popup) {
-                                            that._panelBox._info.set_text(lines.join('\n'));
-                                            if(that._panelBox._word.visible)
-                                                that._panelBox._word.set_text(that._selection);
-                                            that._showPanel();
-                                        }
-                                        if(clip&exit) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, lines.join('\n'));
-                                    }
-                                } else {
-                                    if(!exit) return;
-                                    read_all(new Gio.DataInputStream({base_stream: proc.get_stderr_pipe()}), false);
-                                }
-                            }
-                        });
-                    }
-                })();
-                read(new Gio.DataInputStream({base_stream: proc.get_stdout_pipe()}), true);
-                proc.wait_check(null);
-            } else {
-                this._spawnWithGio(rcmd);
-            }
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+    _onSettingChanged() {
+        if(gsettings.get_boolean(Prefs.Fields.SENSITIVE) != this._sensitive) {
+            this._removeDummyCursor(this._sensitive);
+            this._addDummyCursor(!this._sensitive);
         }
-    }
-
-    _spawnWithGio(rcmd) {
-        let proc = new Gio.Subprocess({
-            argv: ['/bin/bash', '-c', rcmd],
-            flags: (Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE)
-        });
-        proc.init(null);
-        proc.wait_check(null);
-    }
-
-    _runWithEval(popup, clip, paste, cmd) {
-        try {
-            let LDWORD = this._selection;
-            let LDTITLE = global.display.get_focus_window().title;
-            let key = x => this._edit._stroke(x);
-            if(paste) {
-                let answer = eval(cmd).toString();
-                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, answer);
-                this._edit.paste();
-            } else if (popup|clip) {
-                let answer = eval(cmd);
-                if(popup) {
-                    this._panelBox._info.set_text(answer.toString());
-                    if(this._panelBox._word.visible)
-                        this._panelBox._word.set_text(this._selection);
-                    this._showPanel();
-                }
-                if(clip) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, answer.toString());
-            } else {
-                eval(cmd);
-            }
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+        let trigger = gsettings.get_uint(Prefs.Fields.TRIGGER);
+        if(trigger != this._trigger) {
+            if(this._selectionChangedId)
+                global.display.get_selection().disconnect(this._selectionChangedId), this._selectionChangedId = 0;
+            if(trigger === 0 || trigger === 2)
+                this._listenSelection(trigger);
         }
+        if(gsettings.get_boolean(Prefs.Fields.SHORTCUT) != this._shortcut) {
+            Main.wm.removeKeybinding(Prefs.Fields.SHORTCUTNAME);
+            if(!this._shortcut)
+                this._addKeyBindings();
+        }
+        this._panelBox._word.visible = !gsettings.get_boolean(Prefs.Fields.HIDETITLE);
+        this._fetchSettings();
     }
 
     _buildPopupPanel() {
@@ -317,20 +256,13 @@ class DictPopup extends BoxPointer.BoxPointer {
         this._leavePanelId = this._panelBox.connect('leave-event', this._hidePanel.bind(this));
         this._enterPanelId = this._panelBox.connect('enter-event', (actor, event) => {
             this._panelBox.visible = true;
-            if(this._autohideDelayId)
-                GLib.source_remove(this._autohideDelayId);
+            if(this._autohideDelayId) GLib.source_remove(this._autohideDelayId);
             if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
             this._panelClicked = false;
         });
         this._clickPanelId = this._panelBox.connect('button-press-event', (actor, event) => {
             if(event.get_button() === 1 && this._ccommand)
-                this._ccommand.split('#').forEach(x => {
-                    try {
-                        this._spawnWithGio(x.split('LDWORD').join(GLib.shell_quote(this._selection)));
-                    } catch (e) {
-                        Main.notifyError(APPNAME, 'Failed: ' + e.message);
-                    }
-                });
+                this._ccommand.split('#').forEach(x => this._spawnWithGio(x.split('LDWORD').join(GLib.shell_quote(this._selection))));
             switch(event.get_button()*!this._panelClicked) {
             case 1:
                 if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog();
@@ -339,11 +271,7 @@ class DictPopup extends BoxPointer.BoxPointer {
                 St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text());
                 break;
             case 3:
-                try {
-                    this._spawnWithGio('gio open "' + this._openurl.replace('LDWORD', GLib.shell_quote(this._selection)) + '"');
-                } catch (e) {
-                    Main.notifyError(APPNAME, 'Failed to open: ' + e.message);
-                }
+                this._spawnWithGio('gio open "' + this._openurl.replace('LDWORD', GLib.shell_quote(this._selection)) + '"');
                 if(this._notFound) this._hidePanel();
                 break;
             }
@@ -372,88 +300,51 @@ class DictPopup extends BoxPointer.BoxPointer {
         });
 
         Main.layoutManager.addChrome(this._iconBar);
-        this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
+        this._onWindowChangedId = global.display.connect('notify::focus-window', () => {
+            this._hidePanel();
+            this._iconBar.hide();
+            let FW = global.display.get_focus_window();
+            if(!FW) return;
+            let wlist = this._appslist === '*' | this._appslist.split('#').includes(FW.wm_class);
+            if(this._blackwhite ? wlist : !wlist) {
+                if(!this._selectionChangedId) this._listenSelection(this._trigger);
+            } else {
+                if(this._selectionChangedId)
+                    global.display.get_selection().disconnect(this._selectionChangedId), this._selectionChangedId = 0;
+            }
+        });
     }
 
-    _listenSelection(tog) {
-        switch(tog) {
+    _listenSelection(tgg) {
+        switch(tgg) {
         case TRIGGER.ICON:
             this._selectionChangedId = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY)
                     return;
-                let FW = global.display.get_focus_window();
-                if(this._whitelist === '*' || (FW && this._whitelist.split('#').indexOf(FW.wm_class) > -1)) {
-                    St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
-                        if(!text) return;
-                        [this._pointerX, this._pointerY] = global.get_pointer();
-                        this._selection = this._textstrip ? text.trim() : text;
-                        this._iconBar._showIconBar(this._pointerX, this._pointerY);
-                    });
-                }
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
+                    if(!text) return;
+                    [this._pointerX, this._pointerY] = global.get_pointer();
+                    this._selection = this._textstrip ? text.trim() : text;
+                    this._iconBar._showIconBar(this._pointerX, this._pointerY);
+                });
             });
             break;
         case TRIGGER.AUTO:
             this._selectionChangedId = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY)
                     return;
-                let FW = global.display.get_focus_window();
-                if(this._whitelist === '*' || (FW && this._whitelist.split('#').indexOf(FW.wm_class) > -1)) {
-                    St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
-                        if(!text) return;
-                        [this._pointerX, this._pointerY] = global.get_pointer();
-                        this._selection = this._textstrip ? text.trim() : text;
-                        if(this._selection && (!this._filter || RegExp(this._filter, 'i').test(this._selection)))
-                            this._lookUp(this._selection);
-                    });
-                }
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
+                    if(!text) return;
+                    [this._pointerX, this._pointerY] = global.get_pointer();
+                    this._selection = this._textstrip ? text.trim() : text;
+                    if(this._selection && (!this._filter || RegExp(this._filter, 'i').test(this._selection)))
+                        this._lookUp(this._selection);
+                });
             });
             break;
         default:
             break;
         }
-    }
-
-    _loadSettings() {
-        this._fetchSettings();
-        this._settingChangedId = gsettings.connect('changed', this._onSettingChanged.bind(this));
-        if(this._shortcut)
-            this._addKeyBindings();
-    }
-
-    _fetchSettings() {
-        this._logslevel = gsettings.get_uint(Prefs.Fields.LOGSLEVEL);
-        this._autohide  = gsettings.get_uint(Prefs.Fields.AUTOHIDE);
-        this._trigger   = gsettings.get_uint(Prefs.Fields.TRIGGER);
-        this._hidetitle = gsettings.get_boolean(Prefs.Fields.HIDETITLE);
-        this._sensitive = gsettings.get_boolean(Prefs.Fields.SENSITIVE);
-        this._shortcut  = gsettings.get_boolean(Prefs.Fields.SHORTCUT);
-        this._textstrip = gsettings.get_boolean(Prefs.Fields.TEXTSTRIP);
-        this._openurl   = gsettings.get_string(Prefs.Fields.OPENURL);
-        this._dcommand  = gsettings.get_string(Prefs.Fields.DCOMMAND);
-        this._ccommand  = gsettings.get_string(Prefs.Fields.CCOMMAND);
-        this._filter    = gsettings.get_string(Prefs.Fields.FILTER);
-        this._whitelist = gsettings.get_string(Prefs.Fields.WHITELIST);
-    }
-
-    _onSettingChanged() {
-        if(gsettings.get_boolean(Prefs.Fields.SENSITIVE) != this._sensitive) {
-            this._removeDummyCursor(this._sensitive);
-            this._addDummyCursor(!this._sensitive);
-        }
-        let trigger = gsettings.get_uint(Prefs.Fields.TRIGGER);
-        if(trigger != this._trigger) {
-            if(this._selectionChangedId)
-                global.display.get_selection().disconnect(this._selectionChangedId), this._selectionChangedId = 0;
-            if(trigger === 0 || trigger === 2)
-                this._listenSelection(trigger);
-        }
-        if(gsettings.get_boolean(Prefs.Fields.SHORTCUT) != this._shortcut) {
-            Main.wm.removeKeybinding(Prefs.Fields.SHORTCUTNAME);
-            if(!this._shortcut)
-                this._addKeyBindings();
-        }
-        this._panelBox._word.visible = !gsettings.get_boolean(Prefs.Fields.HIDETITLE);
-        this._fetchSettings();
     }
 
     _addDummyCursor(sen) {
@@ -494,48 +385,128 @@ class DictPopup extends BoxPointer.BoxPointer {
         });
     }
 
-    _lookUp(text) {
-        try {
-            let rcmd = this._dcommand.split('LDWORD').join(GLib.shell_quote(text));
+    _runCommand(tag, cmd) {
+        let [popup, clip, type] = Array.from(tag, i => i === '1');
+        let paste = cmd[0] === '@', command = cmd;
+        if(paste) {
+            command = cmd.substr(6);
+            popup = true;
+            clip = true;
+        }
+        if(type) {
+            this._runWithEval(popup, clip, paste, command);
+        } else {
+            this._runWithBash(popup, clip, paste, command);
+        }
+    }
+
+    _runWithBash(popup, clip, paste, cmd) {
+        let title = global.display.get_focus_window().title;
+        let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title.toString()));
+        if(popup|clip|paste) {
             let proc = new Gio.Subprocess({
-                argv: ['/bin/bash', '-c', rcmd],
+                argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
                 flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
             });
             proc.init(null);
-            // so-called Y combinator
-            // var Y = gen => (f => f(f)) (f => gen (x => f(f)(x)));
-            let that = this, lines = [], line, read = (() => {
-                return function read_all(stream, exit) {
-                    stream.read_line_async(GLib.PRIORITY_LOW, null, (source, res) => {
-                        if((line = source.read_line_finish(res)) !== null && line[0] !== null) {
-                            lines.push(ByteArray.toString(line[0]));
-                            read_all(source, exit);
-                        } else {
-                            if(lines.length) {
-                                that._panelBox._info.set_text(lines.join('\n'));
-                                if(that._panelBox._word.visible)
-                                    that._panelBox._word.set_text(text);
-                                that._showPanel();
-                                that._notFound = !exit;
-                                if(that._logslevel === LOGSLEVEL.ALWAYS) that._recordLog();
-                            } else {
-                                if(!exit) return;
-                                read_all(new Gio.DataInputStream({base_stream: proc.get_stderr_pipe()}), false);
-                            }
-                        }
-                    });
+            proc.communicate_utf8_async(null, null, (proc, res) => {
+                try {
+                    let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                    let ok = proc.get_exit_status() === 0;
+                    if(ok&paste) {
+                        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, stdout.slice(0, -1));
+                        this._edit.paste();
+                        return;
+                    }
+                    if(ok&clip) {
+                        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, stdout.slice(0, -1));
+                        if(!popup) return;
+                    }
+                    this._panelBox._info.set_text(ok ? stdout.slice(0, -1) : stderr.slice(0, -1));
+                    if(this._panelBox._word.visible)
+                        this._panelBox._word.set_text(this._selection);
+                    this._showPanel();
+                } catch (e) {
+                    Main.notifyError(APPNAME, e.message);
                 }
-            })();
-            read(new Gio.DataInputStream({base_stream: proc.get_stdout_pipe()}), true);
-            proc.wait_check(null);
+            });
+        } else {
+            this._spawnWithGio(rcmd);
+        }
+    }
+
+    _runWithEval(popup, clip, paste, cmd) {
+        try {
+            let LDWORD = this._selection;
+            let LDTITLE = global.display.get_focus_window().title;
+            let key = x => this._edit._stroke(x);
+            if(paste) {
+                let result = eval(cmd).toString();
+                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, result);
+                this._edit.paste();
+            } else if (popup|clip) {
+                let result = eval(cmd).toString();
+                if(popup) {
+                    this._panelBox._info.set_text(result);
+                    if(this._panelBox._word.visible)
+                        this._panelBox._word.set_text(this._selection);
+                    this._showPanel();
+                }
+                if(clip) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, result);
+            } else {
+                eval(cmd);
+            }
         } catch (e) {
             Main.notifyError(APPNAME, e.message);
         }
     }
 
+    _spawnWithGio(rcmd) {
+        try {
+            let proc = new Gio.Subprocess({
+                argv: ['/bin/bash', '-c', rcmd],
+                flags: (Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE)
+            });
+            proc.init(null);
+        } catch (e) {
+            Main.notifyError(APPNAME, e.message);
+        }
+    }
+
+    _lookUp(text) {
+        let rcmd = this._dcommand.split('LDWORD').join(GLib.shell_quote(text));
+        let proc = new Gio.Subprocess({
+            argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
+            flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
+        });
+        proc.init(null);
+        proc.communicate_utf8_async(null, null, (proc, res) => {
+            try {
+                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                this._notFound = proc.get_exit_status() !== 0;
+                this._panelBox._info.set_text(this._notFound ? stderr.slice(0, -1) : stdout.slice(0, -1));
+                if(this._panelBox._word.visible)
+                    this._panelBox._word.set_text(text);
+                if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
+                this._showPanel();
+            } catch (e) {
+                Main.notifyError(APPNAME, e.message);
+            }
+        });
+        // so-called Y combinator
+        // var Y = gen => (f => f(f)) (f => gen (x => f(f)(x)));
+    }
+
     _hidePanel() {
         if(!this._panelBox.visible)
             return;
+        // If the panel appears under the pointer after clicking the icon bar,
+        // it will receive 'enter-event' and 'leave-event' then vanish immediately?
+        let [mx, my] = global.get_pointer();
+        let [wt, ht] = this.get_size();
+        let [px, py] = this.get_position();
+        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
+
         this._panelBox.visible = false
         this.close(BoxPointer.PopupAnimation.FULL);
         let [X, Y] = global.display.get_size();
@@ -562,9 +533,27 @@ class DictPopup extends BoxPointer.BoxPointer {
 
     _recordLog() {
         if(this._trigger != TRIGGER.AUTO) return;
+        let dateFormat = (fmt, date) => {
+            const opt = {
+                "Y+": date.getFullYear().toString(),
+                "m+": (date.getMonth() + 1).toString(),
+                "d+": date.getDate().toString(),
+                "H+": date.getHours().toString(),
+                "M+": date.getMinutes().toString(),
+                "S+": date.getSeconds().toString()
+            };
+            let ret;
+            for (let k in opt) {
+                ret = new RegExp("(" + k + ")").exec(fmt);
+                if (!ret) continue;
+                fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, "0")))
+            };
+            return fmt;
+        }
         let logfile = Gio.file_new_for_path(GLib.get_home_dir()+ '/.cache/gnome-shell-extension-light-dict/light-dict.log');
         try {
-            logfile.append_to(Gio.FileCreateFlags.NONE, null).write([Date.now(), this._selection, this._notFound ? 0 : 1].join('\t') + '\n', null);
+            let log = [dateFormat("YYYY-mm-dd HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
+            logfile.append_to(Gio.FileCreateFlags.NONE, null).write(log, null);
         } catch (e) {
             Main.notifyError(APPNAME, e.message);
         }
@@ -603,16 +592,14 @@ const DictEditable = GObject.registerClass(
 class DictEditable extends GObject.Object {
     _init() {
         super._init();
-        if (Atspi.init() === 2) {
-            this.destroy();
+        if (Atspi.init() === 2)
             throw new Error('Failed to start AT-SPI');
-        }
 
         this._modifiers = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
     }
 
     _isMoififiers(keyname) {
-        return Object.keys(this._modifiers).indexOf(keyname) > -1;
+        return Object.keys(this._modifiers).includes(keyname);
     }
 
     _release(keyname) {
@@ -663,12 +650,8 @@ class DictEditable extends GObject.Object {
         this._stroke('Control_L+x');
     }
 
-    destroy() {
-        try {
-            Atspi.exit();
-        } catch (e) {
-            // Silence errors
-        }
+    search() {
+        this._stroke('Control_L+c Super_L Control_L+v');
     }
 });
 

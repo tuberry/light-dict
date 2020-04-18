@@ -21,6 +21,10 @@
         <default>false</default>
         <summary>enable text strip</summary>
     </key>
+    <key type="b" name="black-or-white">
+        <default>false</default>
+        <summary>blacklist or whitelist</summary>
+    </key>
     <key type="as" name="short-cut">
         <default><![CDATA[['<Control><Shift>z']]]></default>
         <summary>short-cuts to trigger popup</summary>
@@ -61,9 +65,9 @@
         <default>"https://www.google.com/search?q=LDWORD"</default>
         <summary>open-url when right click on panel</summary>
     </key>
-    <key type="s" name="white-list">
+    <key type="s" name="application-list">
         <default>"*"</default>
-        <summary>application white list</summary>
+        <summary>application black/white list</summary>
     </key>
     <key type="s" name="dict-command">
         <default>"dict -- LDWORD"</default>

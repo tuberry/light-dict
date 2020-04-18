@@ -13,7 +13,8 @@ var Fields = {
     AUTOHIDE:     'autohide-timeout',
     LOGSLEVEL:    'log-level',
     TRIGGER:      'trigger-style',
-    WHITELIST:    'white-list',
+    APPSLIST:     'application-list',
+    BLACKWHITE:   'black-or-white',
     FILTER:       'selection-filter',
     OPENURL:      'open-url',
     CCOMMAND:     'click-command',
@@ -83,26 +84,27 @@ class LightDictBasic extends Gtk.Grid {
         this._field_command_editable = new Gtk.Switch();
         this._field_hide_panel_title = new Gtk.Switch();
         this._field_enable_strip = new Gtk.Switch();
+        this._field_black_or_white = new Gtk.Switch();
 
         this._field_auto_hide = this._spinMaker(500, 10000, 250);
         this._field_log_level = this._comboMaker(_('Never/Click/Hover/Always'));
         this._field_trigger_style = this._comboMaker(_('Icon/Keyboard/Auto'));
 
-        this._field_keybinding_activation = new Gtk.Switch();
+        this._field_enable_keybinding = new Gtk.Switch();
         this._field_keybinding = this._shortCutMaker(Fields.SHORTCUTNAME);
-        this._field_keybinding_activation.connect("notify::active", widget => {
+        this._field_enable_keybinding.connect("notify::active", widget => {
             this._field_keybinding.set_sensitive(widget.active);
         });
 
 
-        this._field_white_list = this._entryMaker('Yelp#Evince', _('Application white list: asterisk for all'));
+        this._field_apps_list = this._entryMaker('Yelp#Evince', _('Application white/black list(asterisk for all)'));
         this._field_filter = this._entryMaker('^[^\\n\\.\\t\\/:]{3,50}$', _('Text RegExp filter for auto mode'));
         this._field_click_command = this._entryMaker('notify-send hello', _('Command to run when clicking panel'));
-        this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Search: open in default browser'));
+        this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Search in default browser'));
         this._field_dict_command = this._entryMaker("dict -- LDWORD | sed -e 1,6d # trans -no-ansi :zh-cn -- LDWORD", _('Command to run in auto mode'));
 
         this._field_command_editable.connect("notify::active", widget => {
-            this._field_white_list.set_sensitive(widget.active);
+            this._field_apps_list.set_sensitive(widget.active);
             this._field_filter.set_sensitive(widget.active);
             this._field_click_command.set_sensitive(widget.active);
             this._field_open_url.set_sensitive(widget.active);
@@ -113,27 +115,28 @@ class LightDictBasic extends Gtk.Grid {
     _bulidUI() {
         this._row = 0;
         const hseparator = () => new Gtk.HSeparator({margin_bottom: 5, margin_top: 5});
-        this._addRow(this._field_log_level,             this._labelMaker(_("When to write down")));
-        this._addRow(this._field_trigger_style,         this._labelMaker(_("How to popup panel")));
-        this._addRow(this._field_auto_hide,             this._labelMaker(_("Autohide interval (ms)")));
-        this._addRow(this._field_hide_panel_title,      this._labelMaker(_("Hide panel title")));
-        this._addRow(this._field_sensitive_mode,        this._labelMaker(_("Panel seamless mode")));
-        this._addRow(this._field_enable_strip,          this._labelMaker(_("Remove extra whitespaces")));
-        this._addRow(hseparator(),                      null);
-        this._addRow(this._field_keybinding_activation, this._labelMaker(_("Shortcuts to trigger")));
-        this._addRow(this._field_keybinding,            this._labelMaker(_("Popup immediately")));
-        this._addRow(hseparator(),                      null);
-        this._addRow(this._field_command_editable,      this._labelMaker(_("Edit commands below")));
-        this._addRow(this._field_dict_command,          null);
-        this._addRow(this._field_white_list,            null);
-        this._addRow(this._field_open_url,              null);
-        this._addRow(this._field_click_command,         null);
-        this._addRow(this._field_filter,                null);
+        this._addRow(this._field_log_level,         this._labelMaker(_("When to write down")));
+        this._addRow(this._field_trigger_style,     this._labelMaker(_("How to popup panel")));
+        this._addRow(this._field_auto_hide,         this._labelMaker(_("Autohide interval (ms)")));
+        this._addRow(this._field_hide_panel_title,  this._labelMaker(_("Hide panel title")));
+        this._addRow(this._field_sensitive_mode,    this._labelMaker(_("Panel seamless mode")));
+        this._addRow(this._field_black_or_white,    this._labelMaker(_("Blacklist or whitelist")));
+        this._addRow(this._field_enable_strip,      this._labelMaker(_("Remove extra whitespaces")));
+        this._addRow(hseparator(),                  null);
+        this._addRow(this._field_enable_keybinding, this._labelMaker(_("Shortcuts to trigger")));
+        this._addRow(this._field_keybinding,        this._labelMaker(_("show popup panel")));
+        this._addRow(hseparator(),                  null);
+        this._addRow(this._field_command_editable,  this._labelMaker(_("Edit commands below")));
+        this._addRow(this._field_dict_command,      null);
+        this._addRow(this._field_apps_list,         null);
+        this._addRow(this._field_open_url,          null);
+        this._addRow(this._field_click_command,     null);
+        this._addRow(this._field_filter,            null);
     }
 
     _syncStatus() {
-        this._field_keybinding.set_sensitive(this._field_keybinding_activation.get_state());
-        this._field_white_list.set_sensitive(this._field_command_editable.get_state());
+        this._field_keybinding.set_sensitive(this._field_enable_keybinding.get_state());
+        this._field_apps_list.set_sensitive(this._field_command_editable.get_state());
         this._field_filter.set_sensitive(this._field_command_editable.get_state());
         this._field_click_command.set_sensitive(this._field_command_editable.get_state());
         this._field_open_url.set_sensitive(this._field_command_editable.get_state());
@@ -141,19 +144,20 @@ class LightDictBasic extends Gtk.Grid {
     }
 
     _bindValues() {
-        gsettings.bind(Fields.FILTER,    this._field_filter,                'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,             'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.DCOMMAND,  this._field_dict_command,          'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.OPENURL,   this._field_open_url,              'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.CCOMMAND,  this._field_click_command,         'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.WHITELIST, this._field_white_list,            'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SENSITIVE, this._field_sensitive_mode,        'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LOGSLEVEL, this._field_log_level,             'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,         'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SHORTCUT,  this._field_keybinding_activation, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.HIDETITLE, this._field_hide_panel_title,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.EDITABLE,  this._field_command_editable,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,          'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.FILTER,     this._field_filter,            'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.DCOMMAND,   this._field_dict_command,      'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.OPENURL,    this._field_open_url,          'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.CCOMMAND,   this._field_click_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPSLIST,   this._field_apps_list,         'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,         'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,         'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,     'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SHORTCUT,   this._field_enable_keybinding, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.HIDETITLE,  this._field_hide_panel_title,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.EDITABLE,   this._field_command_editable,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,      'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,    'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _spinMaker(l, u, s) {
