@@ -29,6 +29,7 @@ var Fields = {
     HIDETITLE:    'hide-panel-title',
     ICONPAGESIZE: 'icon-pagesize',
     TEXTSTRIP:    'enable-strip',
+    TOOLTIPS:     'enable-tooltips',
 };
 
 function init() {
@@ -85,6 +86,7 @@ class LightDictBasic extends Gtk.Grid {
         this._field_hide_panel_title = new Gtk.Switch();
         this._field_enable_strip = new Gtk.Switch();
         this._field_black_or_white = new Gtk.Switch();
+        this._field_enable_tooltips = new Gtk.Switch();
 
         this._field_auto_hide = this._spinMaker(500, 10000, 250);
         this._field_log_level = this._comboMaker(_('Never/Click/Hover/Always'));
@@ -96,11 +98,10 @@ class LightDictBasic extends Gtk.Grid {
             this._field_keybinding.set_sensitive(widget.active);
         });
 
-
         this._field_apps_list = this._entryMaker('Yelp#Evince', _('Application white/black list(asterisk for all)'));
-        this._field_filter = this._entryMaker('^[^\\n\\.\\t\\/:]{3,50}$', _('Text RegExp filter for auto mode'));
-        this._field_click_command = this._entryMaker('notify-send hello', _('Command to run when clicking panel'));
-        this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Search in default browser'));
+        this._field_filter = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
+        this._field_click_command = this._entryMaker('notify-send hello', _('Left: command to run when clicking panel'));
+        this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Right: search in default browser'));
         this._field_dict_command = this._entryMaker("dict -- LDWORD | sed -e 1,6d # trans -no-ansi :zh-cn -- LDWORD", _('Command to run in auto mode'));
 
         this._field_command_editable.connect("notify::active", widget => {
@@ -121,12 +122,13 @@ class LightDictBasic extends Gtk.Grid {
         this._addRow(this._field_hide_panel_title,  this._labelMaker(_("Hide panel title")));
         this._addRow(this._field_sensitive_mode,    this._labelMaker(_("Panel seamless mode")));
         this._addRow(this._field_black_or_white,    this._labelMaker(_("Blacklist or whitelist")));
+        this._addRow(this._field_enable_tooltips,   this._labelMaker(_("Enable tooltips for icon")));
         this._addRow(this._field_enable_strip,      this._labelMaker(_("Remove extra whitespaces")));
         this._addRow(hseparator(),                  null);
         this._addRow(this._field_enable_keybinding, this._labelMaker(_("Shortcuts to trigger")));
-        this._addRow(this._field_keybinding,        this._labelMaker(_("show popup panel")));
+        this._addRow(this._field_keybinding,        this._labelMaker(_(" show popup panel")));
         this._addRow(hseparator(),                  null);
-        this._addRow(this._field_command_editable,  this._labelMaker(_("Edit commands below")));
+        this._addRow(this._field_command_editable,  this._labelMaker(_("Edit entries below")));
         this._addRow(this._field_dict_command,      null);
         this._addRow(this._field_apps_list,         null);
         this._addRow(this._field_open_url,          null);
@@ -158,6 +160,7 @@ class LightDictBasic extends Gtk.Grid {
         gsettings.bind(Fields.EDITABLE,   this._field_command_editable,  'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,      'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,   'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _spinMaker(l, u, s) {
@@ -261,7 +264,7 @@ class LightDictAdvanced extends Gtk.Grid {
         });
         this._cmdsList = gsettings.get_strv(Fields.ICOMMANDS);
         this._cmdsActive = gsettings.get_strv(Fields.ACOMMANDS);
-        this._default = ["link#000#gio open LDWORD"]
+        this._default = ["link#000#gio open LDWORD#open link"]
 
         this._boxes = [];
         this._action = false;
@@ -338,7 +341,7 @@ class LightDictAdvanced extends Gtk.Grid {
             _('Press <big>+</big> to add a command entry, <big>×</big> to remove, <big>☐</big> to enable and <big>!</big> to toggle, separate different commands with <big>##</big>'),
             _('The control word <i>rwx</i> means <u>show popup panel or not</u>, <u>write clipboard or not</u> and <u>run with eval or bash</u>'),
             _('Substitude <b>LDWORD</b> for the selection, note that all the bash commands run in <u>$HOME</u> by default, be cautious of any <u>file operation</u>'),
-            _('If you wanna paste the result to the selection, you should add <u>@paste</u> at beginning of a commamd'),
+            _('If you wan to paste the result to the selection, please add <u>@paste</u> at beginning of the commamd'),
             _('Do <b>NOT</b> set the <i>w</i> to 1 if the command will change the clipboard, otherwise uncertain behavior may occur to the icon bar'),
         ]
     }
@@ -348,7 +351,7 @@ class LightDictAdvanced extends Gtk.Grid {
 
         if(def) {
             let check = new Gtk.CheckButton({ });
-            check.active = this._cmdsActive.indexOf(cmd) > -1;
+            check.active = this._cmdsActive.includes(cmd);
             check.connect("toggled", this._cmdsUpdate.bind(this));
 
             let label = new Gtk.Label({xalign: 0});
@@ -362,14 +365,14 @@ class LightDictAdvanced extends Gtk.Grid {
             hbox.pack_end(tips, false, false, 0);
         } else {
             hbox.entry = new Gtk.Entry({
-                placeholder_text: 'icon#rwx#@paste what you want',
+                placeholder_text: 'icon#rwx#@paste what you want#tooltips',
             });
             hbox.entry.set_text(cmd);
-            hbox.entry.set_sensitive(this._cmdsActive.indexOf(cmd) === -1)
+            hbox.entry.set_sensitive(!this._cmdsActive.includes(cmd))
             hbox.entry.connect('changed', this._cmdsUpdate.bind(this));
 
             hbox.check = new Gtk.CheckButton({ });
-            hbox.check.active = this._cmdsActive.indexOf(cmd) > -1;
+            hbox.check.active = this._cmdsActive.includes(cmd);
             hbox.check.connect("toggled", (widget) => {
                 hbox.entry.set_sensitive(!widget.active);
                 this._cmdsUpdate();

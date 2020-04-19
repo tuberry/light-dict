@@ -3,7 +3,6 @@
 
 const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk, Atspi } = imports.gi;
 const BoxPointer = imports.ui.boxpointer;
-const ByteArray = imports.byteArray;
 const Main = imports.ui.main;
 
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -13,8 +12,9 @@ const Prefs = Me.imports.prefs;
 
 const APPNAME = 'Light Dict';
 
+const MODIFIERS = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const TRIGGER = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
+const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 
 'use strict';
 
@@ -30,23 +30,41 @@ const DictIconBar = GObject.registerClass({
             visible: false,
             track_hover: true,
         });
-        this.style_class = 'dict-popup-iconbox';
+        this.style_class = 'light-dict-iconbox';
         this._pageIndex = 1;
         this._iconsBox = [];
 
         this._fetchSettings();
         this._updateIconBar();
         this._connectSignals();
+        if(this._tooltips) this._addTooltips();
     }
 
     _connectSignals() {
         this._settingChangedId = gsettings.connect('changed', this._onSettingChanged.bind(this));
-        this._leaveIconBarId = this.connect('leave-event', () => this.visible = false);
+        this._leaveIconBarId = this.connect('leave-event', () => {
+            this.visible = false;
+            if(this._tooltips) this._iconTooltips.hide();
+        });
         this._enterIconBarId = this.connect('enter-event', () => {
             if(this._autohideDelayId)
                 GLib.source_remove(this._autohideDelayId), this._autohideDelayId = 0;
             this.visible = true;
         });
+    }
+
+    _removeTooltips(tog) {
+        Main.layoutManager.uiGroup.remove_actor(this._iconTooltips);
+        this._iconTooltips.destroy();
+        this._iconTooltips = null;
+    }
+
+    _addTooltips() {
+        this._iconTooltips = new St.Label({
+            visible: false,
+            style_class: 'light-dict-tooltip light-dict-content',
+        });
+        Main.layoutManager.uiGroup.add_actor(this._iconTooltips);
     }
 
     _updateIconBar() {
@@ -62,8 +80,9 @@ const DictIconBar = GObject.registerClass({
     }
 
     vfunc_scroll_event(scrollEvent) {
+        if(this._tooltips) this._iconTooltips.hide();
         if(this._pagesize === 0) return;
-        let pages = Math.ceil(this._acommands.length/(this._pagesize));
+        let pages = Math.ceil(this._acommands.length / this._pagesize);
         if(pages === 1) return;
         switch (scrollEvent.direction) {
         case Clutter.ScrollDirection.UP:
@@ -84,6 +103,7 @@ const DictIconBar = GObject.registerClass({
         this._xoffset   = gsettings.get_int(Prefs.Fields.XOFFSET);
         this._yoffset   = gsettings.get_int(Prefs.Fields.YOFFSET);
         this._pagesize  = gsettings.get_uint(Prefs.Fields.ICONPAGESIZE);
+        this._tooltips  = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
     }
 
     _onSettingChanged() {
@@ -99,6 +119,9 @@ const DictIconBar = GObject.registerClass({
             this._pagesize = pages;
             this._updateIconBar();
         }
+        let tooltip = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
+        if(this._tooltips != tooltip)
+            tooltip ? this._addTooltips() : this._removeTooltips();
         this._fetchSettings()
     }
 
@@ -109,7 +132,6 @@ const DictIconBar = GObject.registerClass({
             let [W, H] = this.get_transformed_size();
             this.set_position(Math.round(x-W/2), Math.round(y-H*1.5));
         }
-
         this.visible = true;
 
         if(this._autohideDelayId)
@@ -125,38 +147,55 @@ const DictIconBar = GObject.registerClass({
     _iconBarMaker(cmds) {
         cmds.split('##').forEach(x => {
             let cmd = x.split('#');
-            if(cmd.length != 3 || !RegExp('[01]{3}', 'i').test(cmd[1])) {
+            if(cmd.length < 3 || !RegExp('[01]{3}', 'i').test(cmd[1])) {
                 Main.notifyError(APPNAME, 'Syntax error: ' + cmd);
                 return false;
             }
             let btn = new St.Button({
-                style_class: 'dict-popup-button dict-popup-button-' + cmd[0],
+                style_class: 'light-dict-button light-dict-button-' + cmd[0],
                 track_hover: true,
                 reactive: true,
             });
+            // St.Bin child
             btn.child = new St.Icon({
-                style_class: 'dict-popup-button-icon dict-popup-button-icon-' + cmd[0],
+                style_class: 'light-dict-button-icon light-dict-button-icon-' + cmd[0],
                 fallback_icon_name: 'help',
                 icon_name: cmd[0],
             });
-
             let onClickId = btn.connect('clicked', (actor, event) => {
                 this.visible = false;
                 this.emit('iconbar-signals', cmd[1], cmd[2]);
                 return Clutter.EVENT_PROPAGATE;
             });
-            this._iconsBox.push([onClickId, btn]);
+            let onEnterId = btn.connect('enter-event', () => {
+                if(!this._tooltips) return;
+                btn.entered = true;
+                setTimeout(() => {
+                    if(btn.entered === undefined || !btn.entered || !this.visible) return;
+                    this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
+                    this._iconTooltips.set_text(cmd.length > 3 ? cmd[3] : cmd[0]);
+                    this._iconTooltips.show();
+                }, this._autohide / 2);
+            });
+            let onLeaveId = btn.connect('leave-event', () => {
+                if(!this._tooltips) return;
+                btn.entered = false;
+                this._iconTooltips.hide();
+            });
+            this._iconsBox.push([btn, onClickId, onEnterId, onLeaveId]);
             this.add_child(btn);
         })
     }
 
     _iconBarEraser() {
         this._iconsBox.forEach(x => {
-            if(x[0])
-                x[1].disconnect(x[0]);
+            if(x[1]) x[0].disconnect(x[1]), x[1] = null;
+            if(x[2]) x[0].disconnect(x[2]), x[2] = null;
+            if(x[3]) x[0].disconnect(x[3]), x[3] = null;
+            this.remove_child(x[0]);
+            x[0].entered = undefined;
+            x[0].destroy();
             x[0] = null;
-            this.remove_child(x[1]);
-            x[1].destroy();
         });
         this._iconsBox.length = 0;
     }
@@ -170,6 +209,7 @@ const DictIconBar = GObject.registerClass({
             GLib.source_remove(this._autohideDelayId), this._autohideDelayId = 0;
         if(this._settingChangedId)
             gsettings.disconnect(this._settingChangedId), this._settingChangedId = 0;
+        if(this._tooltips) this._removeTooltips();
         this._iconBarEraser();
         super.destroy();
     }
@@ -180,7 +220,7 @@ class DictPopup extends BoxPointer.BoxPointer {
     _init() {
         super._init(St.Side.TOP);
         this.visible = false;
-        this.style_class = 'dict-popup-boxpointer';
+        this.style_class = 'light-dict-boxpointer';
         Main.layoutManager.addChrome(this);
 
         this._panelClicked = false;
@@ -247,7 +287,7 @@ class DictPopup extends BoxPointer.BoxPointer {
         this.setPosition(this._dummyCursor, 0);
         this._addDummyCursor(this._sensitive);
         this._panelBox = new St.BoxLayout({
-            style_class: 'dict-popup-content',
+            style_class: 'light-dict-content',
             vertical: true,
             visible: false,
             reactive: true,
@@ -278,13 +318,13 @@ class DictPopup extends BoxPointer.BoxPointer {
             this._panelClicked = true;
         });
 
-        this._panelBox._word = new St.Label({style_class: 'dict-popup-word', visible: !this._hidetitle});
+        this._panelBox._word = new St.Label({style_class: 'light-dict-word', visible: !this._hidetitle});
         this._panelBox._word.clutter_text.line_wrap = true;
         this._panelBox._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._panelBox._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
         this._panelBox.add_child(this._panelBox._word);
 
-        this._panelBox._info = new St.Label({style_class: 'dict-popup-info'});
+        this._panelBox._info = new St.Label({style_class: 'light-dict-info'});
         this._panelBox._info.clutter_text.line_wrap = true;
         this._panelBox._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._panelBox._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
@@ -298,8 +338,8 @@ class DictPopup extends BoxPointer.BoxPointer {
         this._iconBarId = this._iconBar.connect('iconbar-signals', (area, tag, cmd) => {
             this._runCommand(tag, cmd);
         });
-
         Main.layoutManager.addChrome(this._iconBar);
+
         this._onWindowChangedId = global.display.connect('notify::focus-window', () => {
             this._hidePanel();
             this._iconBar.hide();
@@ -579,11 +619,10 @@ class DictPopup extends BoxPointer.BoxPointer {
         if(this._settingChangedId)
             gsettings.disconnect(this._settingChangedId), this._settingChangedId = 0;
 
-        this._removeDummyCursor();
         Main.layoutManager.removeChrome(this._iconBar);
-        this._iconBar.destory();
-        this._panelBox.destroy();
         Main.layoutManager.removeChrome(this);
+        this._iconBar.destory();
+        this._removeDummyCursor();
         super.destroy();
     }
 });
@@ -594,28 +633,22 @@ class DictEditable extends GObject.Object {
         super._init();
         if (Atspi.init() === 2)
             throw new Error('Failed to start AT-SPI');
-
-        this._modifiers = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
-    }
-
-    _isMoififiers(keyname) {
-        return Object.keys(this._modifiers).includes(keyname);
     }
 
     _release(keyname) {
-        if(!this._isMoififiers(keyname))
+        if(!Object.keys(MODIFIERS).includes(keyname))
             return;
         Atspi.generate_keyboard_event(
-            this._modifiers[keyname],
+            MODIFIERS[keyname],
             null,
             Atspi.KeySynthType.RELEASE
         );
     }
 
     _press(keyname) {
-        if(this._isMoififiers(keyname)) {
+        if(Object.keys(MODIFIERS).includes(keyname)) {
             Atspi.generate_keyboard_event(
-                this._modifiers[keyname],
+                MODIFIERS[keyname],
                 null,
                 Atspi.KeySynthType.PRESS
             );

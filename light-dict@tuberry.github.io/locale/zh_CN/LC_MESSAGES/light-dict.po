@@ -1,0 +1,168 @@
+# Chinese translations for PACKAGE package.
+# Copyright (C) 2020 THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# tuberry <tuberry@github.io>, 2020.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2020-04-18 22:54+0800\n"
+"PO-Revision-Date: 2020-04-18 23:16+0800\n"
+"Last-Translator: tuberry <tuberry@github.io>\n"
+"Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: prefs.js:49
+msgid "Basic"
+msgstr "基础"
+
+#: prefs.js:53
+msgid "Advanced"
+msgstr "进阶"
+
+#: prefs.js:92
+msgid "Never/Click/Hover/Always"
+msgstr "从不/单击/悬停/总是"
+
+#: prefs.js:93
+msgid "Icon/Keyboard/Auto"
+msgstr "图标/键盘/自动"
+
+#: prefs.js:101
+msgid "Application white/black list(asterisk for all)"
+msgstr "应用白/黑名单(星号*表示所有)"
+
+#: prefs.js:102
+msgid "Text RegExp filter for auto mode"
+msgstr "自动模式正则过滤"
+
+#: prefs.js:103
+msgid "Left: command to run when clicking panel"
+msgstr "左键：单击气泡时执行"
+
+#: prefs.js:104
+msgid "Right: search in default browser"
+msgstr "右键：在默认浏览器中搜索"
+
+#: prefs.js:105
+msgid "Command to run in auto mode"
+msgstr "自动模式下执行"
+
+#: prefs.js:119
+msgid "When to write down"
+msgstr "日志记录时机"
+
+#: prefs.js:120
+msgid "How to popup panel"
+msgstr "气泡触发方式"
+
+#: prefs.js:121
+msgid "Autohide interval (ms)"
+msgstr "自动隐藏延迟(单位/毫秒)"
+
+#: prefs.js:122
+msgid "Hide panel title"
+msgstr "隐藏气泡标题"
+
+#: prefs.js:123
+msgid "Panel seamless mode"
+msgstr "气泡无缝模式"
+
+#: prefs.js:124
+msgid "Blacklist or whitelist"
+msgstr "黑名单白名单"
+
+#: prefs.js:125
+msgid "Enable tooltips for icon"
+msgstr "启用图标提示"
+
+#: prefs.js:126
+msgid "Remove extra whitespaces"
+msgstr "去除两端空格"
+
+#: prefs.js:128
+msgid "Shortcuts to trigger"
+msgstr "启用快捷键"
+
+#: prefs.js:129
+msgid " show popup panel"
+msgstr "弹出气泡"
+
+#: prefs.js:131
+msgid "Edit entries below"
+msgstr "编辑以下条目"
+
+#: prefs.js:301
+msgid "X offset"
+msgstr "水平偏移"
+
+#: prefs.js:303
+msgid "Y offset"
+msgstr "垂直偏移"
+
+#: prefs.js:305
+msgid "Page size"
+msgstr "页容量"
+
+#: prefs.js:309
+msgid "!"
+msgstr "!"
+
+#: prefs.js:318 prefs.js:382
+msgid "+"
+msgstr "+"
+
+#: prefs.js:318 prefs.js:382
+msgid "×"
+msgstr "×"
+
+#: prefs.js:339
+msgid ""
+"Show all icons if <i>page size</i> is <b>0</b>, and use relative position "
+"when <i>offset</i> is <b>0</b>"
+msgstr "<i>页容量</i>为 <b>0</b> 时显示所有图标，<i>偏移量</i>为 <b>0</b> 时使用相对位置"
+
+#: prefs.js:340
+msgid ""
+"Add the icon (svg format is recommended) to <u>~/.local/share/icons/xxxx</u> "
+"if <big>?</big> appears to icon bar"
+msgstr "若图标栏只显示 <big>?</big> 请将图标（推荐 SVG 格式）放到 <u>~/.local/share/icons/xxxx</u> 中"
+
+#: prefs.js:341
+msgid ""
+"Press <big>+</big> to add a command entry, <big>×</big> to remove, <big>☐</"
+"big> to enable and <big>!</big> to toggle, separate different commands with "
+"<big>##</big>"
+msgstr "点击 <big>+</big> 添加、<big>×</big> 删除、<big>☐</big> 启用条目；<big>!</big> 用于切换状态；不同命令用 <big>##</big> 间隔"
+
+#: prefs.js:342
+msgid ""
+"The control word <i>rwx</i> means <u>show popup panel or not</u>, <u>write "
+"clipboard or not</u> and <u>run with eval or bash</u>"
+msgstr "控制字 <i>rwx</i> 分别代表<u>是否显示气泡</u>、<u>是否写入剪切板</u>、<u>Bash 命令或 JS 语句</u>"
+
+#: prefs.js:343
+msgid ""
+"Substitude <b>LDWORD</b> for the selection, note that all the bash commands "
+"run in <u>$HOME</u> by default, be cautious of any <u>file operation</u>"
+msgstr "用 <b>LDWORD</b> 代替所选文本，注意所有 Bash 命令默认在<u>家目录</u>中执行，小心任何<u>文件操作</u>"
+
+#: prefs.js:344
+msgid ""
+"If you wan to paste the result to the selection, please add <u>@paste</u> at "
+"beginning of the commamd"
+msgstr "如果需要粘贴结果，可以在命令开头加上 <u>@paste</u>"
+
+#: prefs.js:345
+msgid ""
+"Do <b>NOT</b> set the <i>w</i> to 1 if the command will change the "
+"clipboard, otherwise uncertain behavior may occur to the icon bar"
+msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>w</i> 置为 1，否则图标栏可能会出问题"
+
+#: prefs.js:361
+msgid "?"
+msgstr "?"

@@ -25,6 +25,10 @@
         <default>false</default>
         <summary>blacklist or whitelist</summary>
     </key>
+    <key type="b" name="enable-tooltips">
+        <default>false</default>
+        <summary>enable tooltips for icon bar</summary>
+    </key>
     <key type="as" name="short-cut">
         <default><![CDATA[['<Control><Shift>z']]]></default>
         <summary>short-cuts to trigger popup</summary>
