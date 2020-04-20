@@ -22,7 +22,7 @@
         <summary>enable text strip</summary>
     </key>
     <key type="b" name="black-or-white">
-        <default>false</default>
+        <default>true</default>
         <summary>blacklist or whitelist</summary>
     </key>
     <key type="b" name="enable-tooltips">
