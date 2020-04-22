@@ -1,5 +1,8 @@
 // vim:fdm=syntax
 // by: tuberry@gtihub.io
+'use strict';
+
+const APPNAME = 'Light Dict';
 
 const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk, Atspi } = imports.gi;
 const BoxPointer = imports.ui.boxpointer;
@@ -10,13 +13,9 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Prefs = Me.imports.prefs;
 
-const APPNAME = 'Light Dict';
-
 const MODIFIERS = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
-
-'use strict';
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -33,10 +32,12 @@ const DictIconBar = GObject.registerClass({
         this.style_class = 'light-dict-iconbox';
         this._pageIndex = 1;
         this._iconsBox = [];
+        this._visibleBox = [];
+        this._update = false;
 
         this._fetchSettings();
-        this._updateIconBar();
         this._connectSignals();
+        this._acommands.forEach(x => this._iconBarMaker(x));
         if(this._tooltips) this._addTooltips();
     }
 
@@ -68,13 +69,24 @@ const DictIconBar = GObject.registerClass({
     }
 
     _updateIconBar() {
-        this._iconBarEraser();
+        this._iconsBox.forEach(x => x.visible = false);
         if(this._pagesize === 0) {
-            this._acommands.forEach(x => this._iconBarMaker(x));
+            this._visibleBox.forEach(x => x.visible = true);
+            return;
+        }
+        let pages = Math.ceil(this._visibleBox.length / this._pagesize);
+        if(pages === 1) {
+            this._visibleBox.forEach(x => x.visible = true);
+            return;
+        };
+        this._pageIndex = this._pageIndex < 1 ? pages : (this._pageIndex > pages ? 1 : this._pageIndex);
+        if(this._pageIndex === pages && this._visibleBox.length % this._pagesize) {
+            this._visibleBox.forEach((x, i) => {
+                x.visible = i >= this._visibleBox.length - this._pagesize && i < this._visibleBox.length;
+            });
         } else {
-            this._acommands.forEach((x, i) => {
-                if(i >= (this._pageIndex - 1)*this._pagesize && i < this._pageIndex*this._pagesize)
-                    this._iconBarMaker(x);
+            this._visibleBox.forEach((x, i) => {
+                x.visible = i >= (this._pageIndex - 1)*this._pagesize && i < this._pageIndex*this._pagesize;
             });
         }
     }
@@ -82,18 +94,16 @@ const DictIconBar = GObject.registerClass({
     vfunc_scroll_event(scrollEvent) {
         if(this._tooltips) this._iconTooltips.hide();
         if(this._pagesize === 0) return;
-        let pages = Math.ceil(this._acommands.length / this._pagesize);
-        if(pages === 1) return;
+        this._visibleBox.forEach(x => x.entered = false);
         switch (scrollEvent.direction) {
         case Clutter.ScrollDirection.UP:
-            this._pageIndex = this._pageIndex - 1 === 0 ? pages : this._pageIndex - 1;
-            this._updateIconBar();
+            this._pageIndex--;
             break;
         case Clutter.ScrollDirection.DOWN:
-            this._pageIndex = this._pageIndex + 1 > pages ? 1 : this._pageIndex + 1;
-            this._updateIconBar();
+            this._pageIndex++;
             break;
         }
+        this._updateIconBar();
         return Clutter.EVENT_PROPAGATE;
     }
 
@@ -102,22 +112,22 @@ const DictIconBar = GObject.registerClass({
         this._autohide  = gsettings.get_uint(Prefs.Fields.AUTOHIDE);
         this._xoffset   = gsettings.get_int(Prefs.Fields.XOFFSET);
         this._yoffset   = gsettings.get_int(Prefs.Fields.YOFFSET);
-        this._pagesize  = gsettings.get_uint(Prefs.Fields.ICONPAGESIZE);
+        this._pagesize  = gsettings.get_uint(Prefs.Fields.PAGESIZE);
         this._tooltips  = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
     }
 
     _onSettingChanged() {
         let acommands = gsettings.get_strv(Prefs.Fields.ACOMMANDS);
         if(this._acommands.toString() != acommands.toString()) {
-            this._pageIndex = 1;
             this._acommands = acommands;
-            this._updateIconBar();
-        }
-        let pages = gsettings.get_uint(Prefs.Fields.ICONPAGESIZE);
-        if(this._pagesize != pages) {
+            this._iconBarEraser();
+            this._acommands.forEach(x => this._iconBarMaker(x));
             this._pageIndex = 1;
-            this._pagesize = pages;
-            this._updateIconBar();
+        }
+        let pagesize = gsettings.get_uint(Prefs.Fields.PAGESIZE);
+        if(this._pagesize != pagesize) {
+            this._pageIndex = 1;
+            this._pagesize = pagesize;
         }
         let tooltip = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
         if(this._tooltips != tooltip)
@@ -125,13 +135,14 @@ const DictIconBar = GObject.registerClass({
         this._fetchSettings()
     }
 
-    _showIconBar(x, y) {
-        if(this._xoffset||this._yoffset) {
-            this.set_position(Math.round(x+this._xoffset), Math.round(y+this._yoffset));
+    _showIconBar(x, y, fw, text) {
+        if(this._xoffset || this._yoffset) {
+            this.set_position(Math.round(x + this._xoffset), Math.round(y + this._yoffset));
         } else {
             let [W, H] = this.get_transformed_size();
-            this.set_position(Math.round(x-W/2), Math.round(y-H*1.5));
+            this.set_position(Math.round(x - W / 2), Math.round(y - H * 1.5));
         }
+        this._updateVisible(fw, text);
         this.visible = true;
 
         if(this._autohideDelayId)
@@ -144,60 +155,74 @@ const DictIconBar = GObject.registerClass({
         });
     }
 
-    _iconBarMaker(cmds) {
-        cmds.split('##').forEach(x => {
-            let cmd = x.split('#');
-            if(cmd.length < 3 || !RegExp('[01]{3}', 'i').test(cmd[1])) {
-                Main.notifyError(APPNAME, 'Syntax error: ' + cmd);
-                return false;
+    _updateVisible(fw, text) {
+        this._iconsBox.forEach(x => {
+            switch((x.hasOwnProperty("regexp") << 1) + x.hasOwnProperty("windows")) {
+            case 0: x._visible = true; break;
+            case 1: x._visible = x.windows.includes(fw); break;
+            case 2: x._visible = RegExp(x.regexp, 'i').test(text); break;
+            case 3: x._visible = x.windows.includes(fw) & RegExp(x.regexp, 'i').test(text); break;
             }
+        });
+        this._visibleBox = this._iconsBox.filter(x => x._visible);
+        this._updateIconBar();
+    }
+
+    _iconBarMaker(cmds) {
+        JSON.parse(cmds).entries.forEach(x => {
             let btn = new St.Button({
-                style_class: 'light-dict-button light-dict-button-' + cmd[0],
+                style_class: 'light-dict-button light-dict-button-' + x.icon,
                 track_hover: true,
                 reactive: true,
             });
-            // St.Bin child
             btn.child = new St.Icon({
-                style_class: 'light-dict-button-icon light-dict-button-icon-' + cmd[0],
+                style_class: 'light-dict-button-icon light-dict-button-icon-' + x.icon,
                 fallback_icon_name: 'help',
-                icon_name: cmd[0],
-            });
-            let onClickId = btn.connect('clicked', (actor, event) => {
+                icon_name: x.icon,
+            }); // St.Bin child
+            if(x.windows && x.windows.length) btn.windows = x.windows;
+            if(x.regexp) btn.regexp = x.regexp;
+            btn.onClickId = btn.connect('clicked', (actor, event) => {
                 this.visible = false;
-                this.emit('iconbar-signals', cmd[1], cmd[2]);
+                this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.paste].map(x => x ? '1' : '0').join(''), x.command);
                 return Clutter.EVENT_PROPAGATE;
             });
-            let onEnterId = btn.connect('enter-event', () => {
+            btn._visible = true;
+            btn.onEnterId = btn.connect('enter-event', () => {
                 if(!this._tooltips) return;
                 btn.entered = true;
-                setTimeout(() => {
-                    if(btn.entered === undefined || !btn.entered || !this.visible) return;
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide / 2, () => {
+                    if(btn.entered === undefined || !btn.entered || !this.visible) return GLib.SOURCE_REMOVE;
                     this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                    this._iconTooltips.set_text(cmd.length > 3 ? cmd[3] : cmd[0]);
+                    this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon);
                     this._iconTooltips.show();
-                }, this._autohide / 2);
+                    return GLib.SOURCE_REMOVE;
+                });
             });
-            let onLeaveId = btn.connect('leave-event', () => {
+            btn.onLeaveId = btn.connect('leave-event', () => {
                 if(!this._tooltips) return;
                 btn.entered = false;
                 this._iconTooltips.hide();
             });
-            this._iconsBox.push([btn, onClickId, onEnterId, onLeaveId]);
+            this._iconsBox.push(btn);
             this.add_child(btn);
-        })
+        });
     }
 
     _iconBarEraser() {
         this._iconsBox.forEach(x => {
-            if(x[1]) x[0].disconnect(x[1]), x[1] = null;
-            if(x[2]) x[0].disconnect(x[2]), x[2] = null;
-            if(x[3]) x[0].disconnect(x[3]), x[3] = null;
-            this.remove_child(x[0]);
-            x[0].entered = undefined;
-            x[0].destroy();
-            x[0] = null;
+            if(x.onClickId) x.disconnect(x.onClickId), x.onClickId = undefined;
+            if(x.onEnterId) x.disconnect(x.onClickId), x.onEnterId = undefined;
+            if(x.onLeaveId) x.disconnect(x.onClickId), x.onLeaveId = undefined;
+            x._visible = undefined;
+            x.entered = undefined;
+            x.window = undefined;
+            x.regexp = undefined;
+            this.remove_child(x);
+            x = null;
         });
         this._iconsBox.length = 0;
+        this._visibleBox.length = 0;
     }
 
     destory() {
@@ -336,7 +361,9 @@ class DictPopup extends BoxPointer.BoxPointer {
     _bulidPopupBar() {
         this._iconBar = new DictIconBar();
         this._iconBarId = this._iconBar.connect('iconbar-signals', (area, tag, cmd) => {
-            this._runCommand(tag, cmd);
+            let [popup, clip, type, paste] = Array.from(tag, i => i === '1');
+            if(paste) [popup, clip] = [true, true];
+            type ? this._runWithEval(popup, clip, paste, cmd) : this._runWithBash(popup, clip, paste, cmd);
         });
         Main.layoutManager.addChrome(this._iconBar);
 
@@ -344,8 +371,8 @@ class DictPopup extends BoxPointer.BoxPointer {
             this._hidePanel();
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
-            if(!FW) return;
-            let wlist = this._appslist === '*' | this._appslist.split('#').includes(FW.wm_class);
+            this._wmclass = FW ? FW.wm_class : null;
+            let wlist = this._appslist === '*' | this._appslist.split('#').includes(this._wmclass);
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedId) this._listenSelection(this._trigger);
             } else {
@@ -359,25 +386,23 @@ class DictPopup extends BoxPointer.BoxPointer {
         switch(tgg) {
         case TRIGGER.ICON:
             this._selectionChangedId = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY)
-                    return;
+                if(type != St.ClipboardType.PRIMARY) return;
                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
                     if(!text) return;
                     [this._pointerX, this._pointerY] = global.get_pointer();
                     this._selection = this._textstrip ? text.trim() : text;
-                    this._iconBar._showIconBar(this._pointerX, this._pointerY);
+                    this._iconBar._showIconBar(this._pointerX, this._pointerY, this._wmclass, this._selection);
                 });
             });
             break;
         case TRIGGER.AUTO:
             this._selectionChangedId = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY)
-                    return;
+                if(type != St.ClipboardType.PRIMARY) return;
                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
                     if(!text) return;
                     [this._pointerX, this._pointerY] = global.get_pointer();
                     this._selection = this._textstrip ? text.trim() : text;
-                    if(this._selection && (!this._filter || RegExp(this._filter, 'i').test(this._selection)))
+                    if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
                         this._lookUp(this._selection);
                 });
             });
@@ -425,28 +450,13 @@ class DictPopup extends BoxPointer.BoxPointer {
         });
     }
 
-    _runCommand(tag, cmd) {
-        let [popup, clip, type] = Array.from(tag, i => i === '1');
-        let paste = cmd[0] === '@', command = cmd;
-        if(paste) {
-            command = cmd.substr(6);
-            popup = true;
-            clip = true;
-        }
-        if(type) {
-            this._runWithEval(popup, clip, paste, command);
-        } else {
-            this._runWithBash(popup, clip, paste, command);
-        }
-    }
-
     _runWithBash(popup, clip, paste, cmd) {
         let title = global.display.get_focus_window().title;
         let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title.toString()));
         if(popup|clip|paste) {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-                flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
+                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
             });
             proc.init(null);
             proc.communicate_utf8_async(null, null, (proc, res) => {
@@ -484,7 +494,7 @@ class DictPopup extends BoxPointer.BoxPointer {
                 let result = eval(cmd).toString();
                 St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, result);
                 this._edit.paste();
-            } else if (popup|clip) {
+            } else if(popup|clip) {
                 let result = eval(cmd).toString();
                 if(popup) {
                     this._panelBox._info.set_text(result);
@@ -517,7 +527,7 @@ class DictPopup extends BoxPointer.BoxPointer {
         let rcmd = this._dcommand.split('LDWORD').join(GLib.shell_quote(text));
         let proc = new Gio.Subprocess({
             argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-            flags: (Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE),
+            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
         });
         proc.init(null);
         proc.communicate_utf8_async(null, null, (proc, res) => {
@@ -572,7 +582,7 @@ class DictPopup extends BoxPointer.BoxPointer {
     }
 
     _recordLog() {
-        if(this._trigger != TRIGGER.AUTO) return;
+        if(this._trigger == TRIGGER.ICON) return;
         let dateFormat = (fmt, date) => {
             const opt = {
                 "Y+": date.getFullYear().toString(),
@@ -621,8 +631,8 @@ class DictPopup extends BoxPointer.BoxPointer {
 
         Main.layoutManager.removeChrome(this._iconBar);
         Main.layoutManager.removeChrome(this);
-        this._iconBar.destory();
         this._removeDummyCursor();
+        this._iconBar.destory();
         super.destroy();
     }
 });
@@ -664,11 +674,12 @@ class DictEditable extends GObject.Object {
     _stroke(keystring) {
         try {
             keystring.split(/\s+/).forEach((keys, i) => {
-                setTimeout(() => {
+                GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
                     let keyarray = keys.split('+');
                     keyarray.forEach(key => this._press(key));
                     keyarray.slice().reverse().forEach(key => this._release(key));
-                }, i * 100);
+                    return GLib.SOURCE_REMOVE;
+                });
             });
         } catch (e) {
             Main.notifyError(APPNAME, e.message);

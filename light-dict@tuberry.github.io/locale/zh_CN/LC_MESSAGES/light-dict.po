@@ -1,168 +1,210 @@
 # Chinese translations for PACKAGE package.
 # Copyright (C) 2020 THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
-# tuberry <tuberry@github.io>, 2020.
+# tuberry <tuberry@example.com>, 2020.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-18 22:54+0800\n"
-"PO-Revision-Date: 2020-04-18 23:16+0800\n"
-"Last-Translator: tuberry <tuberry@github.io>\n"
+"POT-Creation-Date: 2020-04-22 20:55+0800\n"
+"PO-Revision-Date: 2020-04-22 20:56+0800\n"
+"Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: prefs.js:49
+#: prefs.js:50
 msgid "Basic"
-msgstr "基础"
+msgstr "基本"
 
-#: prefs.js:53
+#: prefs.js:54
 msgid "Advanced"
 msgstr "进阶"
 
-#: prefs.js:92
-msgid "Never/Click/Hover/Always"
-msgstr "从不/单击/悬停/总是"
+#: prefs.js:97
+msgid "Never"
+msgstr "从不"
 
-#: prefs.js:93
-msgid "Icon/Keyboard/Auto"
-msgstr "图标/键盘/自动"
+#: prefs.js:97
+msgid "Click"
+msgstr "单击"
 
-#: prefs.js:101
-msgid "Application white/black list(asterisk for all)"
-msgstr "应用白/黑名单(星号*表示所有)"
+#: prefs.js:97
+msgid "Hover"
+msgstr "悬停"
 
-#: prefs.js:102
+#: prefs.js:97
+msgid "Always"
+msgstr "总是"
+
+#: prefs.js:98
+msgid "Icon"
+msgstr "图标"
+
+#: prefs.js:98
+msgid "Keyboard"
+msgstr "键盘"
+
+#: prefs.js:98
+msgid "Auto"
+msgstr "自动"
+
+#: prefs.js:106
+msgid "App white/black list (asterisk for all)"
+msgstr "应用白/黑名单（星号代表所有）"
+
+#: prefs.js:107
 msgid "Text RegExp filter for auto mode"
 msgstr "自动模式正则过滤"
 
-#: prefs.js:103
-msgid "Left: command to run when clicking panel"
-msgstr "左键：单击气泡时执行"
+#: prefs.js:108
+msgid "Left click: command to run when clicking panel"
+msgstr "左键: 点击气泡执行"
 
-#: prefs.js:104
-msgid "Right: search in default browser"
-msgstr "右键：在默认浏览器中搜索"
+#: prefs.js:109
+msgid "Right click: search in default browser"
+msgstr "右键: 点击在浏览器中搜索"
 
-#: prefs.js:105
+#: prefs.js:110
 msgid "Command to run in auto mode"
 msgstr "自动模式下执行"
 
-#: prefs.js:119
+#: prefs.js:124
 msgid "When to write down"
 msgstr "日志记录时机"
 
-#: prefs.js:120
+#: prefs.js:125
 msgid "How to popup panel"
 msgstr "气泡触发方式"
 
-#: prefs.js:121
-msgid "Autohide interval (ms)"
-msgstr "自动隐藏延迟(单位/毫秒)"
+#: prefs.js:126
+msgid "Auto hide interval"
+msgstr "自动隐藏延迟"
 
-#: prefs.js:122
-msgid "Hide panel title"
+#: prefs.js:127
+msgid "Icon bar page size"
+msgstr "图标栏页容量"
+
+#: prefs.js:128
+msgid "Icon bar X offset"
+msgstr "图标水平偏移"
+
+#: prefs.js:129
+msgid "Icon bar Y offset"
+msgstr "图标垂直偏移"
+
+#: prefs.js:130
+msgid "Hide popup panel title"
 msgstr "隐藏气泡标题"
 
-#: prefs.js:123
+#: prefs.js:131
 msgid "Panel seamless mode"
 msgstr "气泡无缝模式"
 
-#: prefs.js:124
+#: prefs.js:132
 msgid "Blacklist or whitelist"
 msgstr "黑名单白名单"
 
-#: prefs.js:125
-msgid "Enable tooltips for icon"
+#: prefs.js:133
+msgid "Enable tooltip for icon"
 msgstr "启用图标提示"
 
-#: prefs.js:126
-msgid "Remove extra whitespaces"
+#: prefs.js:134
+msgid "Trim extra whitespaces"
 msgstr "去除两端空格"
 
-#: prefs.js:128
+#: prefs.js:136
 msgid "Shortcuts to trigger"
 msgstr "启用快捷键"
 
-#: prefs.js:129
+#: prefs.js:137
 msgid " show popup panel"
-msgstr "弹出气泡"
+msgstr " 弹出气泡"
 
-#: prefs.js:131
+#: prefs.js:139
 msgid "Edit entries below"
 msgstr "编辑以下条目"
 
-#: prefs.js:301
-msgid "X offset"
-msgstr "水平偏移"
-
 #: prefs.js:303
-msgid "Y offset"
-msgstr "垂直偏移"
+msgid "Missing some required properties in JSON data"
+msgstr "JSON 数据中缺失部分必需字段"
 
-#: prefs.js:305
-msgid "Page size"
-msgstr "页容量"
+#: prefs.js:315
+msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
+msgstr "添加图标文件至 <u>~/.local/share/icons/xxxx</u>"
 
-#: prefs.js:309
-msgid "!"
-msgstr "!"
+#: prefs.js:316
+msgid "Use relative position when both X and Y offset is <b>0</b>"
+msgstr "当水平与垂直偏移为 <b>0</b> 时使用相对位置"
 
-#: prefs.js:318 prefs.js:382
-msgid "+"
-msgstr "+"
+#: prefs.js:317
+msgid "Substitute <b>LDWORD</b> for the selection in commands"
+msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
 
-#: prefs.js:318 prefs.js:382
-msgid "×"
-msgstr "×"
-
-#: prefs.js:339
+#: prefs.js:318
 msgid ""
-"Show all icons if <i>page size</i> is <b>0</b>, and use relative position "
-"when <i>offset</i> is <b>0</b>"
-msgstr "<i>页容量</i>为 <b>0</b> 时显示所有图标，<i>偏移量</i>为 <b>0</b> 时使用相对位置"
+"Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
+"clipboard"
+msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>true</i>"
 
-#: prefs.js:340
+#: prefs.js:319
 msgid ""
-"Add the icon (svg format is recommended) to <u>~/.local/share/icons/xxxx</u> "
-"if <big>?</big> appears to icon bar"
-msgstr "若图标栏只显示 <big>?</big> 请将图标（推荐 SVG 格式）放到 <u>~/.local/share/icons/xxxx</u> 中"
+"Fake keyboard input is supported in JS statement: <u>key(\"Control_L+c\")</u>"
+msgstr "JS 语句支持模拟键盘输入: <u>key(\"Control_L+c\")</u>"
 
-#: prefs.js:341
+#: prefs.js:320
+msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
+msgstr "历史记录位于 <u>~/.cache/gnome-shell-extension-light-dict/</u>"
+
+#: prefs.js:324
+msgid "Required / text showing on the entry"
+msgstr "必需 / 条目显示文本"
+
+#: prefs.js:325
+msgid "Optional / additional information about the entry"
+msgstr "可选 / 条目附加信息"
+
+#: prefs.js:326
+msgid "Required / the icon name"
+msgstr "必需 / 图标名"
+
+#: prefs.js:327
+msgid "Required / popup the panel or not"
+msgstr "必需 / 是否弹出气泡"
+
+#: prefs.js:328
+msgid "Required / write the clipboard or not"
+msgstr "必需 / 是否写入剪切板"
+
+#: prefs.js:329
+msgid "Required / Bash command or JS statement"
+msgstr "必需 / Bash 命令或 JS 语句"
+
+#: prefs.js:330
+msgid "Optional / paste the result (Ctrl+v) or not"
+msgstr "可选 / 是否粘贴结果 (Ctrl+v)"
+
+#: prefs.js:331
+msgid "Required / command to run when clicking icon"
+msgstr "必需 / 点击图标时执行"
+
+#: prefs.js:332
+msgid "Optional / tooltip of icon when hovering"
+msgstr "可选 / 鼠标悬停时显示提示"
+
+#: prefs.js:333
+msgid "Optional / app white list of the icon"
+msgstr "可选 / 应用白名单"
+
+#: prefs.js:334
+msgid "Optional / show the icon only when matching the RegExp"
+msgstr "可选 / 仅匹配正则时显示该图标"
+
+#: prefs.js:335
 msgid ""
-"Press <big>+</big> to add a command entry, <big>×</big> to remove, <big>☐</"
-"big> to enable and <big>!</big> to toggle, separate different commands with "
-"<big>##</big>"
-msgstr "点击 <big>+</big> 添加、<big>×</big> 删除、<big>☐</big> 启用条目；<big>!</big> 用于切换状态；不同命令用 <big>##</big> 间隔"
-
-#: prefs.js:342
-msgid ""
-"The control word <i>rwx</i> means <u>show popup panel or not</u>, <u>write "
-"clipboard or not</u> and <u>run with eval or bash</u>"
-msgstr "控制字 <i>rwx</i> 分别代表<u>是否显示气泡</u>、<u>是否写入剪切板</u>、<u>Bash 命令或 JS 语句</u>"
-
-#: prefs.js:343
-msgid ""
-"Substitude <b>LDWORD</b> for the selection, note that all the bash commands "
-"run in <u>$HOME</u> by default, be cautious of any <u>file operation</u>"
-msgstr "用 <b>LDWORD</b> 代替所选文本，注意所有 Bash 命令默认在<u>家目录</u>中执行，小心任何<u>文件操作</u>"
-
-#: prefs.js:344
-msgid ""
-"If you wan to paste the result to the selection, please add <u>@paste</u> at "
-"beginning of the commamd"
-msgstr "如果需要粘贴结果，可以在命令开头加上 <u>@paste</u>"
-
-#: prefs.js:345
-msgid ""
-"Do <b>NOT</b> set the <i>w</i> to 1 if the command will change the "
-"clipboard, otherwise uncertain behavior may occur to the icon bar"
-msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>w</i> 置为 1，否则图标栏可能会出问题"
-
-#: prefs.js:361
-msgid "?"
-msgstr "?"
+"Required / the details of the entry, which is convenient to enable or "
+"disable a group of icons in one click"
+msgstr "必需 / 条目详细内容, 可一次启用或禁用一组图标"

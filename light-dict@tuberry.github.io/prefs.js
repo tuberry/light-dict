@@ -1,12 +1,13 @@
 // vim:fdm=syntax
 // by: tuberry@github
-const { GLib, Gtk, GObject, Gio } = imports.gi;
+'use strict';
+
+const { Pango, GLib, Gtk, GtkSource, GObject, Gio } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
-'use strict';
 
 var Fields = {
     SENSITIVE:    'sensitive-mode',
@@ -27,7 +28,7 @@ var Fields = {
     XOFFSET:      'x-offset',
     YOFFSET:      'y-offset',
     HIDETITLE:    'hide-panel-title',
-    ICONPAGESIZE: 'icon-pagesize',
+    PAGESIZE:     'icon-pagesize',
     TEXTSTRIP:    'enable-strip',
     TOOLTIPS:     'enable-tooltips',
 };
@@ -54,7 +55,7 @@ class LightDictPrefsWidget extends Gtk.Stack {
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
             let window = this.get_toplevel();
-            window.resize(730,600);
+            window.resize(700,600);
             let headerBar = window.get_titlebar();
             headerBar.custom_title = new Gtk.StackSwitcher({halign: Gtk.Align.CENTER, visible: true, stack: this});
             return GLib.SOURCE_REMOVE;
@@ -89,8 +90,12 @@ class LightDictBasic extends Gtk.Grid {
         this._field_enable_tooltips = new Gtk.Switch();
 
         this._field_auto_hide = this._spinMaker(500, 10000, 250);
-        this._field_log_level = this._comboMaker(_('Never/Click/Hover/Always'));
-        this._field_trigger_style = this._comboMaker(_('Icon/Keyboard/Auto'));
+        this._field_icon_pagesize = this._spinMaker(0, 10, 1);
+        this._field_icon_xoffset = this._spinMaker(-400,400,5);
+        this._field_icon_yoffset = this._spinMaker(-400,400,5);
+
+        this._field_log_level = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
+        this._field_trigger_style = this._comboMaker([_('Icon'), _('Keyboard'), _('Auto')]);
 
         this._field_enable_keybinding = new Gtk.Switch();
         this._field_keybinding = this._shortCutMaker(Fields.SHORTCUTNAME);
@@ -98,11 +103,11 @@ class LightDictBasic extends Gtk.Grid {
             this._field_keybinding.set_sensitive(widget.active);
         });
 
-        this._field_apps_list = this._entryMaker('Yelp#Evince', _('Application white/black list(asterisk for all)'));
+        this._field_apps_list = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
         this._field_filter = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
-        this._field_click_command = this._entryMaker('notify-send hello', _('Left: command to run when clicking panel'));
-        this._field_open_url = this._entryMaker('https://www.bing.com/dict/search=?q=LDWORD', _('Right: search in default browser'));
-        this._field_dict_command = this._entryMaker("dict -- LDWORD | sed -e 1,6d # trans -no-ansi :zh-cn -- LDWORD", _('Command to run in auto mode'));
+        this._field_click_command = this._entryMaker('notify-send hello', _('Left click: command to run when clicking panel'));
+        this._field_open_url = this._entryMaker('https://zh.wikipedia.org/w/?search=LDWORD', _('Right click: search in default browser'));
+        this._field_dict_command = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
 
         this._field_command_editable.connect("notify::active", widget => {
             this._field_apps_list.set_sensitive(widget.active);
@@ -118,12 +123,15 @@ class LightDictBasic extends Gtk.Grid {
         const hseparator = () => new Gtk.HSeparator({margin_bottom: 5, margin_top: 5});
         this._addRow(this._field_log_level,         this._labelMaker(_("When to write down")));
         this._addRow(this._field_trigger_style,     this._labelMaker(_("How to popup panel")));
-        this._addRow(this._field_auto_hide,         this._labelMaker(_("Autohide interval (ms)")));
-        this._addRow(this._field_hide_panel_title,  this._labelMaker(_("Hide panel title")));
+        this._addRow(this._field_auto_hide,         this._labelMaker(_("Auto hide interval")));
+        this._addRow(this._field_icon_pagesize,     this._labelMaker(_("Icon bar page size")));
+        this._addRow(this._field_icon_xoffset,      this._labelMaker(_("Icon bar X offset")));
+        this._addRow(this._field_icon_yoffset,      this._labelMaker(_("Icon bar Y offset")));
+        this._addRow(this._field_hide_panel_title,  this._labelMaker(_("Hide popup panel title")));
         this._addRow(this._field_sensitive_mode,    this._labelMaker(_("Panel seamless mode")));
         this._addRow(this._field_black_or_white,    this._labelMaker(_("Blacklist or whitelist")));
-        this._addRow(this._field_enable_tooltips,   this._labelMaker(_("Enable tooltips for icon")));
-        this._addRow(this._field_enable_strip,      this._labelMaker(_("Remove extra whitespaces")));
+        this._addRow(this._field_enable_tooltips,   this._labelMaker(_("Enable tooltip for icon")));
+        this._addRow(this._field_enable_strip,      this._labelMaker(_("Trim extra whitespaces")));
         this._addRow(hseparator(),                  null);
         this._addRow(this._field_enable_keybinding, this._labelMaker(_("Shortcuts to trigger")));
         this._addRow(this._field_keybinding,        this._labelMaker(_(" show popup panel")));
@@ -152,6 +160,9 @@ class LightDictBasic extends Gtk.Grid {
         gsettings.bind(Fields.CCOMMAND,   this._field_click_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.APPSLIST,   this._field_apps_list,         'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,         'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,     'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,      'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.YOFFSET,    this._field_icon_yoffset,      'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,    'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,         'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,     'active', Gio.SettingsBindFlags.DEFAULT);
@@ -210,7 +221,7 @@ class LightDictBasic extends Gtk.Grid {
     _comboMaker(ops) {
         let l = new Gtk.ListStore();
         l.set_column_types([GObject.TYPE_STRING]);
-        ops.split('/').map(name => ({name})).forEach((p,i) => l.set(l.append(),[0],[p.name]));
+        ops.map(name => ({name})).forEach((p,i) => l.set(l.append(),[0],[p.name]));
         let c = new Gtk.ComboBox({model: l});
         let r = new Gtk.CellRendererText();
         c.pack_start(r, false);
@@ -264,13 +275,14 @@ class LightDictAdvanced extends Gtk.Grid {
         });
         this._cmdsList = gsettings.get_strv(Fields.ICOMMANDS);
         this._cmdsActive = gsettings.get_strv(Fields.ACOMMANDS);
-        this._default = ["link#000#gio open LDWORD#open link"]
+        this._initStrings();
 
+        this._default = [this.DEFAULTLINK];
+        this._templete = JSON.stringify(JSON.parse(this.TEMPLETE), null, 0)
         this._boxes = [];
-        this._action = false;
+        this._add = false;
         this._row = 0;
 
-        this.attach(this._headerRow(), 0, this._row++, 1, 1);
         this._default.forEach(x => {
             this.attach(this._rowMaker(x, true), 0, this._row++, 1, 1);
         });
@@ -283,140 +295,244 @@ class LightDictAdvanced extends Gtk.Grid {
         });
     }
 
-    _spinMaker(l, u, s) {
-        return new Gtk.SpinButton({
-            adjustment: new Gtk.Adjustment({
-                lower: l,
-                upper: u,
-                step_increment: s,
-            })
-        });
-    }
-
-    _headerRow() {
-        const hbox = new Gtk.HBox({
-            hexpand: true,
-        });
-
-        const xoff = new Gtk.Label({label: _('X offset')});
-        const xfsp = this._spinMaker(-400,400,5);
-        const yoff = new Gtk.Label({label: _('Y offset')});
-        const yfsp = this._spinMaker(-400,400,5);
-        const page = new Gtk.Label({label: _('Page size')});
-        const pgsp = this._spinMaker(0, 10, 1);
-        const vseparator = (x,y) => new Gtk.VSeparator({margin_left: x, margin_right: y});
-
-        const toggle = new Gtk.Button({ label: _('!') });
-        toggle.connect('clicked', () => {
-            this._action = !this._action;
-            if(!this._boxes.length) {
-                let box = this._rowMaker('', false);
-                this._boxes.push(box);
-                this.attach(box, 0, this._row++, 1, 1);
-                this.show_all();
+    _checkJSON(str) {
+        try {
+            let obj = JSON.parse(str);
+            let req = ['clip', 'icon', 'type', 'command', 'popup'];
+            if(!obj.hasOwnProperty('name') || !obj.hasOwnProperty('entries') || obj.entries.some(x => req.some(y => !x.hasOwnProperty(y)))) {
+                GLib.spawn_command_line_async('notify-send ' + GLib.shell_quote("Light Dict") + ' ' + GLib.shell_quote(_("Missing some required properties in JSON data")));
+                return false;
             }
-            this._boxes.forEach(x => x.toggle.set_label(this._action ? _('+') : _('×')));
-        });
-        gsettings.bind(Fields.XOFFSET, xfsp, 'value', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.YOFFSET, yfsp, 'value', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.ICONPAGESIZE, pgsp, 'value', Gio.SettingsBindFlags.DEFAULT);
-
-        hbox.pack_start(page, true, true, 5);
-        hbox.pack_start(pgsp, true, true, 5);
-        hbox.pack_start(vseparator(0,0), false, false, 0);
-        hbox.pack_start(xoff, true, true, 5);
-        hbox.pack_start(xfsp, true, true, 5);
-        hbox.pack_start(vseparator(0,0), false, false, 0);
-        hbox.pack_start(yoff, true, true, 5);
-        hbox.pack_start(yfsp, true, true, 5);
-        hbox.pack_start(vseparator(0,0), false, false, 0);
-        hbox.pack_end(toggle, false, false, 0);
-        return hbox;
+        } catch (e) {
+            GLib.spawn_command_line_async('notify-send ' + GLib.shell_quote("Light Dict") + ' ' + GLib.shell_quote(e.message));
+            return false;
+        }
+        return true;
     }
 
-    _tips(_) {
-        return [
-            _('Show all icons if <i>page size</i> is <b>0</b>, and use relative position when <i>offset</i> is <b>0</b>'),
-            _('Add the icon (svg format is recommended) to <u>~/.local/share/icons/xxxx</u> if <big>?</big> appears to icon bar'),
-            _('Press <big>+</big> to add a command entry, <big>×</big> to remove, <big>☐</big> to enable and <big>!</big> to toggle, separate different commands with <big>##</big>'),
-            _('The control word <i>rwx</i> means <u>show popup panel or not</u>, <u>write clipboard or not</u> and <u>run with eval or bash</u>'),
-            _('Substitude <b>LDWORD</b> for the selection, note that all the bash commands run in <u>$HOME</u> by default, be cautious of any <u>file operation</u>'),
-            _('If you wan to paste the result to the selection, please add <u>@paste</u> at beginning of the commamd'),
-            _('Do <b>NOT</b> set the <i>w</i> to 1 if the command will change the clipboard, otherwise uncertain behavior may occur to the icon bar'),
-        ]
+    _initStrings() {
+        this.TIPS = [
+            _('Add the icon to <u>~/.local/share/icons/xxxx</u>'),
+            _('Use relative position when both X and Y offset is <b>0</b>'),
+            _('Substitute <b>LDWORD</b> for the selection in commands'),
+            _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
+            _('Fake keyboard input is supported in JS statement: <u>key("Control_L+c")</u>'),
+            _('Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>'),
+        ];
+
+        this.COMMENTS = [
+            _('Required / text showing on the entry'),
+            _('Optional / additional information about the entry'),
+            _('Required / the icon name'),
+            _('Required / popup the panel or not'),
+            _('Required / write the clipboard or not'),
+            _('Required / Bash command or JS statement'),
+            _('Optional / paste the result (Ctrl+v) or not'),
+            _('Required / command to run when clicking icon'),
+            _('Optional / tooltip of icon when hovering'),
+            _('Optional / app white list of the icon'),
+            _('Optional / show the icon only when matching the RegExp'),
+            _('Required / the details of the entry, which is convenient to enable or disable a group of icons in one click')
+        ];
+
+        this.DEFAULTLINK =
+`{
+    "name" : "link",
+    "?name" : "${this.COMMENTS[0]}",
+    "description" : "open URL with gio open",
+    "?description" : "${this.COMMENTS[1]}",
+    "entries" : [
+        {
+            "icon" : "link",
+            "?icon" : "${this.COMMENTS[2]}",
+            "popup" : false,
+            "?popup" : "${this.COMMENTS[3]}",
+            "clip"  : false,
+            "?clip" : "${this.COMMENTS[4]}",
+            "type" : false,
+            "?type" : "${this.COMMENTS[5]}",
+            "paste" : false,
+            "?paste" : "${this.COMMENTS[6]}",
+            "command" : "gio open LDWORD",
+            "?command" : "${this.COMMENTS[7]}",
+            "tooltip" : "open URL in default browser",
+            "?tooltip" : "${this.COMMENTS[8]}",
+            "windows" : ["Yelp", "Evince", "Gedit"],
+            "?windows" : "${this.COMMENTS[9]}",
+            "regexp" : "^(https?://)?(www\\\\.)?([-a-z0-9]{1,63}\\\\.)*?[a-z0-9][-a-z0-9]{0,61}[a-z0-9]\\\\.[a-z]{2,6}(/[-\\\\w@\\\\+\\\\.~#\\\\?&/=%]*)?$",
+            "?regexp" : "${this.COMMENTS[10]}"
+        }
+    ],
+    "?entries" : "${this.COMMENTS[11]}"
+}`;
+        this.TEMPLETE =
+`{
+    "name" : "name",
+    "description" : "",
+    "entries" : [
+        {
+            "icon" : "",
+            "popup" : true,
+            "clip"  : false,
+            "type" : false,
+            "paste" : false,
+            "command" : "",
+            "tooltip" : "",
+            "windows" : [],
+            "regexp" : ""
+        }
+    ]
+}`;
     }
 
     _rowMaker(cmd, def) {
         let hbox = new Gtk.HBox({ hexpand: true, });
-
+        let cmdj = JSON.parse(cmd);
+        hbox._text = def ? JSON.stringify(cmdj, null, 0) : cmd;
         if(def) {
-            let check = new Gtk.CheckButton({ });
-            check.active = this._cmdsActive.includes(cmd);
-            check.connect("toggled", this._cmdsUpdate.bind(this));
-
-            let label = new Gtk.Label({xalign: 0});
-            label.selectable = true;
-            label.set_text(cmd);
-
-            const tips = this._popButtonMaker(_('?'), this._tips(_));
-
-            hbox.pack_start(check, false, false, 0);
-            hbox.pack_start(label, false, false, 10);
-            hbox.pack_end(tips, false, false, 0);
-        } else {
-            hbox.entry = new Gtk.Entry({
-                placeholder_text: 'icon#rwx#@paste what you want#tooltips',
+            hbox.check = new Gtk.CheckButton({ active: this._cmdsActive.includes(hbox._text) });
+            hbox.check.connect("toggled", this._cmdsUpdate.bind(this));
+            hbox.label = new Gtk.Label({
+                xalign: 0,
+                selectable: true,
+                use_markup: true,
+                ellipsize: Pango.EllipsizeMode.END,
             });
-            hbox.entry.set_text(cmd);
-            hbox.entry.set_sensitive(!this._cmdsActive.includes(cmd))
-            hbox.entry.connect('changed', this._cmdsUpdate.bind(this));
-
-            hbox.check = new Gtk.CheckButton({ });
-            hbox.check.active = this._cmdsActive.includes(cmd);
-            hbox.check.connect("toggled", (widget) => {
-                hbox.entry.set_sensitive(!widget.active);
-                this._cmdsUpdate();
+            hbox.label.set_line_wrap(false);
+            hbox.label.set_markup('<b>' + cmdj.name + '</b> ' + cmdj.description);
+            hbox.view = this._popSourceviewMaker(JSON.stringify(cmdj, null, 2));
+            hbox.view.set_image(new Gtk.Image({ icon_name: 'view-hidden' }));
+            hbox.view.connect('clicked', () => {
+                hbox.view.buf.text = JSON.stringify(cmdj, null, 2);
+                hbox.view.pop.show_all();
             });
-
-            hbox.toggle = new Gtk.Button();
-            hbox.toggle.set_label(this._action ? _("+") : _("×"));
-            hbox.toggle.hbox = hbox;
-            hbox.toggle.connect("clicked", (widget) => {
-                if(!this._action) {
-                    this.remove(widget.hbox);
-                    this._boxes = this._boxes.filter(x => x.row != widget.hbox.row);
-                    this._cmdsUpdate();
-                } else {
-                    let box = this._rowMaker('', false);
-                    this._boxes.push(box);
-                    this.attach(box, 0, this._row++, 1, 1);
-                    let idx = this._boxes.findIndex(x => x.row == widget.hbox.row);
-                    for (var i = this._boxes.length - 1; i > idx + 1; i--) {
-                        let active = this._boxes[i].check.active;
-                        this._boxes[i].check.active = this._boxes[i-1].check.active;
-                        this._boxes[i-1].check.active = active;
-
-                        let text = this._boxes[i].entry.get_text();
-                        this._boxes[i].entry.set_text(this._boxes[i-1].entry.get_text());
-                        this._boxes[i-1].entry.set_text(text);
-                    }
-                    this.show_all();
-                }
+            hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-new' }) });
+            hbox.add.set_sensitive(false);
+            hbox.add.connect("clicked", widget => {
+                if(this._boxes.length) return;
+                let box = this._rowMaker(this._templete, false);
+                box.row = this._row;
+                this._boxes.push(box);
+                this.attach(box, 0, this._row++, 1, 1);
+                this.show_all();
+                hbox.add.set_sensitive(false);
+            });
+            hbox.tips = this._popLabelViewMaker(this.TIPS);
+            hbox.tips.connect("clicked", () => {
+                hbox.tips.pop.show_all();
+                hbox.add.set_sensitive(!this._boxes.length);
             });
 
             hbox.pack_start(hbox.check, false, false, 0);
-            hbox.pack_start(hbox.entry, true, true, 10);
-            hbox.pack_end(hbox.toggle, false, false, 0);
-        }
+            hbox.pack_start(hbox.view, false, false, 10);
+            hbox.pack_start(hbox.label, true, true, 10);
+            hbox.pack_start(hbox.add, false, false, 10);
+            hbox.pack_end(hbox.tips, false, false, 0);
+        } else {
+            hbox.label = new Gtk.Label({
+                xalign : 0,
+                hexpand : true,
+                use_markup: true,
+                ellipsize: Pango.EllipsizeMode.END,
+            });
+            hbox.label.set_line_wrap(false);
+            hbox.label.set_markup('<b>' + cmdj.name + '</b> ' + cmdj.description);
 
+            hbox.edit = this._popSourceviewMaker(JSON.stringify(cmdj, null, 2));
+            hbox.edit.src.set_editable(!this._cmdsActive.includes(cmd));
+            hbox.edit.set_image(new Gtk.Image({ icon_name: hbox.edit.src.editable ? 'entry-edit' : 'view-hidden' }));
+            hbox.edit.connect('clicked', () => hbox.edit.pop.show_all());
+            hbox.edit.pop.connect('closed', () => {
+                if(!hbox.edit.src.editable || !this._checkJSON(hbox.edit.buf.text)) return;
+                let json = JSON.parse(hbox.edit.buf.text);
+                let text = JSON.stringify(json, null, 0);
+                if(hbox._text === text) return;
+                hbox._text = text;
+                hbox.label.set_markup('<b>' + json.name + '</b> ' + json.description);
+                this._cmdsUpdate();
+            });
+
+            hbox.check = new Gtk.CheckButton({ active: this._cmdsActive.includes(cmd) && cmd !== this._templete });
+            hbox.check.connect("toggled", widget => {
+                hbox.edit.src.set_editable(!widget.active);
+                hbox.edit.set_image(new Gtk.Image({ icon_name: hbox.edit.src.editable ? 'entry-edit' : 'view-hidden' }));
+                if(!this._add) this._cmdsUpdate();
+            });
+
+            hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-new' }) });
+            hbox.add.hbox = hbox;
+            hbox.add.connect("clicked", widget => {
+                let box = this._rowMaker(this._templete, false);
+                box.row = this._row;
+                this._boxes.push(box);
+                this.attach(box, 0, this._row++, 1, 1);
+                let idx = this._boxes.findIndex(x => x.row == widget.hbox.row);
+                this._add = true;
+                for (var i = this._boxes.length - 1; i > idx + 1; i--) {
+                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
+                        eval('let tmp = this._boxes[i]' + x +
+                             '; this._boxes[i]' + x + ' = this._boxes[i-1]' + x +
+                             '; this._boxes[i-1]' + x + ' = tmp;');
+                    });
+                }
+                this._add = false;
+                this.show_all();
+            });
+
+            hbox.delete = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-delete' }) });
+            hbox.delete.hbox = hbox;
+            hbox.delete.connect("clicked", widget => {
+                this.remove(widget.hbox);
+                this._boxes = this._boxes.filter(x => x.row != widget.hbox.row);
+                this._cmdsUpdate();
+            });
+
+            hbox.pack_start(hbox.check, false, false, 0);
+            hbox.pack_start(hbox.edit, false, false, 10);
+            hbox.pack_start(hbox.label, true, true, 10);
+            hbox.pack_start(hbox.add, false, false, 10);
+            hbox.pack_end(hbox.delete, false, false, 0);
+        }
         return hbox;
     }
 
-    _popButtonMaker(lb, msgs) {
-        const tips = new Gtk.Button({ label: lb});
-        const pop = new Gtk.Popover(tips);
+    _popSourceviewMaker(text) {
+        const btn = new Gtk.Button();
+        btn.pop = new Gtk.Popover(btn);
+        btn.pop.set_relative_to(btn);
 
-        pop.set_relative_to(tips);
+        btn.buf = new GtkSource.Buffer();
+        btn.buf.set_highlight_matching_brackets(true);
+        btn.buf.set_language(new GtkSource.LanguageManager().get_language("json"));
+        btn.buf.set_style_scheme(new GtkSource.StyleSchemeManager().get_scheme("oblivion"));
+        btn.buf.text = text;
+
+        btn.src = GtkSource.View.new_with_buffer(btn.buf);
+        btn.src.set_auto_indent(true);
+        btn.src.set_highlight_current_line(true);
+        btn.src.set_indent_on_tab(true);
+        btn.src.set_indent_width(2);
+        btn.src.set_insert_spaces_instead_of_tabs(true);
+        btn.src.set_right_margin_position(10);
+        btn.src.set_show_line_numbers(true);
+        btn.src.set_show_right_margin(true);
+        btn.src.set_tab_width(2);
+        btn.src.modify_font(Pango.font_description_from_string("Hack 15"));
+
+        let frame = new Gtk.Frame();
+        let scroll = new Gtk.ScrolledWindow({ min_content_height: 400, min_content_width: 700 });
+        scroll.add(btn.src);
+        frame.add(scroll);
+        btn.pop.add(frame);
+
+        return btn;
+    }
+
+    _popLabelViewMaker(msgs) {
+        const tips = new Gtk.Button({ image: new Gtk.Image({ icon_name: "help-about" }) });
+        tips.pop = new Gtk.Popover(tips);
+        tips.pop.set_relative_to(tips);
+
         const vbox = new Gtk.VBox();
         msgs.map((msg, i) => {
             const label = new Gtk.Label();
@@ -427,10 +543,7 @@ class LightDictAdvanced extends Gtk.Grid {
             label.set_max_width_chars(60);
             return label;
         }).forEach(l => vbox.add(l));
-        pop.add(vbox);
-        tips.connect('clicked', () => {
-            pop.show_all();
-        });
+        tips.pop.add(vbox);
 
         return tips;
     }
@@ -438,21 +551,19 @@ class LightDictAdvanced extends Gtk.Grid {
     _cmdsUpdate() {
         let cmdsList = [];
         let cmdsActive = [];
-        this.get_children().slice(0, -1).forEach(row => {
-            let [check, entry] = row.get_children();
-            cmdsList.push(entry.get_text());
-            if (check.active)
-                cmdsActive.push(entry.get_text());
+        this.get_children().forEach((row, i) => {
+            cmdsList.push(row._text);
+            if(row.check.active) cmdsActive.push(row._text);
         });
 
         if(this._cmdsList.toString() !== cmdsList.toString()) {
-            gsettings.set_strv(Fields.ICOMMANDS, cmdsList.reverse());
             this._cmdsList = cmdsList.reverse();
+            gsettings.set_strv(Fields.ICOMMANDS, this._cmdsList);
         }
 
         if(this._cmdsActive.toString() !== cmdsActive.toString()) {
-            gsettings.set_strv(Fields.ACOMMANDS, cmdsActive.reverse());
             this._cmdsActive = cmdsActive.reverse();
+            gsettings.set_strv(Fields.ACOMMANDS, this._cmdsActive);
         }
     }
 });
