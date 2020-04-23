@@ -138,7 +138,7 @@ msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
 msgstr ""
 
 #: prefs.js:316
-msgid "Use relative position when both X and Y offset is <b>0</b>"
+msgid "Use relative position when both X and Y offset are <b>0</b>"
 msgstr ""
 
 #: prefs.js:317

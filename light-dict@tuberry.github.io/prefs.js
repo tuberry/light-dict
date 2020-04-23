@@ -313,7 +313,7 @@ class LightDictAdvanced extends Gtk.Grid {
     _initStrings() {
         this.TIPS = [
             _('Add the icon to <u>~/.local/share/icons/xxxx</u>'),
-            _('Use relative position when both X and Y offset is <b>0</b>'),
+            _('Use relative position when both X and Y offset are <b>0</b>'),
             _('Substitute <b>LDWORD</b> for the selection in commands'),
             _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
             _('Fake keyboard input is supported in JS statement: <u>key("Control_L+c")</u>'),

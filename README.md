@@ -1,7 +1,7 @@
 # Light Dict
-Lightweight selection-popup extension of gnome shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
+Lightweight selection-popup extension of Gnome Shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
 
->L, you know what? The Death eats apple only. —— *Light Yagami*<br>
+>L, you know what? The Death eats apples only. —— *Light Yagami*<br>
 [![license]](/LICENSE)
 
 <br>
@@ -17,9 +17,9 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 
 ## Usage
 
-The inspiration comes from two lovely extensions, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict), in Firefox and I always desire to use them out of browser.
+The inspiration comes from two lovely extensions, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict), in Firefox and I always desire to use them outside browser.
 
-![input](https://user-images.githubusercontent.com/17917040/79354840-82285480-7f6f-11ea-9755-9d78caa215d8.gif)
+![Screencast from 04-23-2020 04 55 32 PM](https://user-images.githubusercontent.com/17917040/80081294-574c8a80-8585-11ea-9b74-64b32d973425.gif)
 
 *NOTE* This extension comes with absolutely no warranty and is published under GPLv3.0, also it doesn't offer any icons or dictionary resources though it's named Light Dict. If you have any questions about the usage, feel free to open an issue for discussion.
 

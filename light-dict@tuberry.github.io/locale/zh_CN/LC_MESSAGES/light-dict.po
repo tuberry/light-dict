@@ -137,8 +137,8 @@ msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
 msgstr "添加图标文件至 <u>~/.local/share/icons/xxxx</u>"
 
 #: prefs.js:316
-msgid "Use relative position when both X and Y offset is <b>0</b>"
-msgstr "当水平与垂直偏移为 <b>0</b> 时使用相对位置"
+msgid "Use relative position when both X and Y offset are <b>0</b>"
+msgstr "当水平与垂直偏移均为 <b>0</b> 时使用相对位置"
 
 #: prefs.js:317
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
