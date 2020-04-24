@@ -1,8 +1,6 @@
 // vim:fdm=syntax
-// by: tuberry@gtihub.io
+// by: tuberry@gtihub
 'use strict';
-
-const APPNAME = 'Light Dict';
 
 const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk, Atspi } = imports.gi;
 const BoxPointer = imports.ui.boxpointer;
@@ -11,7 +9,7 @@ const Main = imports.ui.main;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
-const Prefs = Me.imports.prefs;
+const Fields = Me.imports.prefs.Fields;
 
 const MODIFIERS = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
@@ -28,12 +26,11 @@ const DictIconBar = GObject.registerClass({
             reactive: true,
             visible: false,
             track_hover: true,
+            style_class: 'light-dict-iconbox',
         });
-        this.style_class = 'light-dict-iconbox';
         this._pageIndex = 1;
         this._iconsBox = [];
         this._visibleBox = [];
-        this._update = false;
 
         this._fetchSettings();
         this._connectSignals();
@@ -44,8 +41,8 @@ const DictIconBar = GObject.registerClass({
     _connectSignals() {
         this._settingChangedId = gsettings.connect('changed', this._onSettingChanged.bind(this));
         this._leaveIconBarId = this.connect('leave-event', () => {
-            this.visible = false;
             if(this._tooltips) this._iconTooltips.hide();
+            this.visible = false;
         });
         this._enterIconBarId = this.connect('enter-event', () => {
             if(this._autohideDelayId)
@@ -108,28 +105,28 @@ const DictIconBar = GObject.registerClass({
     }
 
     _fetchSettings() {
-        this._acommands = gsettings.get_strv(Prefs.Fields.ACOMMANDS);
-        this._autohide  = gsettings.get_uint(Prefs.Fields.AUTOHIDE);
-        this._xoffset   = gsettings.get_int(Prefs.Fields.XOFFSET);
-        this._yoffset   = gsettings.get_int(Prefs.Fields.YOFFSET);
-        this._pagesize  = gsettings.get_uint(Prefs.Fields.PAGESIZE);
-        this._tooltips  = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
+        this._acommands = gsettings.get_strv(Fields.ACOMMANDS);
+        this._autohide  = gsettings.get_uint(Fields.AUTOHIDE);
+        this._xoffset   = gsettings.get_int(Fields.XOFFSET);
+        this._yoffset   = gsettings.get_int(Fields.YOFFSET);
+        this._pagesize  = gsettings.get_uint(Fields.PAGESIZE);
+        this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
     }
 
     _onSettingChanged() {
-        let acommands = gsettings.get_strv(Prefs.Fields.ACOMMANDS);
+        let acommands = gsettings.get_strv(Fields.ACOMMANDS);
         if(this._acommands.toString() != acommands.toString()) {
             this._acommands = acommands;
             this._iconBarEraser();
             this._acommands.forEach(x => this._iconBarMaker(x));
             this._pageIndex = 1;
         }
-        let pagesize = gsettings.get_uint(Prefs.Fields.PAGESIZE);
+        let pagesize = gsettings.get_uint(Fields.PAGESIZE);
         if(this._pagesize != pagesize) {
             this._pageIndex = 1;
             this._pagesize = pagesize;
         }
-        let tooltip = gsettings.get_boolean(Prefs.Fields.TOOLTIPS);
+        let tooltip = gsettings.get_boolean(Fields.TOOLTIPS);
         if(this._tooltips != tooltip)
             tooltip ? this._addTooltips() : this._removeTooltips();
         this._fetchSettings()
@@ -179,7 +176,7 @@ const DictIconBar = GObject.registerClass({
                 style_class: 'light-dict-button-icon light-dict-button-icon-' + x.icon,
                 fallback_icon_name: 'help',
                 icon_name: x.icon,
-            }); // St.Bin child
+            }); // St.Bin.child
             if(x.windows && x.windows.length) btn.windows = x.windows;
             if(x.regexp) btn.regexp = x.regexp;
             btn.onClickId = btn.connect('clicked', (actor, event) => {
@@ -187,7 +184,6 @@ const DictIconBar = GObject.registerClass({
                 this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.paste].map(x => x ? '1' : '0').join(''), x.command);
                 return Clutter.EVENT_PROPAGATE;
             });
-            btn._visible = true;
             btn.onEnterId = btn.connect('enter-event', () => {
                 if(!this._tooltips) return;
                 btn.entered = true;
@@ -214,10 +210,7 @@ const DictIconBar = GObject.registerClass({
             if(x.onClickId) x.disconnect(x.onClickId), x.onClickId = undefined;
             if(x.onEnterId) x.disconnect(x.onClickId), x.onEnterId = undefined;
             if(x.onLeaveId) x.disconnect(x.onClickId), x.onLeaveId = undefined;
-            x._visible = undefined;
             x.entered = undefined;
-            x.window = undefined;
-            x.regexp = undefined;
             this.remove_child(x);
             x = null;
         });
@@ -243,9 +236,9 @@ const DictIconBar = GObject.registerClass({
 const DictPopup = GObject.registerClass(
 class DictPopup extends BoxPointer.BoxPointer {
     _init() {
-        super._init(St.Side.TOP);
-        this.visible = false;
-        this.style_class = 'light-dict-boxpointer';
+        super._init(St.Side.TOP, {
+            style_class: 'light-dict-boxpointer',
+        });
         Main.layoutManager.addChrome(this);
 
         this._panelClicked = false;
@@ -253,8 +246,6 @@ class DictPopup extends BoxPointer.BoxPointer {
         this._pointerX = 0;
         this._pointerY = 0;
         this._selection = '';
-
-        this._edit = new DictEditable();
 
         this._loadSettings();
         this._buildPopupPanel();
@@ -264,45 +255,49 @@ class DictPopup extends BoxPointer.BoxPointer {
 
     _loadSettings() {
         this._fetchSettings();
+        this._edit = new DictEditable();
+        if(this._shortcut) this._addKeyBindings();
         this._settingChangedId = gsettings.connect('changed', this._onSettingChanged.bind(this));
-        if(this._shortcut)
-            this._addKeyBindings();
+        this._copyToClip = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
     }
 
     _fetchSettings() {
-        this._logslevel  = gsettings.get_uint(Prefs.Fields.LOGSLEVEL);
-        this._autohide   = gsettings.get_uint(Prefs.Fields.AUTOHIDE);
-        this._trigger    = gsettings.get_uint(Prefs.Fields.TRIGGER);
-        this._hidetitle  = gsettings.get_boolean(Prefs.Fields.HIDETITLE);
-        this._sensitive  = gsettings.get_boolean(Prefs.Fields.SENSITIVE);
-        this._shortcut   = gsettings.get_boolean(Prefs.Fields.SHORTCUT);
-        this._textstrip  = gsettings.get_boolean(Prefs.Fields.TEXTSTRIP);
-        this._blackwhite = gsettings.get_boolean(Prefs.Fields.BLACKWHITE);
-        this._openurl    = gsettings.get_string(Prefs.Fields.OPENURL);
-        this._dcommand   = gsettings.get_string(Prefs.Fields.DCOMMAND);
-        this._ccommand   = gsettings.get_string(Prefs.Fields.CCOMMAND);
-        this._filter     = gsettings.get_string(Prefs.Fields.FILTER);
-        this._appslist   = gsettings.get_string(Prefs.Fields.APPSLIST);
+        this._logslevel  = gsettings.get_uint(Fields.LOGSLEVEL);
+        this._autohide   = gsettings.get_uint(Fields.AUTOHIDE);
+        this._trigger    = gsettings.get_uint(Fields.TRIGGER);
+        this._hidetitle  = gsettings.get_boolean(Fields.HIDETITLE);
+        this._sensitive  = gsettings.get_boolean(Fields.SENSITIVE);
+        this._shortcut   = gsettings.get_boolean(Fields.SHORTCUT);
+        this._textstrip  = gsettings.get_boolean(Fields.TEXTSTRIP);
+        this._blackwhite = gsettings.get_boolean(Fields.BLACKWHITE);
+        this._openurl    = gsettings.get_string(Fields.OPENURL);
+        this._dcommand   = gsettings.get_string(Fields.DCOMMAND);
+        this._ccommand   = gsettings.get_string(Fields.CCOMMAND);
+        this._filter     = gsettings.get_string(Fields.FILTER);
+        this._appslist   = gsettings.get_string(Fields.APPSLIST);
     }
 
     _onSettingChanged() {
-        if(gsettings.get_boolean(Prefs.Fields.SENSITIVE) != this._sensitive) {
+        if(gsettings.get_boolean(Fields.SENSITIVE) != this._sensitive) {
             this._removeDummyCursor(this._sensitive);
             this._addDummyCursor(!this._sensitive);
         }
-        let trigger = gsettings.get_uint(Prefs.Fields.TRIGGER);
+
+        let trigger = gsettings.get_uint(Fields.TRIGGER);
         if(trigger != this._trigger) {
             if(this._selectionChangedId)
                 global.display.get_selection().disconnect(this._selectionChangedId), this._selectionChangedId = 0;
             if(trigger === 0 || trigger === 2)
                 this._listenSelection(trigger);
         }
-        if(gsettings.get_boolean(Prefs.Fields.SHORTCUT) != this._shortcut) {
-            Main.wm.removeKeybinding(Prefs.Fields.SHORTCUTNAME);
+
+        if(gsettings.get_boolean(Fields.SHORTCUT) != this._shortcut) {
+            Main.wm.removeKeybinding(Fields.SHORTCUTNAME);
             if(!this._shortcut)
                 this._addKeyBindings();
         }
-        this._panelBox._word.visible = !gsettings.get_boolean(Prefs.Fields.HIDETITLE);
+
+        this._panelBox._word.visible = !gsettings.get_boolean(Fields.HIDETITLE);
         this._fetchSettings();
     }
 
@@ -320,10 +315,10 @@ class DictPopup extends BoxPointer.BoxPointer {
 
         this._leavePanelId = this._panelBox.connect('leave-event', this._hidePanel.bind(this));
         this._enterPanelId = this._panelBox.connect('enter-event', (actor, event) => {
-            this._panelBox.visible = true;
-            if(this._autohideDelayId) GLib.source_remove(this._autohideDelayId);
-            if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
             this._panelClicked = false;
+            this._panelBox.visible = true;
+            if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
+            if(this._autohideDelayId) GLib.source_remove(this._autohideDelayId), this._autohideDelayId = 0;
         });
         this._clickPanelId = this._panelBox.connect('button-press-event', (actor, event) => {
             if(event.get_button() === 1 && this._ccommand)
@@ -333,10 +328,10 @@ class DictPopup extends BoxPointer.BoxPointer {
                 if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog();
                 break;
             case 2:
-                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text());
+                this._copyToClip(this._panelBox._info.get_text());
                 break;
             case 3:
-                this._spawnWithGio('gio open "' + this._openurl.replace('LDWORD', GLib.shell_quote(this._selection)) + '"');
+                this._spawnWithGio('gio open ' + this._openurl.split('LDWORD').join(GLib.shell_quote(this._selection)));
                 if(this._notFound) this._hidePanel();
                 break;
             }
@@ -419,8 +414,7 @@ class DictPopup extends BoxPointer.BoxPointer {
             this._scrollId = this._dummyCursor.connect('scroll-event', this._hidePanel.bind(this));
             this._clickId = this._dummyCursor.connect('button-press-event', (actor, event) => {
                 this._hidePanel();
-                if(event.get_button() === 3)
-                    St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._selection);
+                if(event.get_button() === 3) this._copyToClip(this._selection);
             });
             Main.layoutManager.addChrome(this._dummyCursor);
         }
@@ -440,7 +434,7 @@ class DictPopup extends BoxPointer.BoxPointer {
 
     _addKeyBindings() {
         let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
-        Main.wm.addKeybinding(Prefs.Fields.SHORTCUTNAME, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
+        Main.wm.addKeybinding(Fields.SHORTCUTNAME, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
             St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
                 if(!text) return;
                 [this._pointerX, this._pointerY] = global.get_pointer();
@@ -451,8 +445,8 @@ class DictPopup extends BoxPointer.BoxPointer {
     }
 
     _runWithBash(popup, clip, paste, cmd) {
-        let title = global.display.get_focus_window().title;
-        let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title.toString()));
+        let title = global.display.get_focus_window().title.toString();
+        let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title));
         if(popup|clip|paste) {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
@@ -463,21 +457,19 @@ class DictPopup extends BoxPointer.BoxPointer {
                 try {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                     let ok = proc.get_exit_status() === 0;
-                    if(ok&paste) {
-                        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, stdout.slice(0, -1));
-                        this._edit.paste();
-                        return;
+                    if(ok) {
+                        if(paste) {
+                            this._copyToClip(stdout.slice(0, -1));
+                            this._edit.paste();
+                        } else {
+                            if(clip) this._copyToClip(stdout.slice(0, -1));
+                            if(popup) this._showPanel(stdout.slice(0, -1), this._selection);
+                        }
+                    } else {
+                        this._showPanel(stderr.slice(0, -1), this._selection);
                     }
-                    if(ok&clip) {
-                        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, stdout.slice(0, -1));
-                        if(!popup) return;
-                    }
-                    this._panelBox._info.set_text(ok ? stdout.slice(0, -1) : stderr.slice(0, -1));
-                    if(this._panelBox._word.visible)
-                        this._panelBox._word.set_text(this._selection);
-                    this._showPanel();
-                } catch (e) {
-                    Main.notifyError(APPNAME, e.message);
+                } catch(e) {
+                    Main.notifyError(Me.metadata.name, e.message);
                 }
             });
         } else {
@@ -490,24 +482,18 @@ class DictPopup extends BoxPointer.BoxPointer {
             let LDWORD = this._selection;
             let LDTITLE = global.display.get_focus_window().title;
             let key = x => this._edit._stroke(x);
+            let copy = x => this._copyToClip(x);
             if(paste) {
-                let result = eval(cmd).toString();
-                St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, result);
+                copy(eval(cmd).toString());
                 this._edit.paste();
             } else if(popup|clip) {
-                let result = eval(cmd).toString();
-                if(popup) {
-                    this._panelBox._info.set_text(result);
-                    if(this._panelBox._word.visible)
-                        this._panelBox._word.set_text(this._selection);
-                    this._showPanel();
-                }
-                if(clip) St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, result);
+                if(clip) copy(eval(cmd).toString());
+                if(popup) this._showPanel(eval(cmd).toString(), this._selection);
             } else {
                 eval(cmd);
             }
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+        } catch(e) {
+            Main.notifyError(Me.metadata.name, e.message);
         }
     }
 
@@ -518,8 +504,8 @@ class DictPopup extends BoxPointer.BoxPointer {
                 flags: (Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE)
             });
             proc.init(null);
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+        } catch(e) {
+            Main.notifyError(Me.metadata.name, e.message);
         }
     }
 
@@ -534,16 +520,12 @@ class DictPopup extends BoxPointer.BoxPointer {
             try {
                 let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                 this._notFound = proc.get_exit_status() !== 0;
-                this._panelBox._info.set_text(this._notFound ? stderr.slice(0, -1) : stdout.slice(0, -1));
-                if(this._panelBox._word.visible)
-                    this._panelBox._word.set_text(text);
+                this._showPanel(this._notFound ? stderr.slice(0, -1) : stdout.slice(0, -1), text);
                 if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
-                this._showPanel();
-            } catch (e) {
-                Main.notifyError(APPNAME, e.message);
+            } catch(e) {
+                Main.notifyError(Me.metadata.name, e.message);
             }
         });
-        // so-called Y combinator
         // var Y = gen => (f => f(f)) (f => gen (x => f(f)(x)));
     }
 
@@ -563,7 +545,11 @@ class DictPopup extends BoxPointer.BoxPointer {
         this._dummyCursor.set_position(X, Y);
     }
 
-    _showPanel() {
+    _showPanel(info, word) {
+        this._panelBox._info.set_text(info);
+        if(this._panelBox._word.visible)
+            this._panelBox._word.set_text(word);
+
         this._dummyCursor.set_position(this._pointerX - 20, this._pointerY - 20);
         if(!this._panelBox.visible) {
             this._panelBox.visible = true;
@@ -593,19 +579,19 @@ class DictPopup extends BoxPointer.BoxPointer {
                 "S+": date.getSeconds().toString()
             };
             let ret;
-            for (let k in opt) {
+            for(let k in opt) {
                 ret = new RegExp("(" + k + ")").exec(fmt);
-                if (!ret) continue;
+                if(!ret) continue;
                 fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, "0")))
             };
             return fmt;
         }
         let logfile = Gio.file_new_for_path(GLib.get_home_dir()+ '/.cache/gnome-shell-extension-light-dict/light-dict.log');
+        let log = [dateFormat("YYYY-mm-dd HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
         try {
-            let log = [dateFormat("YYYY-mm-dd HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
             logfile.append_to(Gio.FileCreateFlags.NONE, null).write(log, null);
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+        } catch(e) {
+            Main.notifyError(Me.metadata.name, e.message);
         }
     }
 
@@ -623,7 +609,7 @@ class DictPopup extends BoxPointer.BoxPointer {
         if(this._iconBarId)
             this._iconBar.disconnect(this._iconBarId), this._iconBarId = 0;
         if(this._shortcut)
-            Main.wm.removeKeybinding(Prefs.Fields.SHORTCUTNAME);
+            Main.wm.removeKeybinding(Fields.SHORTCUTNAME);
         if(this._onWindowChangedId)
             global.display.disconnect(this._onWindowChangedId), this._onWindowChangedId = 0;
         if(this._settingChangedId)
@@ -641,7 +627,7 @@ const DictEditable = GObject.registerClass(
 class DictEditable extends GObject.Object {
     _init() {
         super._init();
-        if (Atspi.init() === 2)
+        if(Atspi.init() === 2)
             throw new Error('Failed to start AT-SPI');
     }
 
@@ -681,17 +667,13 @@ class DictEditable extends GObject.Object {
                     return GLib.SOURCE_REMOVE;
                 });
             });
-        } catch (e) {
-            Main.notifyError(APPNAME, e.message);
+        } catch(e) {
+            Main.notifyError(Me.metadata.name, e.message);
         }
     }
 
     paste() {
         this._stroke('Control_L+v');
-    }
-
-    cut() {
-        this._stroke('Control_L+x');
     }
 
     search() {
@@ -704,8 +686,7 @@ class LightDict extends GObject.Object {
     _init() {
         super._init();
         let logfilePath = Gio.file_new_for_path(GLib.get_home_dir()+ '/.cache/gnome-shell-extension-light-dict/');
-        if(!logfilePath.query_exists(null))
-            logfilePath.make_directory(Gio.Cancellable.new());
+        if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
     enable() {

@@ -172,12 +172,12 @@ msgid "Required / the icon name"
 msgstr "必需 / 图标名"
 
 #: prefs.js:327
-msgid "Required / popup the panel or not"
-msgstr "必需 / 是否弹出气泡"
+msgid "Optional / popup the panel or not"
+msgstr "可选 / 是否弹出气泡"
 
 #: prefs.js:328
-msgid "Required / write the clipboard or not"
-msgstr "必需 / 是否写入剪切板"
+msgid "Optional / write the clipboard or not"
+msgstr "可选 / 是否写入剪切板"
 
 #: prefs.js:329
 msgid "Required / Bash command or JS statement"

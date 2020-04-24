@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-22 20:55+0800\n"
+"POT-Creation-Date: 2020-04-24 12:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -53,23 +53,23 @@ msgstr ""
 msgid "Auto"
 msgstr ""
 
-#: prefs.js:106
+#: prefs.js:103
 msgid "App white/black list (asterisk for all)"
 msgstr ""
 
-#: prefs.js:107
+#: prefs.js:104
 msgid "Text RegExp filter for auto mode"
 msgstr ""
 
-#: prefs.js:108
+#: prefs.js:105
 msgid "Left click: command to run when clicking panel"
 msgstr ""
 
-#: prefs.js:109
+#: prefs.js:106
 msgid "Right click: search in default browser"
 msgstr ""
 
-#: prefs.js:110
+#: prefs.js:107
 msgid "Command to run in auto mode"
 msgstr ""
 
@@ -129,82 +129,82 @@ msgstr ""
 msgid "Edit entries below"
 msgstr ""
 
-#: prefs.js:303
+#: prefs.js:295
 msgid "Missing some required properties in JSON data"
 msgstr ""
 
-#: prefs.js:315
+#: prefs.js:307
 msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
 msgstr ""
 
-#: prefs.js:316
+#: prefs.js:308
 msgid "Use relative position when both X and Y offset are <b>0</b>"
 msgstr ""
 
-#: prefs.js:317
+#: prefs.js:309
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
 msgstr ""
 
-#: prefs.js:318
+#: prefs.js:310
 msgid ""
 "Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
 "clipboard"
 msgstr ""
 
-#: prefs.js:319
+#: prefs.js:311
 msgid ""
 "Fake keyboard input is supported in JS statement: <u>key(\"Control_L+c\")</u>"
 msgstr ""
 
-#: prefs.js:320
+#: prefs.js:312
 msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
 msgstr ""
 
-#: prefs.js:324
+#: prefs.js:316
 msgid "Required / text showing on the entry"
 msgstr ""
 
-#: prefs.js:325
+#: prefs.js:317
 msgid "Optional / additional information about the entry"
 msgstr ""
 
-#: prefs.js:326
+#: prefs.js:318
 msgid "Required / the icon name"
 msgstr ""
 
-#: prefs.js:327
-msgid "Required / popup the panel or not"
-msgstr ""
-
-#: prefs.js:328
-msgid "Required / write the clipboard or not"
-msgstr ""
-
-#: prefs.js:329
+#: prefs.js:319
 msgid "Required / Bash command or JS statement"
 msgstr ""
 
-#: prefs.js:330
-msgid "Optional / paste the result (Ctrl+v) or not"
-msgstr ""
-
-#: prefs.js:331
+#: prefs.js:320
 msgid "Required / command to run when clicking icon"
 msgstr ""
 
-#: prefs.js:332
+#: prefs.js:321
+msgid "Optional / popup the panel or not"
+msgstr ""
+
+#: prefs.js:322
+msgid "Optional / write the clipboard or not"
+msgstr ""
+
+#: prefs.js:323
+msgid "Optional / paste the result (Ctrl+v) or not"
+msgstr ""
+
+#: prefs.js:324
 msgid "Optional / tooltip of icon when hovering"
 msgstr ""
 
-#: prefs.js:333
+#: prefs.js:325
 msgid "Optional / app white list of the icon"
 msgstr ""
 
-#: prefs.js:334
+#: prefs.js:326
 msgid "Optional / show the icon only when matching the RegExp"
 msgstr ""
 
-#: prefs.js:335
+#: prefs.js:327
 msgid ""
 "Required / the details of the entry, which is convenient to enable or "
 "disable a group of icons in one click"
