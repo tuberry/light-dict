@@ -17,7 +17,6 @@
 
 .light-dict-word {
     border-width: 0;
-    font-size: 16pt;
     border-color: rgba(0, 0, 0, 0.38);
     border-style: dashed;
     border-bottom-width: 2px;
@@ -34,7 +33,6 @@
 }
 
 .light-dict-button {
-    font-size: 15pt;
     padding: 5px 2px;
 }
 

@@ -9,27 +9,27 @@ const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 var Fields = {
-    SENSITIVE:    'sensitive-mode',
-    AUTOHIDE:     'autohide-timeout',
-    LOGSLEVEL:    'log-level',
-    TRIGGER:      'trigger-style',
-    APPSLIST:     'application-list',
-    BLACKWHITE:   'black-or-white',
-    FILTER:       'selection-filter',
     OPENURL:      'open-url',
-    CCOMMAND:     'click-command',
-    DCOMMAND:     'dict-command',
-    SHORTCUT:     'enable-shortcut',
-    EDITABLE:     'command-editable',
-    ICOMMANDS:    'icon-commands',
-    ACOMMANDS:    'icon-commands-active',
-    SHORTCUTNAME: 'short-cut',
     XOFFSET:      'x-offset',
     YOFFSET:      'y-offset',
-    HIDETITLE:    'hide-panel-title',
-    PAGESIZE:     'icon-pagesize',
+    LOGSLEVEL:    'log-level',
+    SHORTCUTNAME: 'short-cut',
+    DCOMMAND:     'dict-command',
     TEXTSTRIP:    'enable-strip',
+    CCOMMAND:     'click-command',
+    ICOMMANDS:    'icon-commands',
+    PAGESIZE:     'icon-pagesize',
+    TRIGGER:      'trigger-style',
+    BLACKWHITE:   'black-or-white',
+    SENSITIVE:    'sensitive-mode',
+    SHORTCUT:     'enable-shortcut',
     TOOLTIPS:     'enable-tooltips',
+    APPSLIST:     'application-list',
+    AUTOHIDE:     'autohide-timeout',
+    EDITABLE:     'command-editable',
+    FILTER:       'selection-filter',
+    HIDETITLE:    'hide-panel-title',
+    ACOMMANDS:    'icon-commands-active',
 };
 
 function init() {
@@ -54,9 +54,9 @@ class LightDictPrefsWidget extends Gtk.Stack {
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
             let window = this.get_toplevel();
-            window.resize(600,600);
+            window.resize(700,600);
             let headerBar = window.get_titlebar();
-            headerBar.custom_title = new Gtk.StackSwitcher({halign: Gtk.Align.CENTER, visible: true, stack: this});
+            headerBar.custom_title = new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, visible: true, stack: this });
             return GLib.SOURCE_REMOVE;
         });
         this.show_all();
@@ -68,10 +68,11 @@ class LightDictBasic extends Gtk.Grid {
     _init() {
         super._init({
             margin: 10,
+            hexpand: true,
             row_spacing: 12,
             column_spacing: 18,
+            row_homogeneous: false,
             column_homogeneous: false,
-            row_homogeneous: false
         });
 
         this._buildWidgets();
@@ -93,28 +94,17 @@ class LightDictBasic extends Gtk.Grid {
         this._field_icon_xoffset      = this._spinMaker(-400,400,5);
         this._field_icon_yoffset      = this._spinMaker(-400,400,5);
 
-        this._field_log_level         = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
         this._field_trigger_style     = this._comboMaker([_('Icon'), _('Keyboard'), _('Auto')]);
+        this._field_log_level         = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
         this._field_enable_keybinding = new Gtk.Switch();
         this._field_keybinding        = this._shortCutMaker(Fields.SHORTCUTNAME);
 
+        this._field_dict_command      = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
         this._field_apps_list         = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
         this._field_filter            = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
         this._field_click_command     = this._entryMaker('notify-send hello', _('Left click: command to run when clicking panel'));
         this._field_open_url          = this._entryMaker('https://zh.wikipedia.org/w/?search=LDWORD', _('Right click: search in default browser'));
-        this._field_dict_command      = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
-
-        this._field_enable_keybinding.connect("notify::active", widget => {
-            this._field_keybinding.set_sensitive(widget.active);
-        });
-        this._field_command_editable.connect("notify::active", widget => {
-            this._field_apps_list.set_sensitive(widget.active);
-            this._field_filter.set_sensitive(widget.active);
-            this._field_click_command.set_sensitive(widget.active);
-            this._field_open_url.set_sensitive(widget.active);
-            this._field_dict_command.set_sensitive(widget.active);
-        });
     }
 
     _bulidUI() {
@@ -144,12 +134,23 @@ class LightDictBasic extends Gtk.Grid {
     }
 
     _syncStatus() {
-        this._field_keybinding.set_sensitive(this._field_enable_keybinding.get_state());
-        this._field_apps_list.set_sensitive(this._field_command_editable.get_state());
+        this._field_enable_keybinding.connect("notify::active", widget => {
+            this._field_keybinding.set_sensitive(widget.active);
+        });
+        this._field_command_editable.connect("notify::active", widget => {
+            this._field_filter.set_sensitive(widget.active);
+            this._field_open_url.set_sensitive(widget.active);
+            this._field_apps_list.set_sensitive(widget.active);
+            this._field_dict_command.set_sensitive(widget.active);
+            this._field_click_command.set_sensitive(widget.active);
+        });
+
         this._field_filter.set_sensitive(this._field_command_editable.get_state());
-        this._field_click_command.set_sensitive(this._field_command_editable.get_state());
         this._field_open_url.set_sensitive(this._field_command_editable.get_state());
+        this._field_apps_list.set_sensitive(this._field_command_editable.get_state());
+        this._field_keybinding.set_sensitive(this._field_enable_keybinding.get_state());
         this._field_dict_command.set_sensitive(this._field_command_editable.get_state());
+        this._field_click_command.set_sensitive(this._field_command_editable.get_state());
     }
 
     _bindValues() {
@@ -179,14 +180,20 @@ class LightDictBasic extends Gtk.Grid {
                 lower: l,
                 upper: u,
                 step_increment: s,
-            })
+            }),
+            hexpand: true,
+            margin_right: 90,
+            halign: Gtk.Align.END,
         });
     }
 
     _addRow(input, label) {
         let widget = input;
         if (input instanceof Gtk.Switch) {
-            widget = new Gtk.HBox();
+            widget = new Gtk.HBox({
+                margin_right: 90,
+                halign: Gtk.Align.END,
+            });
             widget.pack_end(input, false, false, 0);
         }
         if (label) {
@@ -202,18 +209,21 @@ class LightDictBasic extends Gtk.Grid {
         return new Gtk.Label({
             label: x,
             hexpand: true,
-            halign: Gtk.Align.START
+            margin_left: 90,
+            halign: Gtk.Align.START,
         });
     }
 
     _entryMaker(x, y) {
         return new Gtk.Entry({
             hexpand: true,
+            margin_left: 90,
+            margin_right: 90,
             placeholder_text: x,
-            secondary_icon_name: "dialog-information-symbolic",
+            secondary_icon_sensitive: true,
             secondary_icon_tooltip_text: y,
             secondary_icon_activatable: true,
-            secondary_icon_sensitive: true
+            secondary_icon_name: "dialog-information-symbolic",
         });
     }
 
@@ -221,7 +231,12 @@ class LightDictBasic extends Gtk.Grid {
         let l = new Gtk.ListStore();
         l.set_column_types([GObject.TYPE_STRING]);
         ops.map(name => ({name})).forEach((p,i) => l.set(l.append(),[0],[p.name]));
-        let c = new Gtk.ComboBox({model: l});
+        let c = new Gtk.ComboBox({
+            model: l,
+            hexpand: true,
+            margin_right: 90,
+            halign: Gtk.Align.END,
+        });
         let r = new Gtk.CellRendererText();
         c.pack_start(r, false);
         c.add_attribute(r, "text", 0);
@@ -236,7 +251,12 @@ class LightDictBasic extends Gtk.Grid {
         let [key, mods] = Gtk.accelerator_parse(gsettings.get_strv(hotkey)[0]);
         model.set(row, [0, 1], [mods, key]);
 
-        let treeView = new Gtk.TreeView({model: model});
+        let treeView = new Gtk.TreeView({
+            model: model,
+            hexpand: true,
+            margin_right: 90,
+            halign: Gtk.Align.END,
+        });
         treeView.set_headers_visible(false);
         let accelerator = new Gtk.CellRendererAccel({
             'editable': true,
@@ -269,18 +289,18 @@ class LightDictAdvanced extends Gtk.Grid {
             margin: 10,
             row_spacing: 12,
             column_spacing: 18,
-            column_homogeneous: false,
             row_homogeneous: false,
+            column_homogeneous: false,
         });
         this._initStrings();
-
-        this._cmdsList = gsettings.get_strv(Fields.ICOMMANDS);
-        this._cmdsActive = gsettings.get_strv(Fields.ACOMMANDS);
-        this._default = JSON.stringify(JSON.parse(this.DEFAULTLINK), null, 0);
-        this._templete = JSON.stringify(JSON.parse(this.TEMPLETE), null, 0);
-        this._boxes = [];
         this._add = false;
+        this._boxes = [];
         this._row = 0;
+
+        this._cmdsList   = gsettings.get_strv(Fields.ICOMMANDS);
+        this._cmdsActive = gsettings.get_strv(Fields.ACOMMANDS);
+        this._templete   = JSON.stringify(JSON.parse(this.TEMPLETE), null, 0);
+        this._default    = JSON.stringify(JSON.parse(this.DEFAULTLINK), null, 0);
 
         this.attach(this._defaultRowMaker(this._default), 0, this._row++, 1, 1);
         this._cmdsList.slice(1).forEach(x => this.attach(this._customRowMaker(x), 0, this._row++, 1, 1));
@@ -307,7 +327,7 @@ class LightDictAdvanced extends Gtk.Grid {
             _('Use relative position when both X and Y offset are <b>0</b>'),
             _('Substitute <b>LDWORD</b> for the selection in commands'),
             _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
-            _('Fake keyboard input is supported in JS statement: <u>key("Control_L+c")</u>'),
+            _("Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"),
             _('Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>'),
         ];
 
@@ -378,7 +398,7 @@ class LightDictAdvanced extends Gtk.Grid {
     }
 
     _defaultRowMaker(cmd) {
-        let hbox = new Gtk.HBox({ hexpand: true, });
+        let hbox = new Gtk.HBox({ hexpand: true, margin_right: 90, margin_left: 90 });
         let cmdj = JSON.parse(cmd);
 
         hbox._text = cmd;
@@ -405,6 +425,7 @@ class LightDictAdvanced extends Gtk.Grid {
         });
 
         hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-new', sensitive: false }) });
+        hbox.add.set_sensitive(this._cmdsList.length < 2);
         hbox.add.connect("clicked", () => {
             hbox.add.set_sensitive(false);
             if(this._boxes.length > 1) return;
@@ -429,7 +450,7 @@ class LightDictAdvanced extends Gtk.Grid {
     }
 
     _customRowMaker(cmd) {
-        let hbox = new Gtk.HBox({ hexpand: true, });
+        let hbox = new Gtk.HBox({ hexpand: true, margin_right: 90, margin_left: 90 });
         let cmdj = JSON.parse(cmd ? cmd : this._templete);
 
         hbox.row = this._row;
@@ -510,19 +531,19 @@ class LightDictAdvanced extends Gtk.Grid {
         btn.buf.text = text;
 
         btn.src = GtkSource.View.new_with_buffer(btn.buf);
-        btn.src.set_auto_indent(true);
-        btn.src.set_highlight_current_line(true);
-        btn.src.set_indent_on_tab(true);
+        btn.src.set_tab_width(2);
         btn.src.set_indent_width(2);
-        btn.src.set_insert_spaces_instead_of_tabs(true);
-        btn.src.set_right_margin_position(10);
+        btn.src.set_auto_indent(true);
+        btn.src.set_indent_on_tab(true);
         btn.src.set_show_line_numbers(true);
         btn.src.set_show_right_margin(true);
-        btn.src.set_tab_width(2);
-        btn.src.modify_font(Pango.font_description_from_string("Hack 16"));
+        btn.src.set_right_margin_position(10);
+        btn.src.set_highlight_current_line(true);
+        btn.src.set_insert_spaces_instead_of_tabs(true);
+        btn.src.modify_font(Pango.font_description_from_string("Hack 13"));
 
         let frame = new Gtk.Frame();
-        let scroll = new Gtk.ScrolledWindow({ min_content_height: 400, min_content_width: 700 });
+        let scroll = new Gtk.ScrolledWindow({ min_content_height: 400, min_content_width: 660 });
         scroll.add(btn.src);
         frame.add(scroll);
         btn.pop.add(frame);
@@ -538,11 +559,11 @@ class LightDictAdvanced extends Gtk.Grid {
         const vbox = new Gtk.VBox();
         msgs.map((msg, i) => {
             const label = new Gtk.Label();
-            label.set_markup((i + 1) + '. ' + msg);
-            label.set_alignment(0, 0.5);
-            label.set_line_wrap(true);
             label.set_margin_top(5);
+            label.set_line_wrap(true);
+            label.set_alignment(0, 0.5);
             label.set_max_width_chars(60);
+            label.set_markup((i + 1) + '. ' + msg);
             return label;
         }).forEach(l => vbox.add(l));
         tips.pop.add(vbox);

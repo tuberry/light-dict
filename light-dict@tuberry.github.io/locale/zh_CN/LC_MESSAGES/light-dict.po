@@ -152,8 +152,8 @@ msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>tru
 
 #: prefs.js:319
 msgid ""
-"Fake keyboard input is supported in JS statement: <u>key(\"Control_L+c\")</u>"
-msgstr "JS 语句支持模拟键盘输入: <u>key(\"Control_L+c\")</u>"
+"Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"
+msgstr "JS 语句支持模拟键盘输入: <u>key('Control_L+c')</u>"
 
 #: prefs.js:320
 msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"

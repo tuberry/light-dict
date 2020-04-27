@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-04-24 12:41+0800\n"
+"POT-Creation-Date: 2020-04-27 14:29+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,12 +17,24 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: prefs.js:50
+#: prefs.js:49
 msgid "Basic"
 msgstr ""
 
-#: prefs.js:54
+#: prefs.js:53
 msgid "Advanced"
+msgstr ""
+
+#: prefs.js:96
+msgid "Icon"
+msgstr ""
+
+#: prefs.js:96
+msgid "Keyboard"
+msgstr ""
+
+#: prefs.js:96
+msgid "Auto"
 msgstr ""
 
 #: prefs.js:97
@@ -41,16 +53,8 @@ msgstr ""
 msgid "Always"
 msgstr ""
 
-#: prefs.js:98
-msgid "Icon"
-msgstr ""
-
-#: prefs.js:98
-msgid "Keyboard"
-msgstr ""
-
-#: prefs.js:98
-msgid "Auto"
+#: prefs.js:102
+msgid "Command to run in auto mode"
 msgstr ""
 
 #: prefs.js:103
@@ -69,142 +73,138 @@ msgstr ""
 msgid "Right click: search in default browser"
 msgstr ""
 
-#: prefs.js:107
-msgid "Command to run in auto mode"
-msgstr ""
-
-#: prefs.js:124
+#: prefs.js:112
 msgid "When to write down"
 msgstr ""
 
-#: prefs.js:125
+#: prefs.js:113
 msgid "How to popup panel"
 msgstr ""
 
-#: prefs.js:126
+#: prefs.js:114
 msgid "Auto hide interval"
 msgstr ""
 
-#: prefs.js:127
+#: prefs.js:115
 msgid "Icon bar page size"
 msgstr ""
 
-#: prefs.js:128
+#: prefs.js:116
 msgid "Icon bar X offset"
 msgstr ""
 
-#: prefs.js:129
+#: prefs.js:117
 msgid "Icon bar Y offset"
 msgstr ""
 
-#: prefs.js:130
+#: prefs.js:118
 msgid "Hide popup panel title"
 msgstr ""
 
-#: prefs.js:131
+#: prefs.js:119
 msgid "Panel seamless mode"
 msgstr ""
 
-#: prefs.js:132
+#: prefs.js:120
 msgid "Blacklist or whitelist"
 msgstr ""
 
-#: prefs.js:133
+#: prefs.js:121
 msgid "Enable tooltip for icon"
 msgstr ""
 
-#: prefs.js:134
+#: prefs.js:122
 msgid "Trim extra whitespaces"
 msgstr ""
 
-#: prefs.js:136
+#: prefs.js:124
 msgid "Shortcuts to trigger"
 msgstr ""
 
-#: prefs.js:137
+#: prefs.js:125
 msgid " show popup panel"
 msgstr ""
 
-#: prefs.js:139
+#: prefs.js:127
 msgid "Edit entries below"
 msgstr ""
 
-#: prefs.js:295
+#: prefs.js:294
 msgid "Missing some required properties in JSON data"
 msgstr ""
 
-#: prefs.js:307
+#: prefs.js:306
 msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
 msgstr ""
 
-#: prefs.js:308
+#: prefs.js:307
 msgid "Use relative position when both X and Y offset are <b>0</b>"
 msgstr ""
 
-#: prefs.js:309
+#: prefs.js:308
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
 msgstr ""
 
-#: prefs.js:310
+#: prefs.js:309
 msgid ""
 "Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
 "clipboard"
 msgstr ""
 
-#: prefs.js:311
+#: prefs.js:310
 msgid ""
-"Fake keyboard input is supported in JS statement: <u>key(\"Control_L+c\")</u>"
+"Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"
 msgstr ""
 
-#: prefs.js:312
+#: prefs.js:311
 msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
 msgstr ""
 
-#: prefs.js:316
+#: prefs.js:315
 msgid "Required / text showing on the entry"
 msgstr ""
 
-#: prefs.js:317
+#: prefs.js:316
 msgid "Optional / additional information about the entry"
 msgstr ""
 
-#: prefs.js:318
+#: prefs.js:317
 msgid "Required / the icon name"
 msgstr ""
 
-#: prefs.js:319
+#: prefs.js:318
 msgid "Required / Bash command or JS statement"
 msgstr ""
 
-#: prefs.js:320
+#: prefs.js:319
 msgid "Required / command to run when clicking icon"
 msgstr ""
 
-#: prefs.js:321
+#: prefs.js:320
 msgid "Optional / popup the panel or not"
 msgstr ""
 
-#: prefs.js:322
+#: prefs.js:321
 msgid "Optional / write the clipboard or not"
 msgstr ""
 
-#: prefs.js:323
+#: prefs.js:322
 msgid "Optional / paste the result (Ctrl+v) or not"
 msgstr ""
 
-#: prefs.js:324
+#: prefs.js:323
 msgid "Optional / tooltip of icon when hovering"
 msgstr ""
 
-#: prefs.js:325
+#: prefs.js:324
 msgid "Optional / app white list of the icon"
 msgstr ""
 
-#: prefs.js:326
+#: prefs.js:325
 msgid "Optional / show the icon only when matching the RegExp"
 msgstr ""
 
-#: prefs.js:327
+#: prefs.js:326
 msgid ""
 "Required / the details of the entry, which is convenient to enable or "
 "disable a group of icons in one click"
