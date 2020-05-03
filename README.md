@@ -23,6 +23,9 @@ The inspiration comes from two lovely extensions, [SSS](https://github.com/Canis
 
 *NOTE* This extension comes with absolutely no warranty and is published under GPLv3, also it doesn't offer any icons or dictionary resources though it's named Light Dict. If you have any questions about the usage, feel free to open an issue for discussion.
 
+## Style
+If you need to customize the appearance of the widgets, please try this extension - [User Themes X].
+
 ## Acknowledgements
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup panel
 * [ibusCandidatePopup.js](https://gitlab.gnome.org/GNOME/gnome-shell/-/blob/master/js/ui/ibusCandidatePopup.js): usage of boxpointer
@@ -32,3 +35,4 @@ The inspiration comes from two lovely extensions, [SSS](https://github.com/Canis
 
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
+[User Themes X]:https://github.com/tuberry/user-theme-x
