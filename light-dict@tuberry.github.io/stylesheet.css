@@ -4,11 +4,15 @@
  * Add your custom extension styling here
  */
 
+.light-dict-scroll {
+    height: 500px;
+}
+
 .light-dict-content {
     color: rgba(255, 255, 255, 1);
-    background-color: rgba(98, 98, 98, 0.80);
+    background-color: rgba(98, 98, 98, 0.85);
+    /* font-size: 14.5pt; */
     border-radius: 3px;
-    font-size: 14.5pt;
     box-shadow: 0;
     max-width: 700px !important;
     text-align: left;
@@ -53,3 +57,4 @@
 .light-dict-tooltips {
 
 }
+

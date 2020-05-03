@@ -9,10 +9,6 @@
         <default>true</default>
         <summary>hide panel title</summary>
     </key>
-    <key type="b" name="command-editable">
-        <default>true</default>
-        <summary>enable command edit</summary>
-    </key>
     <key type="b" name="enable-shortcut">
         <default>true</default>
         <summary>enable shortcut</summary>
@@ -29,9 +25,13 @@
         <default>false</default>
         <summary>enable tooltips for icon bar</summary>
     </key>
-    <key type="as" name="short-cut">
+    <key type="b" name="lazy-mode">
+        <default>false</default>
+        <summary>lazy mode for icon bar</summary>
+    </key>
+    <key type="as" name="panel-short-cut">
         <default><![CDATA[['<Control><Shift>z']]]></default>
-        <summary>short-cuts to trigger popup</summary>
+        <summary>short-cuts to trigger panel</summary>
     </key>
     <key type="as" name="autopopup-trigger">
         <default><![CDATA[['<Control><Alt>a']]]></default>
@@ -40,6 +40,10 @@
     <key type="u" name="autohide-timeout">
         <default>2500</default>
         <summary>autohide popup interval</summary>
+    </key>
+    <key type="u" name="panel-min-lines">
+        <default>0</default>
+        <summary>the min lines of panel to enable scrollbar</summary>
     </key>
     <key type="u" name="icon-pagesize">
         <default>0</default>
@@ -80,6 +84,10 @@
     <key type="s" name="click-command">
         <default>""</default>
         <summary>command when clicking popup panel</summary>
+    </key>
+    <key type="s" name="user-stylesheet">
+        <default>"{}"</default>
+        <summary>user stylesheet</summary>
     </key>
     <key type="as" name="icon-commands">
         <default>[]</default>

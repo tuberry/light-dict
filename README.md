@@ -19,7 +19,7 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 
 The inspiration comes from two lovely extensions, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict), in Firefox and I always desire them outside browser.
 
-![Screencast from 04-23-2020 04 55 32 PM](https://user-images.githubusercontent.com/17917040/80081294-574c8a80-8585-11ea-9b74-64b32d973425.gif)
+![Screencast](https://user-images.githubusercontent.com/17917040/80081294-574c8a80-8585-11ea-9b74-64b32d973425.gif)
 
 *NOTE* This extension comes with absolutely no warranty and is published under GPLv3, also it doesn't offer any icons or dictionary resources though it's named Light Dict. If you have any questions about the usage, feel free to open an issue for discussion.
 
