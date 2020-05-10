@@ -62,7 +62,7 @@ const DictIconBar = GObject.registerClass({
         this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
     }
 
-    _removeTooltips(tog) {
+    _removeTooltips() {
         Main.layoutManager.uiGroup.remove_actor(this._iconTooltips);
         this._iconTooltips.destroy();
         this._iconTooltips = null;
@@ -172,12 +172,12 @@ const DictIconBar = GObject.registerClass({
             let btn = new St.Button({
                 reactive: true,
                 track_hover: true,
-                style_class: `light-dict-button light-dict-button-${x.icon}`,
+                style_class: `light-dict-button-${x.icon} light-dict-button`,
             });
             btn.child = new St.Icon({
                 icon_name: x.icon,
                 fallback_icon_name: 'help',
-                style_class: `light-dict-button-icon light-dict-button-icon-${x.icon}`,
+                style_class: `light-dict-button-icon-${x.icon} light-dict-button-icon`,
             }); // St.Bin.child
             if(x.windows && x.windows.length) btn.windows = x.windows;
             if(x.regexp) btn.regexp = x.regexp;
@@ -266,11 +266,11 @@ class DictPanel extends BoxPointer.BoxPointer {
         });
         this._clickPanelId = this._panelBox.connect('button-press-event', (actor, event) => {
             if(event.get_button() === 1 && this._ccommand)
-                this._ccommand.split('#').forEach(x => this._spawnWithGio(x.split('LDWORD').join(GLib.shell_quote(this._selection))));
+                this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
             switch(event.get_button()*!this._panelClicked) {
             case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
             case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text()); break;
-            case 3: this._spawnWithGio('gio open ' + this._openurl.split('LDWORD').join(GLib.shell_quote(this._selection))); break;
+            case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
             }
             if(event.get_button() === 3) this._hide();
             this._panelClicked = true;
@@ -374,7 +374,7 @@ class DictPanel extends BoxPointer.BoxPointer {
         try {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', rcmd],
-                flags: (Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE)
+                flags: Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE
             });
             proc.init(null);
         } catch(e) {
@@ -383,7 +383,7 @@ class DictPanel extends BoxPointer.BoxPointer {
     }
 
     _lookUp(text, pointer) {
-        let rcmd = this._dcommand.split('LDWORD').join(GLib.shell_quote(text));
+        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(text));
         let proc = new Gio.Subprocess({
             argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
             flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
@@ -393,7 +393,7 @@ class DictPanel extends BoxPointer.BoxPointer {
             try {
                 let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                 this._notFound = proc.get_exit_status() !== 0;
-                this._show(this._notFound ? stderr.slice(0, -1) : stdout.slice(0, -1), text, pointer);
+                this._show(this._notFound ? stderr.trim() : stdout.trim(), text, pointer);
                 if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
             } catch(e) {
                 Main.notifyError(Me.metadata.name, e.message);
@@ -403,6 +403,12 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _hide() {
         if(!this._panelBox.visible) return;
+        // fix unknown and unwanted vanish
+        let [mx, my] = global.get_pointer();
+        let [wt, ht] = this.get_size();
+        let [px, py] = this.get_position();
+        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
+
         this._panelBox.visible = false
         this.close(BoxPointer.PopupAnimation.FULL);
         this._dummyCursor.set_position(...global.display.get_size());
@@ -542,7 +548,7 @@ class LightDict extends GObject.Object {
             if(trigger === 0 || trigger === 2) this._listenSelection(trigger);
         }
         if(gsettings.get_boolean(Fields.SHORTCUT) != this._shortcut) {
-            Main.wm.removeKeybinding(Fields.PANELHOTKEY);
+            Main.wm.removeKeybinding(Fields.TOGGLE);
             if(!this._shortcut) this._addKeyBindings();
         }
         this._fetchSettings();
@@ -579,7 +585,7 @@ class LightDict extends GObject.Object {
                 if(type != St.ClipboardType.PRIMARY) return;
                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
                     if(!text) return;
-                    this._pointer = global.get_pointer().slice(0,2);
+                    this._pointer = global.get_pointer().slice(0, 2);
                     this._selection = this._textstrip ? text.trim() : text;
                     if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
                         this._panel._lookUp(this._selection, this._pointer);
@@ -593,7 +599,7 @@ class LightDict extends GObject.Object {
 
     _runWithBash(popup, clip, paste, cmd) {
         let title = global.display.get_focus_window().title.toString();
-        let rcmd = cmd.split('LDWORD').join(GLib.shell_quote(this._selection)).split('LDTITLE').join(GLib.shell_quote(title));
+        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/LDTITLE/g, GLib.shell_quote(title));
         if(popup|clip|paste) {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
@@ -606,14 +612,14 @@ class LightDict extends GObject.Object {
                     let ok = proc.get_exit_status() === 0;
                     if(ok) {
                         if(paste) {
-                            this._copyToClip(stdout.slice(0, -1));
+                            this._copyToClip(stdout.trim());
                             this._action.paste();
                         } else {
-                            if(clip) this._copyToClip(stdout.slice(0, -1));
-                            if(popup) this._panel._show(stdout.slice(0, -1), this._selection, this._pointer);
+                            if(clip) this._copyToClip(stdout.trim());
+                            if(popup) this._panel._show(stdout.trim(), this._selection, this._pointer);
                         }
                     } else {
-                        this._panel._show(stderr.slice(0, -1), this._selection, this._pointer);
+                        this._panel._show(stderr.trim(), this._selection, this._pointer);
                     }
                 } catch(e) {
                     Main.notifyError(Me.metadata.name, e.message);
@@ -646,17 +652,21 @@ class LightDict extends GObject.Object {
 
     _addKeyBindings() {
         let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
-        Main.wm.addKeybinding(Fields.PANELHOTKEY, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
-            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
-                if(!text) return;
-                this._panel._lookUp(text, global.get_pointer().slice(0,2));
-            });
+        Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
+            if(this._trigger === 2) {
+                gsettings.set_uint(Fields.TRIGGER, 2 - this._trigger);
+            } else {
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
+                    if(!text) return;
+                    this._panel._lookUp(text, global.get_pointer().slice(0,2));
+                });
+            }
         });
     }
 
     destory() {
         if(this._shortcut)
-            Main.wm.removeKeybinding(Fields.PANELHOTKEY);
+            Main.wm.removeKeybinding(Fields.TOGGLE);
         if(this._iconBarId)
             this._iconBar.disconnect(this._iconBarId), this._iconBarId = 0;
         if(this._settingChangedId)

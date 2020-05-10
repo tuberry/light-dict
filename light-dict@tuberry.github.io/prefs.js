@@ -9,29 +9,29 @@ const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 var Fields = {
-    OPENURL:     'open-url',
-    XOFFSET:     'x-offset',
-    YOFFSET:     'y-offset',
-    LAZYMODE:    'lazy-mode',
-    LOGSLEVEL:   'log-level',
-    DCOMMAND:    'dict-command',
-    TEXTSTRIP:   'enable-strip',
-    CCOMMAND:    'click-command',
-    ICOMMANDS:   'icon-commands',
-    PAGESIZE:    'icon-pagesize',
-    TRIGGER:     'trigger-style',
-    BLACKWHITE:  'black-or-white',
-    SENSITIVE:   'sensitive-mode',
-    MINLINES:    'panel-min-lines',
-    PANELHOTKEY: 'panel-short-cut',
-    SHORTCUT:    'enable-shortcut',
-    STYLESHEET:  'user-stylesheet',
-    TOOLTIPS:    'enable-tooltips',
-    APPSLIST:    'application-list',
-    AUTOHIDE:    'autohide-timeout',
-    FILTER:      'selection-filter',
-    HIDETITLE:   'hide-panel-title',
-    ACOMMANDS:   'icon-commands-active',
+    OPENURL:    'open-url',
+    XOFFSET:    'x-offset',
+    YOFFSET:    'y-offset',
+    LAZYMODE:   'lazy-mode',
+    LOGSLEVEL:  'log-level',
+    DCOMMAND:   'dict-command',
+    TEXTSTRIP:  'enable-strip',
+    CCOMMAND:   'click-command',
+    ICOMMANDS:  'icon-commands',
+    PAGESIZE:   'icon-pagesize',
+    TRIGGER:    'trigger-style',
+    BLACKWHITE: 'black-or-white',
+    SENSITIVE:  'sensitive-mode',
+    MINLINES:   'panel-min-lines',
+    SHORTCUT:   'enable-shortcut',
+    STYLESHEET: 'user-stylesheet',
+    TOGGLE:     'toggle-shortcut',
+    TOOLTIPS:   'enable-tooltips',
+    APPSLIST:   'application-list',
+    AUTOHIDE:   'autohide-timeout',
+    FILTER:     'selection-filter',
+    HIDETITLE:  'hide-panel-title',
+    ACOMMANDS:  'icon-commands-active',
 };
 
 function init() {
@@ -45,7 +45,11 @@ function buildPrefsWidget() {
 const LightDictPrefsWidget = GObject.registerClass(
 class LightDictPrefsWidget extends Gtk.Stack {
     _init() {
-        super._init();
+        super._init({
+            expand: true,
+            transition_duration: 500,
+            transition_type: Gtk.StackTransitionType.CROSSFADE,
+        });
 
         this._basic = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
         this._basic.add(new LightDictBasic());
@@ -111,7 +115,7 @@ class LightDictAbout extends Gtk.Box {
             margin_right: 350 - (icon_size * 4 + 2) * count,
             shadow_type: Gtk.ShadowType.ETCHED_IN,
         });
-        frame.override_background_color(Gtk.StateType.NORMAL, new Gdk.RGBA({red: 0, green: 0.5, blue: 0.75, alpha: 0.8}));
+        frame.override_background_color(Gtk.StateType.NORMAL, new Gdk.RGBA({red: 245/255, green: 212/255, blue: 217/255, alpha: 1}));
         frame.add(hbox)
         this.add(frame);
     }
@@ -159,23 +163,23 @@ class LightDictBasic extends Gtk.Box {
         this._field_enable_tooltips  = new Gtk.Switch();
         this._field_lazy_mode        = new Gtk.Switch();
 
-        this._field_auto_hide         = this._spinMaker(500, 10000, 250);
-        this._field_min_lines         = this._spinMaker(0, 40, 2);
-        this._field_icon_pagesize     = this._spinMaker(0, 10, 1);
-        this._field_icon_xoffset      = this._spinMaker(-400,400,5);
-        this._field_icon_yoffset      = this._spinMaker(-400,400,5);
+        this._field_auto_hide        = this._spinMaker(500, 10000, 250);
+        this._field_min_lines        = this._spinMaker(0, 40, 2);
+        this._field_icon_pagesize    = this._spinMaker(0, 10, 1);
+        this._field_icon_xoffset     = this._spinMaker(-400,400,5);
+        this._field_icon_yoffset     = this._spinMaker(-400,400,5);
 
-        this._field_trigger_style     = this._comboMaker([_('Icon'), _('Keyboard'), _('Auto')]);
-        this._field_log_level         = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
+        this._field_trigger_style    = this._comboMaker([_('Icon'), _('Keyboard'), _('Auto')]);
+        this._field_log_level        = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
-        this._field_enable_keybinding = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.SHORTCUT) });
-        this._field_keybinding        = this._shortCutMaker(Fields.PANELHOTKEY);
+        this._field_enable_toggle    = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.SHORTCUT) });
+        this._field_toggle           = this._shortCutMaker(Fields.TOGGLE);
 
-        this._field_dict_command      = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
-        this._field_apps_list         = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
-        this._field_filter            = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
-        this._field_click_command     = this._entryMaker('notify-send LDWORD', _('Left click: command to run when clicking panel'));
-        this._field_open_url          = this._entryMaker('https://zh.wikipedia.org/w/?search=LDWORD', _('Right click: search in default browser'));
+        this._field_dict_command     = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
+        this._field_apps_list        = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
+        this._field_filter           = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
+        this._field_click_command    = this._entryMaker('notify-send LDWORD', _('Left click: command to run when clicking panel'));
+        this._field_open_url         = this._entryMaker('https://zh.wikipedia.org/w/?search=LDWORD', _('Right click: search in default browser'));
     }
 
     _bulidUI() {
@@ -184,6 +188,7 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._field_black_or_white,   _("Black/whitelist"));
         this._common._add(this._field_trigger_style,    _("Trigger style"));
         this._common._add(this._field_auto_hide,        _("Autohide interval"));
+        this._common._add(this._field_toggle,           _("Toggle style or show panel"), this._field_enable_toggle);
         this._common._add(this._field_apps_list);
 
         this._iconbar = this._listFrameMaker(_('Icon Bar'));
@@ -198,7 +203,6 @@ class LightDictBasic extends Gtk.Box {
         this._panel._add(this._field_sensitive_mode,    _("Seamless mode"));
         this._panel._add(this._field_log_level,         _("Logs level"));
         this._panel._add(this._field_min_lines,         _("Min lines to scroll"));
-        this._panel._add(this._field_keybinding,        _("Show panel"), this._field_enable_keybinding);
         this._panel._add(this._field_dict_command);
         this._panel._add(this._field_open_url);
         this._panel._add(this._field_click_command);
@@ -206,32 +210,32 @@ class LightDictBasic extends Gtk.Box {
     }
 
     _syncStatus() {
-        this._field_enable_keybinding.connect("notify::active", widget => {
-            this._field_keybinding.set_sensitive(widget.active);
+        this._field_enable_toggle.connect("notify::active", widget => {
+            this._field_toggle.set_sensitive(widget.active);
         });
-        this._field_keybinding.set_sensitive(this._field_enable_keybinding.active);
+        this._field_toggle.set_sensitive(this._field_enable_toggle.active);
     }
 
     _bindValues() {
-        gsettings.bind(Fields.FILTER,     this._field_filter,            'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.DCOMMAND,   this._field_dict_command,      'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.OPENURL,    this._field_open_url,          'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.CCOMMAND,   this._field_click_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.APPSLIST,   this._field_apps_list,         'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,         'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,     'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.MINLINES,   this._field_min_lines,         'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,      'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.YOFFSET,    this._field_icon_yoffset,      'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,    'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,         'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,     'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SHORTCUT,   this._field_enable_keybinding, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.HIDETITLE,  this._field_hide_panel_title,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,    'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,   'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LAZYMODE,   this._field_lazy_mode,         'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.FILTER,     this._field_filter,           'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.DCOMMAND,   this._field_dict_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.OPENURL,    this._field_open_url,         'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.CCOMMAND,   this._field_click_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPSLIST,   this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.MINLINES,   this._field_min_lines,        'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.YOFFSET,    this._field_icon_yoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SHORTCUT,   this._field_enable_toggle,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.HIDETITLE,  this._field_hide_panel_title, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,     'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,   'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LAZYMODE,   this._field_lazy_mode,        'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _listFrameMaker(lbl) {

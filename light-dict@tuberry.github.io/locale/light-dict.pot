@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-05-02 17:06+0800\n"
+"POT-Creation-Date: 2020-05-04 12:42+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -29,142 +29,142 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: prefs.js:120
+#: prefs.js:121
 msgid "GNU General Public License, version 3 or later"
 msgstr ""
 
-#: prefs.js:123
+#: prefs.js:124
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:124
+#: prefs.js:125
 msgid ""
 "Lightweight selection-popup extension with icon bar and tooltips-style "
 "panel, especially optimized for Dictionary."
 msgstr ""
 
-#: prefs.js:126
+#: prefs.js:127
 #, javascript-format
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
 msgstr ""
 
-#: prefs.js:206
+#: prefs.js:168
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:206
+#: prefs.js:168
 msgid "Keyboard"
 msgstr ""
 
-#: prefs.js:206
+#: prefs.js:168
 msgid "Auto"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:169
 msgid "Never"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:169
 msgid "Click"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:169
 msgid "Hover"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:169
 msgid "Always"
 msgstr ""
 
-#: prefs.js:212
+#: prefs.js:174
 msgid "Command to run in auto mode"
 msgstr ""
 
-#: prefs.js:213
+#: prefs.js:175
 msgid "App white/black list (asterisk for all)"
 msgstr ""
 
-#: prefs.js:214
+#: prefs.js:176
 msgid "Text RegExp filter for auto mode"
 msgstr ""
 
-#: prefs.js:215
+#: prefs.js:177
 msgid "Left click: command to run when clicking panel"
 msgstr ""
 
-#: prefs.js:216
+#: prefs.js:178
 msgid "Right click: search in default browser"
 msgstr ""
 
-#: prefs.js:220
+#: prefs.js:182
 msgid "Common"
 msgstr ""
 
-#: prefs.js:221
+#: prefs.js:183
 msgid "Trim whitespaces"
 msgstr ""
 
-#: prefs.js:222
+#: prefs.js:184
 msgid "Black/whitelist"
 msgstr ""
 
-#: prefs.js:223
+#: prefs.js:185
 msgid "Trigger style"
 msgstr ""
 
-#: prefs.js:224
+#: prefs.js:186
 msgid "Autohide interval"
 msgstr ""
 
-#: prefs.js:227
+#: prefs.js:187
+msgid "Toggle style or show panel"
+msgstr ""
+
+#: prefs.js:190
 msgid "Icon Bar"
 msgstr ""
 
-#: prefs.js:228
+#: prefs.js:191
 msgid "Enable tooltips"
 msgstr ""
 
-#: prefs.js:229
+#: prefs.js:192
 msgid "Lazy mode"
 msgstr ""
 
-#: prefs.js:230
+#: prefs.js:193
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:231
+#: prefs.js:194
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:232
+#: prefs.js:195
 msgid "Vertical offset"
 msgstr ""
 
-#: prefs.js:234
+#: prefs.js:197
 msgid "Panel"
 msgstr ""
 
-#: prefs.js:235
+#: prefs.js:198
 msgid "Hide title"
 msgstr ""
 
-#: prefs.js:236
+#: prefs.js:199
 msgid "Seamless mode"
 msgstr ""
 
-#: prefs.js:237
+#: prefs.js:200
 msgid "Logs level"
 msgstr ""
 
-#: prefs.js:238
+#: prefs.js:201
 msgid "Min lines to scroll"
-msgstr ""
-
-#: prefs.js:239
-msgid "Show panel"
 msgstr ""
 
 #: prefs.js:394

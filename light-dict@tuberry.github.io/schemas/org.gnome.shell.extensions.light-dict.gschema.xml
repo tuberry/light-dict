@@ -29,13 +29,9 @@
         <default>false</default>
         <summary>lazy mode for icon bar</summary>
     </key>
-    <key type="as" name="panel-short-cut">
+    <key type="as" name="toggle-shortcut">
         <default><![CDATA[['<Control><Shift>z']]]></default>
-        <summary>short-cuts to trigger panel</summary>
-    </key>
-    <key type="as" name="autopopup-trigger">
-        <default><![CDATA[['<Control><Alt>a']]]></default>
-        <summary>short-cuts to trigger iconbar</summary>
+        <summary>short-cuts to toggle style or show panel</summary>
     </key>
     <key type="u" name="autohide-timeout">
         <default>2500</default>

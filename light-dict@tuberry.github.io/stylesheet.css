@@ -11,12 +11,12 @@
 .light-dict-content {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.85);
-    /* font-size: 14.5pt; */
     border-radius: 3px;
-    box-shadow: 0;
-    max-width: 700px !important;
+    max-width: 700px;
+    max-height: 700px;
     text-align: left;
     padding: 4px 8px;
+    /* font-size: 12pt; */
 }
 
 .light-dict-word {

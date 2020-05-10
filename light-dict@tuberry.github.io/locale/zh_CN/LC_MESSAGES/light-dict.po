@@ -114,6 +114,10 @@ msgstr "黑白名单"
 msgid "Trigger style"
 msgstr "触发方式"
 
+#: prefs.js:187
+msgid "Toggle style or show panel"
+msgstr "方式切换"
+
 #: prefs.js:224
 msgid "Autohide interval"
 msgstr "隐藏延迟"
@@ -128,7 +132,7 @@ msgstr "启用提示"
 
 #: prefs.js:229
 msgid "Lazy mode"
-msgstr "惰性模式"
+msgstr "被动模式"
 
 #: prefs.js:230
 msgid "Page size"
@@ -161,10 +165,6 @@ msgstr "日志级别"
 #: prefs.js:238
 msgid "Min lines to scroll"
 msgstr "滚动下限"
-
-#: prefs.js:239
-msgid "Show panel"
-msgstr "立即弹出"
 
 #: prefs.js:394
 msgid "Missing some required properties in JSON data"
