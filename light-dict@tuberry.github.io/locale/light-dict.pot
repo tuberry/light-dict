@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-05-04 12:42+0800\n"
+"POT-Creation-Date: 2020-05-17 16:33+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,232 +17,236 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: prefs.js:52
+#: prefs.js:56
 msgid "Basic"
 msgstr ""
 
-#: prefs.js:56
+#: prefs.js:60
 msgid "Advanced"
 msgstr ""
 
-#: prefs.js:60
+#: prefs.js:64
 msgid "About"
 msgstr ""
 
-#: prefs.js:121
+#: prefs.js:125
 msgid "GNU General Public License, version 3 or later"
 msgstr ""
 
-#: prefs.js:124
+#: prefs.js:128
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:125
+#: prefs.js:129
 msgid ""
 "Lightweight selection-popup extension with icon bar and tooltips-style "
 "panel, especially optimized for Dictionary."
 msgstr ""
 
-#: prefs.js:127
+#: prefs.js:131
 #, javascript-format
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
 msgstr ""
 
-#: prefs.js:168
+#: prefs.js:173
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:168
+#: prefs.js:173
 msgid "Keyboard"
 msgstr ""
 
-#: prefs.js:168
+#: prefs.js:173
 msgid "Auto"
 msgstr ""
 
-#: prefs.js:169
+#: prefs.js:174
 msgid "Never"
 msgstr ""
 
-#: prefs.js:169
+#: prefs.js:174
 msgid "Click"
 msgstr ""
 
-#: prefs.js:169
+#: prefs.js:174
 msgid "Hover"
 msgstr ""
 
-#: prefs.js:169
+#: prefs.js:174
 msgid "Always"
 msgstr ""
 
-#: prefs.js:174
+#: prefs.js:179
 msgid "Command to run in auto mode"
 msgstr ""
 
-#: prefs.js:175
+#: prefs.js:180
 msgid "App white/black list (asterisk for all)"
 msgstr ""
 
-#: prefs.js:176
+#: prefs.js:181
 msgid "Text RegExp filter for auto mode"
 msgstr ""
 
-#: prefs.js:177
+#: prefs.js:182
 msgid "Left click: command to run when clicking panel"
 msgstr ""
 
-#: prefs.js:178
+#: prefs.js:183
 msgid "Right click: search in default browser"
 msgstr ""
 
-#: prefs.js:182
+#: prefs.js:187
 msgid "Common"
 msgstr ""
 
-#: prefs.js:183
+#: prefs.js:188
 msgid "Trim whitespaces"
 msgstr ""
 
-#: prefs.js:184
+#: prefs.js:189
 msgid "Black/whitelist"
 msgstr ""
 
-#: prefs.js:185
-msgid "Trigger style"
-msgstr ""
-
-#: prefs.js:186
-msgid "Autohide interval"
-msgstr ""
-
-#: prefs.js:187
-msgid "Toggle style or show panel"
-msgstr ""
-
 #: prefs.js:190
-msgid "Icon Bar"
+msgid "Default theme"
 msgstr ""
 
 #: prefs.js:191
-msgid "Enable tooltips"
+msgid "Trigger style"
 msgstr ""
 
 #: prefs.js:192
-msgid "Lazy mode"
+msgid "Autohide interval"
 msgstr ""
 
 #: prefs.js:193
-msgid "Page size"
+msgid "Toggle style or show panel"
 msgstr ""
 
-#: prefs.js:194
-msgid "Horizontal offset"
-msgstr ""
-
-#: prefs.js:195
-msgid "Vertical offset"
+#: prefs.js:196
+msgid "Icon Bar"
 msgstr ""
 
 #: prefs.js:197
-msgid "Panel"
+msgid "Enable tooltips"
 msgstr ""
 
 #: prefs.js:198
-msgid "Hide title"
+msgid "Lazy mode"
 msgstr ""
 
 #: prefs.js:199
-msgid "Seamless mode"
+msgid "Page size"
 msgstr ""
 
 #: prefs.js:200
-msgid "Logs level"
+msgid "Horizontal offset"
 msgstr ""
 
 #: prefs.js:201
+msgid "Vertical offset"
+msgstr ""
+
+#: prefs.js:203
+msgid "Panel"
+msgstr ""
+
+#: prefs.js:204
+msgid "Hide title"
+msgstr ""
+
+#: prefs.js:205
+msgid "Seamless mode"
+msgstr ""
+
+#: prefs.js:206
+msgid "Logs level"
+msgstr ""
+
+#: prefs.js:207
 msgid "Min lines to scroll"
 msgstr ""
 
-#: prefs.js:394
+#: prefs.js:401
 msgid "Missing some required properties in JSON data"
 msgstr ""
 
-#: prefs.js:406
+#: prefs.js:413
 msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
 msgstr ""
 
-#: prefs.js:407
+#: prefs.js:414
 msgid "Use relative position when both X and Y offset are <b>0</b>"
 msgstr ""
 
-#: prefs.js:408
+#: prefs.js:415
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
 msgstr ""
 
-#: prefs.js:409
+#: prefs.js:416
 msgid ""
 "Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
 "clipboard"
 msgstr ""
 
-#: prefs.js:410
+#: prefs.js:417
 msgid ""
 "Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"
 msgstr ""
 
-#: prefs.js:411
+#: prefs.js:418
 msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
 msgstr ""
 
-#: prefs.js:415
+#: prefs.js:422
 msgid "Required / text showing on the entry"
 msgstr ""
 
-#: prefs.js:416
+#: prefs.js:423
 msgid "Optional / additional information about the entry"
 msgstr ""
 
-#: prefs.js:417
+#: prefs.js:424
 msgid "Required / the icon name"
 msgstr ""
 
-#: prefs.js:418
+#: prefs.js:425
 msgid "Required / Bash command (false) or JS statement (true)"
 msgstr ""
 
-#: prefs.js:419
+#: prefs.js:426
 msgid "Required / command to run when clicking icon"
 msgstr ""
 
-#: prefs.js:420
+#: prefs.js:427
 msgid "Optional / popup the panel or not"
 msgstr ""
 
-#: prefs.js:421
+#: prefs.js:428
 msgid "Optional / write the clipboard or not"
 msgstr ""
 
-#: prefs.js:422
+#: prefs.js:429
 msgid "Optional / paste the result (Ctrl+v) or not"
 msgstr ""
 
-#: prefs.js:423
+#: prefs.js:430
 msgid "Optional / tooltip of icon when hovering"
 msgstr ""
 
-#: prefs.js:424
+#: prefs.js:431
 msgid "Optional / app white list of the icon"
 msgstr ""
 
-#: prefs.js:425
+#: prefs.js:432
 msgid "Optional / show the icon only when matching the RegExp"
 msgstr ""
 
-#: prefs.js:426
+#: prefs.js:433
 msgid ""
 "Required / the details of the entry, which is convenient to enable or "
 "disable a group of icons in one click"

@@ -17,6 +17,7 @@ var Fields = {
     DCOMMAND:   'dict-command',
     TEXTSTRIP:  'enable-strip',
     CCOMMAND:   'click-command',
+    DEFAULT:    'default-theme',
     ICOMMANDS:  'icon-commands',
     PAGESIZE:   'icon-pagesize',
     TRIGGER:    'trigger-style',
@@ -47,8 +48,7 @@ class LightDictPrefsWidget extends Gtk.Stack {
     _init() {
         super._init({
             expand: true,
-            transition_duration: 500,
-            transition_type: Gtk.StackTransitionType.CROSSFADE,
+            transition_type: Gtk.StackTransitionType.NONE,
         });
 
         this._basic = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
@@ -156,12 +156,13 @@ class LightDictBasic extends Gtk.Box {
     }
 
     _buildWidgets() {
-        this._field_sensitive_mode   = new Gtk.Switch();
-        this._field_hide_panel_title = new Gtk.Switch();
-        this._field_enable_strip     = new Gtk.Switch();
         this._field_black_or_white   = new Gtk.Switch();
+        this._field_default_theme    = new Gtk.Switch();
+        this._field_enable_strip     = new Gtk.Switch();
         this._field_enable_tooltips  = new Gtk.Switch();
+        this._field_hide_panel_title = new Gtk.Switch();
         this._field_lazy_mode        = new Gtk.Switch();
+        this._field_sensitive_mode   = new Gtk.Switch();
 
         this._field_auto_hide        = this._spinMaker(500, 10000, 250);
         this._field_min_lines        = this._spinMaker(0, 40, 2);
@@ -184,11 +185,12 @@ class LightDictBasic extends Gtk.Box {
 
     _bulidUI() {
         this._common = this._listFrameMaker(_('Common'));
-        this._common._add(this._field_enable_strip,     _("Trim whitespaces"));
-        this._common._add(this._field_black_or_white,   _("Black/whitelist"));
-        this._common._add(this._field_trigger_style,    _("Trigger style"));
-        this._common._add(this._field_auto_hide,        _("Autohide interval"));
-        this._common._add(this._field_toggle,           _("Toggle style or show panel"), this._field_enable_toggle);
+        this._common._add(this._field_enable_strip,   _("Trim whitespaces"));
+        this._common._add(this._field_black_or_white, _("Black/whitelist"));
+        this._common._add(this._field_default_theme,  _("Default theme"));
+        this._common._add(this._field_trigger_style,  _("Trigger style"));
+        this._common._add(this._field_auto_hide,      _("Autohide interval"));
+        this._common._add(this._field_toggle,         _("Toggle style or show panel"), this._field_enable_toggle);
         this._common._add(this._field_apps_list);
 
         this._iconbar = this._listFrameMaker(_('Icon Bar'));
@@ -236,6 +238,7 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,  'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LAZYMODE,   this._field_lazy_mode,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.DEFAULT,    this._field_default_theme,    'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _listFrameMaker(lbl) {
@@ -626,14 +629,12 @@ class LightDictAdvanced extends Gtk.Box {
         btn.src.set_insert_spaces_instead_of_tabs(true);
         btn.src.modify_font(Pango.font_description_from_string("Hack 13"));
 
-        let frame = new Gtk.Frame();
         let scroll = new Gtk.ScrolledWindow({
             min_content_height: 400,
             min_content_width: 660,
         });
         scroll.add(btn.src);
-        frame.add(scroll);
-        btn.pop.add(frame);
+        btn.pop.add(scroll);
 
         return btn;
     }

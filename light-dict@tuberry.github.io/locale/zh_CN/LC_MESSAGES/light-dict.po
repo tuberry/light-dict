@@ -110,6 +110,10 @@ msgstr "去除空白"
 msgid "Black/whitelist"
 msgstr "黑白名单"
 
+#: prefs.js:190
+msgid "Default theme"
+msgstr "默认主题"
+
 #: prefs.js:223
 msgid "Trigger style"
 msgstr "触发方式"
