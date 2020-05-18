@@ -675,12 +675,12 @@ class LightDict extends GObject.Object {
             Main.wm.removeKeybinding(Fields.TOGGLE);
         if(this._iconBarID)
             this._iconBar.disconnect(this._iconBarID), this._iconBarID = 0;
-        if(this._settingChangedID)
-            gsettings.disconnect(this._settingChangedID), this._settingChangedID = 0;
         if(this._onWindowChangedID)
             global.display.disconnect(this._onWindowChangedID), this._onWindowChangedID = 0;
         if(this._selectionChangedID)
             global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
+        for(let x in this)
+            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
 
         this._iconBar.destory();
         this._panel.destroy();
