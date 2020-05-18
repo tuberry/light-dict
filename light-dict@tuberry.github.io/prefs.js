@@ -115,26 +115,26 @@ class LightDictAbout extends Gtk.Box {
             margin_right: 350 - (icon_size * 4 + 2) * count,
             shadow_type: Gtk.ShadowType.ETCHED_IN,
         });
-        frame.override_background_color(Gtk.StateType.NORMAL, new Gdk.RGBA({red: 245/255, green: 212/255, blue: 217/255, alpha: 1}));
+        // frame.override_background_color(Gtk.StateType.NORMAL, new Gdk.RGBA({red: 245/255, green: 212/255, blue: 217/255, alpha: 1}));
         frame.add(hbox)
         this.add(frame);
     }
 
     _buildInfo() {
-        this._gpl = "https://www.gnu.org/licenses/gpl-3.0.html";
-        this._license  = _("GNU General Public License, version 3 or later");
-        this._info = [
+        let gpl = "https://www.gnu.org/licenses/gpl-3.0.html";
+        let license  = _("GNU General Public License, version 3 or later");
+        let info = [
             "<b>" + Me.metadata.name + "</b>",
             _("Version %d").format(Me.metadata.version),
             _("Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary."),
             "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
-            "<small>" + _("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(this._gpl, this._license) + "</small>"
+            "<small>" + _("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(gpl, license) + "</small>"
         ];
         let about = new Gtk.Label({
             wrap: true,
             justify: 2,
             use_markup: true,
-            label: this._info.join('\n\n'),
+            label: info.join('\n\n'),
         });
         this.add(about);
     }
@@ -433,7 +433,6 @@ class LightDictAdvanced extends Gtk.Box {
             _('Required / the details of the entry, which is convenient to enable or disable a group of icons in one click')
         ];
 
-        // xgettext might be conflicted with templete string, do NOT put any translatable text after this.DEFAULTLINK
         this.DEFAULTLINK =
 `{
     "name" : "link",

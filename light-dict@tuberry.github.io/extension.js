@@ -76,25 +76,6 @@ const DictIconBar = GObject.registerClass({
         this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
     }
 
-    _onSettingChanged() {
-        let acommands = gsettings.get_strv(Fields.ACOMMANDS);
-        if(this._acommands.toString() != acommands.toString()) {
-            this._pageIndex = 1;
-            this._iconBarEraser();
-            this._acommands = acommands;
-            this._acommands.forEach(x => this._iconBarMaker(x));
-        }
-        let pagesize = gsettings.get_uint(Fields.PAGESIZE);
-        if(this._pagesize != pagesize) {
-            this._pageIndex = 1;
-            this._pagesize = pagesize;
-        }
-        let tooltip = gsettings.get_boolean(Fields.TOOLTIPS);
-        if(this._tooltips != tooltip)
-            tooltip ? this._addTooltips() : this._removeTooltips();
-        this._fetchSettings()
-    }
-
     _removeTooltips() {
         Main.layoutManager.uiGroup.remove_actor(this._iconTooltips);
         this._iconTooltips.destroy();

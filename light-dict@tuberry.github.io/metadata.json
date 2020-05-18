@@ -5,7 +5,7 @@
   "description": "Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary.",
   "url": "https://github.com/tuberry/light-dict",
   "uuid": "light-dict@tuberry.github.io",
-  "version": 10,
+  "version": 11,
   "shell-version": [
     "3.36"
   ]
