@@ -510,7 +510,7 @@ class LightDictAdvanced extends Gtk.Box {
             hbox.view.pop.show_all();
         });
 
-        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-new', sensitive: false }) });
+        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic', sensitive: false }) });
         hbox.add.set_sensitive(this._cmdsList.length < 2);
         hbox.add.connect("clicked", () => {
             hbox.add.set_sensitive(false);
@@ -573,7 +573,7 @@ class LightDictAdvanced extends Gtk.Box {
             if(!this._add) this._updateCommands(true);
         });
 
-        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-new' }) });
+        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
         hbox.add.connect("clicked", () => {
             this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
             let idx = this._boxes.findIndex(x => x.row == hbox.row);
@@ -588,7 +588,7 @@ class LightDictAdvanced extends Gtk.Box {
             this.show_all();
         });
 
-        hbox.delete = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'entry-delete' }) });
+        hbox.delete = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }) });
         hbox.delete.connect("clicked", () => {
             this._boxes = this._boxes.filter(x => x.row != hbox.row);
             if(hbox.check.active) this._updateCommands(true);
@@ -639,7 +639,7 @@ class LightDictAdvanced extends Gtk.Box {
     }
 
     _popLabelViewMaker(msgs) {
-        const tips = new Gtk.Button({ image: new Gtk.Image({ icon_name: "help-about" }) });
+        const tips = new Gtk.Button({ image: new Gtk.Image({ icon_name: "system-help-symbolic" }) });
         tips.pop = new Gtk.Popover(tips);
         tips.pop.set_relative_to(tips);
 

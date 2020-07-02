@@ -118,12 +118,8 @@ const DictIconBar = GObject.registerClass({
         if(this._pagesize === 0) return;
         this._visibleBox.forEach(x => x.entered = false);
         switch (scrollEvent.direction) {
-        case Clutter.ScrollDirection.UP:
-            this._pageIndex--;
-            break;
-        case Clutter.ScrollDirection.DOWN:
-            this._pageIndex++;
-            break;
+        case Clutter.ScrollDirection.UP: this._pageIndex--; break;
+        case Clutter.ScrollDirection.DOWN: this._pageIndex++; break;
         }
         this._updateIconBar();
         return Clutter.EVENT_PROPAGATE;
@@ -414,7 +410,7 @@ class DictPanel extends BoxPointer.BoxPointer {
         let [px, py] = this.get_position();
         if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
-        this._panelBox.visible = false
+        this._panelBox.visible = false;
         this.close(BoxPointer.PopupAnimation.FULL);
         this._dummyCursor.set_position(...global.display.get_size());
     }
@@ -422,7 +418,7 @@ class DictPanel extends BoxPointer.BoxPointer {
     _show(info, word, pointer) {
         this._selection = word;
         this._toggleScroll(info.split(/\n/).length > this._minlines);
-        this._panelBox._info.set_text(info);
+        this._panelBox._info.clutter_text.set_markup(info);
         if(this._panelBox._word.visible)
             this._panelBox._word.set_text(word);
 
@@ -577,7 +573,7 @@ class LightDict extends GObject.Object {
                             this._iconBar._show(...this._pointer, this._wmclass, this._selection);
                         } else {
                             GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
-                                if(this._pointer[1] - global.get_pointer()[1] > 7)
+                                if(this._pointer[1] - global.get_pointer()[1] > 5)
                                     this._iconBar._show(...this._pointer, this._wmclass, this._selection);
                                 return GLib.SOURCE_REMOVE;
                             });
