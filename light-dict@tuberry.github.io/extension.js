@@ -20,17 +20,16 @@ const DictIconBar = GObject.registerClass({
         'iconbar-signals': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
     },
 }, class DictIconBar extends St.BoxLayout {
-    _init(style) {
+    _init() {
         super._init({
             reactive: true,
             visible: false,
             vertical: false,
             track_hover: true,
-            style_class: `${style}light-dict-iconbox`,
+            style_class: 'light-dict-iconbox',
         });
         Main.layoutManager.addChrome(this);
 
-        this._style = style;
         this._pageIndex = 1;
         this._iconsBox = [];
         this._visibleBox = [];
@@ -85,7 +84,7 @@ const DictIconBar = GObject.registerClass({
     _addTooltips() {
         this._iconTooltips = new St.Label({
             visible: false,
-            style_class: `${this._style}light-dict-tooltips`,
+            style_class: 'light-dict-tooltips',
         });
         Main.layoutManager.uiGroup.add_actor(this._iconTooltips);
     }
@@ -163,12 +162,12 @@ const DictIconBar = GObject.registerClass({
             let btn = new St.Button({
                 reactive: true,
                 track_hover: true,
-                style_class: `${this._style}light-dict-button-${x.icon} ${this._style}light-dict-button`,
+                style_class: `light-dict-button-${x.icon} light-dict-button`,
             });
             btn.child = new St.Icon({
                 icon_name: x.icon,
                 fallback_icon_name: 'help',
-                style_class: `${this._style}light-dict-button-icon-${x.icon} ${this._style}light-dict-button-icon`,
+                style_class: `light-dict-button-icon-${x.icon} light-dict-button-icon`,
             }); // St.Bin.child
             if(x.windows && x.windows.length) btn.windows = x.windows;
             if(x.regexp) btn.regexp = x.regexp;
@@ -229,13 +228,12 @@ const DictIconBar = GObject.registerClass({
 
 const DictPanel = GObject.registerClass(
 class DictPanel extends BoxPointer.BoxPointer {
-    _init(style) {
+    _init() {
         super._init(St.Side.TOP, {
-            style_class: `${style}light-dict-boxpointer`,
+            style_class: 'light-dict-boxpointer',
         });
         Main.layoutManager.addChrome(this);
 
-        this._style = style;
         this._selection = '';
         this._notFound = false;
         this._scrollable = false;
@@ -319,7 +317,7 @@ class DictPanel extends BoxPointer.BoxPointer {
             x_expand: true,
             y_expand: true,
             overlay_scrollbars: true,
-            style_class: `${this._style}light-dict-scroll`,
+            style_class: 'light-dict-scroll',
         });
         this._scrollView.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC); // St.PolicyType.EXTERNAL);
 
@@ -327,16 +325,16 @@ class DictPanel extends BoxPointer.BoxPointer {
             reactive: true,
             vertical: true,
             visible: false,
-            style_class: `${this._style}light-dict-content`,
+            style_class: 'light-dict-content',
         });
 
-        this._panelBox._word = new St.Label({style_class: `${this._style}light-dict-word`, visible: !this._hidetitle});
+        this._panelBox._word = new St.Label({style_class: 'light-dict-word', visible: !this._hidetitle});
         this._panelBox._word.clutter_text.line_wrap = true;
         this._panelBox._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._panelBox._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
         this._panelBox.add_child(this._panelBox._word);
 
-        this._panelBox._info = new St.Label({style_class: `${this._style}light-dict-info`});
+        this._panelBox._info = new St.Label({style_class: 'light-dict-info'});
         this._panelBox._info.clutter_text.line_wrap = true;
         this._panelBox._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._panelBox._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
@@ -493,14 +491,14 @@ class DictPanel extends BoxPointer.BoxPointer {
 
 const LightDict = GObject.registerClass(
 class LightDict extends GObject.Object {
-    _init(style) {
+    _init() {
         super._init();
 
         this._pointer = [];
         this._selection = '';
         this._action = new DictAction();
-        this._panel = new DictPanel(style);
-        this._iconBar = new DictIconBar(style);
+        this._panel = new DictPanel();
+        this._iconBar = new DictIconBar();
 
         this._loadSettings();
     }
@@ -751,10 +749,25 @@ class Extension extends GObject.Object {
     }
 
     enable() {
-        this._dict = new LightDict(gsettings.get_boolean(Fields.DEFAULT) ? 'default-' : '');
+        this._dict = new LightDict();
+        if(gsettings.get_boolean(Fields.DEFAULT)) {
+            this._dict._panel.add_style_class_name('default');
+            this._dict._iconBar.add_style_class_name('default');
+        }
+        this._defaultId = gsettings.connect(`changed::${Fields.DEFAULT}`, () => {
+            if(gsettings.get_boolean(Fields.DEFAULT)) {
+                this._dict._panel.add_style_class_name('default');
+                this._dict._iconBar.add_style_class_name('default');
+            } else {
+                this._dict._panel.remove_style_class_name('default');
+                this._dict._iconBar.remove_style_class_name('default');
+            }
+        })
     }
 
     disable() {
+        if(this._defaultId)
+            gsettings.disconnect(this._defaultId), this._defaultId = 0;
         this._dict.destory();
         this._dict = null;
     }

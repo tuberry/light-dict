@@ -20,10 +20,9 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict), and I always desire them outside browser.
 
 ![Screencast](https://user-images.githubusercontent.com/17917040/80081294-574c8a80-8585-11ea-9b74-64b32d973425.gif)
-
+ 
 ## Acknowledgements
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup panel
-* [ibusCandidatePopup.js](https://gitlab.gnome.org/GNOME/gnome-shell/-/blob/master/js/ui/ibusCandidatePopup.js): usage of boxpointer
 * [swift-selection-search](https://github.com/CanisLupus/swift-selection-search): stylesheet of iconbar
 * [clipboard-indicator](https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator): some UI widgets of prefs page
 * [gsconnect](https://github.com/andyholmes/gnome-shell-extension-gsconnect): fake keyboard input

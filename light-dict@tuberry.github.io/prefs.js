@@ -362,7 +362,9 @@ class LightDictAdvanced extends Gtk.Box {
             orientation: Gtk.Orientation.VERTICAL,
         });
         this._initStrings();
-        this._add = false;
+        this._toggle = true;
+        this._changed = false;
+        this._add = true;
         this._boxes = [];
         this._row = 0;
 
@@ -510,27 +512,35 @@ class LightDictAdvanced extends Gtk.Box {
             hbox.view.pop.show_all();
         });
 
-        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic', sensitive: false }) });
-        hbox.add.set_sensitive(this._cmdsList.length < 2);
+        hbox.toggle = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-jump-symbolic', sensitive: false }) });
+        hbox.toggle.connect("clicked", () => {
+            this._toggle = !this._toggle;
+            for(let i = 1; i < this._boxes.length; i++)
+                this._boxes[i].updown.set_image(new Gtk.Image({ icon_name: this._toggle ? 'go-up-symbolic' : 'go-down-symbolic' }));
+        });
+
+        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: this._cmdsList.length > 1 ? 'rotation-allowed-symbolic' : 'list-add-symbolic' }) });
         hbox.add.connect("clicked", () => {
-            hbox.add.set_sensitive(false);
-            if(this._boxes.length > 1) return;
-            this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
-            this._updateCommands(false);
-            this.show_all();
+            this._add = !this._add;
+            if(this._boxes.length > 1) {
+                for(let i = 1; i < this._boxes.length; i++)
+                    this._boxes[i].adddel.set_image(new Gtk.Image({ icon_name: this._add ? 'list-add-symbolic' : 'list-remove-symbolic' }));
+            } else {
+                this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
+                this._updateCommands(false);
+                this.show_all();
+            }
         });
 
         hbox.tips = this._popLabelViewMaker(this.TIPS);
-        hbox.tips.connect("clicked", () => {
-            hbox.tips.pop.show_all();
-            hbox.add.set_sensitive(this._boxes.length === 1);
-        });
+        hbox.tips.connect("clicked", () => { hbox.tips.pop.show_all(); });
 
         hbox.pack_start(hbox.check, false, false, 0);
         hbox.pack_start(hbox.view, false, false, 10);
         hbox.pack_start(hbox.label, true, true, 10);
-        hbox.pack_start(hbox.add, false, false, 10);
-        hbox.pack_end(hbox.tips, false, false, 0);
+        hbox.pack_start(hbox.tips, false, false, 0);
+        hbox.pack_start(hbox.toggle, false, false, 10);
+        hbox.pack_end(hbox.add, false, false, 0);
 
         return hbox;
     }
@@ -570,37 +580,57 @@ class LightDictAdvanced extends Gtk.Box {
         hbox.check.connect("toggled", widget => {
             hbox.edit.src.set_editable(!widget.active);
             hbox.edit.set_image(new Gtk.Image({ icon_name: hbox.edit.src.editable ? 'entry-edit' : 'view-hidden' }));
-            if(!this._add) this._updateCommands(true);
+            if(!this._changed) this._updateCommands(true);
         });
 
-        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
-        hbox.add.connect("clicked", () => {
-            this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
+        hbox.updown = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
+        hbox.updown.connect("clicked", () => {
             let idx = this._boxes.findIndex(x => x.row == hbox.row);
-            this._add = true;
-            for(let i = this._boxes.length - 1; i > idx + 1; i--) {
-                ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
-                    eval(`let tmp = this._boxes[i]${x}; this._boxes[i]${x} = this._boxes[i-1]${x}; this._boxes[i-1]${x} = tmp;`);
-                });
+            this._changed = true;
+            if(this._toggle) {
+                if(idx > 1)
+                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
+                        eval(`let tmp = this._boxes[idx]${x}; this._boxes[idx]${x} = this._boxes[idx-1]${x}; this._boxes[idx-1]${x} = tmp;`);
+                    });
+            } else {
+                if(idx < this._boxes.length - 1)
+                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
+                        eval(`let tmp = this._boxes[idx]${x}; this._boxes[idx]${x} = this._boxes[idx+1]${x}; this._boxes[idx+1]${x} = tmp;`);
+                    });
             }
             this._updateCommands(false);
-            this._add = false;
+            this._updateCommands(true);
+            this._changed = false;
             this.show_all();
         });
 
-        hbox.delete = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }) });
-        hbox.delete.connect("clicked", () => {
-            this._boxes = this._boxes.filter(x => x.row != hbox.row);
-            if(hbox.check.active) this._updateCommands(true);
-            this._updateCommands(false);
-            this._grid.remove(hbox);
+        hbox.adddel = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
+        hbox.adddel.connect("clicked", () => {
+            if(this._add) {
+                this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
+                let idx = this._boxes.findIndex(x => x.row == hbox.row);
+                this._changed = true;
+                for(let i = this._boxes.length - 1; i > idx + 1; i--) {
+                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
+                        eval(`let tmp = this._boxes[i]${x}; this._boxes[i]${x} = this._boxes[i-1]${x}; this._boxes[i-1]${x} = tmp;`);
+                    });
+                }
+                this._updateCommands(false);
+                this._changed = false;
+                this.show_all();
+            } else {
+                this._boxes = this._boxes.filter(x => x.row != hbox.row);
+                if(hbox.check.active) this._updateCommands(true);
+                this._updateCommands(false);
+                this._grid.remove(hbox);
+            }
         });
 
         hbox.pack_start(hbox.check, false, false, 0);
         hbox.pack_start(hbox.edit, false, false, 10);
         hbox.pack_start(hbox.label, true, true, 10);
-        hbox.pack_start(hbox.add, false, false, 10);
-        hbox.pack_end(hbox.delete, false, false, 0);
+        hbox.pack_start(hbox.updown, false, false, 10);
+        hbox.pack_end(hbox.adddel, false, false, 0);
 
         return hbox;
     }

@@ -4,11 +4,11 @@
  * Add your custom extension styling here
  */
 
-.default-light-dict-scroll {
+.default .light-dict-scroll {
     height: 500px;
 }
 
-.default-light-dict-content {
+.default .light-dict-content {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.85);
     border-radius: 3px;
@@ -16,31 +16,30 @@
     max-height: 700px;
     text-align: left;
     padding: 4px 8px;
-    /* font-size: 12pt; */
 }
 
-.default-light-dict-word {
+.default .light-dict-word {
     border-width: 0;
     border-color: rgba(0, 0, 0, 0.38);
     border-style: dashed;
     border-bottom-width: 2px;
 }
 
-.default-light-dict-info {
+.default .light-dict-info {
 
 }
 
-.default-light-dict-iconbox {
+.default .light-dict-iconbox {
     background-color: rgba(255, 255, 255, 0.95);
     border-radius: 2px;
     box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.34);
 }
 
-.default-light-dict-button {
+.default .light-dict-button {
     padding: 5px 2px;
 }
 
-.default-light-dict-button:hover {
+.default .light-dict-button:hover {
     background-color: #ddd;
     border-width: 0;
     border-color: #3385ef;
@@ -49,12 +48,13 @@
     padding: 2px 2px 5px 2px;
 }
 
-.default-light-dict-button-icon {
+.default .light-dict-button-icon {
+    color: rgba(0, 0, 0, 0.95);
     padding: 0 3px;
     icon-size: 28px;
 }
 
-.default-light-dict-tooltips {
+.default .light-dict-tooltips {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.85);
     border-radius: 3px;
