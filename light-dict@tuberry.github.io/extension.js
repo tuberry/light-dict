@@ -4,7 +4,7 @@
 
 const Main = imports.ui.main;
 const BoxPointer = imports.ui.boxpointer;
-const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk, Atspi } = imports.gi;
+const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -13,7 +13,6 @@ const Fields = Me.imports.prefs.Fields;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const MODIFIERS = { Alt_L: 0x40, Control_L: 0x25, Shift_L: 0x32, Super_L: 0x85 };
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -688,32 +687,24 @@ const DictAction = GObject.registerClass(
 class DictAction extends GObject.Object {
     _init() {
         super._init();
+        let seat = Clutter.get_default_backend().get_default_seat();
+        this._virtualDevice = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 
     _release(keyname) {
-        if(!Object.keys(MODIFIERS).includes(keyname))
-            return;
-        Atspi.generate_keyboard_event(
-            MODIFIERS[keyname],
-            null,
-            Atspi.KeySynthType.RELEASE
+        this._virtualDevice.notify_keyval(
+            Clutter.get_current_event_time(),
+            Gdk.keyval_from_name(keyname),
+            Clutter.KeyState.RELEASED
         );
     }
 
     _press(keyname) {
-        if(Object.keys(MODIFIERS).includes(keyname)) {
-            Atspi.generate_keyboard_event(
-                MODIFIERS[keyname],
-                null,
-                Atspi.KeySynthType.PRESS
-            );
-        } else {
-            Atspi.generate_keyboard_event(
-                Gdk.keyval_from_name(keyname),
-                null,
-                Atspi.KeySynthType.PRESSRELEASE | Atspi.KeySynthType.SYM
-            );
-        }
+        this._virtualDevice.notify_keyval(
+            Clutter.get_current_event_time(),
+            Gdk.keyval_from_name(keyname),
+            Clutter.KeyState.PRESSED
+        );
     }
 
     _stroke(keystring) {
