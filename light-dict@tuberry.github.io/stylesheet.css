@@ -4,6 +4,9 @@
  * Add your custom extension styling here
  */
 
+.default .light-dict-boxpointer {
+}
+
 .default .light-dict-scroll {
     height: 500px;
 }

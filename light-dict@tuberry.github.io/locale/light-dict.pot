@@ -124,7 +124,7 @@ msgid "Autohide interval"
 msgstr ""
 
 #: prefs.js:193
-msgid "Toggle style or show panel"
+msgid "Toggle style"
 msgstr ""
 
 #: prefs.js:196

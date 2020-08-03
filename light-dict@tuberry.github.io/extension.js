@@ -10,9 +10,11 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.prefs.Fields;
+const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
+const MODIFIERS = Clutter.ModifierType.BUTTON1_MASK + Clutter.ModifierType.MOD2_MASK + Clutter.ModifierType.CONTROL_MASK;
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -130,6 +132,7 @@ const DictIconBar = GObject.registerClass({
             let [W, H] = this.get_size();
             this.set_position(Math.round(x - W / 2), Math.round(y - H * 1.5));
         }
+
         this._updateVisible(fw, text);
         this.visible = true;
 
@@ -257,7 +260,7 @@ class DictPanel extends BoxPointer.BoxPointer {
                 this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
             switch(event.get_button()*!this._panelClicked) {
             case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
-            case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text()); break;
+            case 2: this._action.copy(this._panelBox._info.get_text()); break;
             case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
             }
             if(event.get_button() === 3) this._hide();
@@ -401,30 +404,26 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _hide() {
         if(!this._panelBox.visible) return;
-        // fix unknown and unwanted vanish
-        let [mx, my] = global.get_pointer();
-        let [wt, ht] = this.get_size();
-        let [px, py] = this.get_position();
-        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
         this._panelBox.visible = false;
-        this.close(BoxPointer.PopupAnimation.FULL);
+        this.close(BoxPointer.PopupAnimation.FADE);
         this._dummyCursor.set_position(...global.display.get_size());
     }
 
     _show(info, word, pointer) {
         this._selection = word;
+
         this._toggleScroll(info.split(/\n/).length > this._minlines);
+        if(this._scrollable)
+            this._scrollView.vscroll.get_adjustment().set_value(0);
+
+        this._dummyCursor.set_position(...pointer.map(x => x - 20));
         this._panelBox._info.clutter_text.set_markup(info);
         if(this._panelBox._word.visible)
             this._panelBox._word.set_text(word);
-
-        this._dummyCursor.set_position(...pointer.map(x => x - 20));
         if(!this._panelBox.visible) {
-            if(this._scrollable)
-                this._scrollView.vscroll.get_adjustment().set_value(0);
             this._panelBox.visible = true;
-            this.open(BoxPointer.PopupAnimation.FULL);
+            this.open(BoxPointer.PopupAnimation.FADE);
             this.get_parent().set_child_above_sibling(this, null);
         }
 
@@ -494,9 +493,10 @@ class LightDict extends GObject.Object {
         super._init();
 
         this._pointer = [];
+        this._wmclass = null;
         this._selection = '';
-        this._action = new DictAction();
         this._panel = new DictPanel();
+        this._action = new DictAction();
         this._iconBar = new DictIconBar();
 
         this._loadSettings();
@@ -506,7 +506,6 @@ class LightDict extends GObject.Object {
         this._fetchSettings();
         if(this._shortcut) this._addKeyBindings();
         this._spawnWithGio = x => this._panel._spawnWithGio(x);
-        this._copyToClip = x => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, x);
         this._iconBarID = this._iconBar.connect('iconbar-signals', (area, tag, cmd) => {
             let [popup, clip, type, paste] = Array.from(tag, i => i === '1');
             type ? this._runWithEval(popup, clip, paste, cmd) : this._runWithBash(popup, clip, paste, cmd);
@@ -518,13 +517,13 @@ class LightDict extends GObject.Object {
             this._wmclass = FW ? FW.wm_class : null;
             let wlist = this._appslist === '*' | this._appslist.split('#').includes(this._wmclass);
             if(this._blackwhite ? wlist : !wlist) {
-                if(!this._selectionChangedID) this._listenSelection(this._trigger);
+                if(!this._selectionChangedID) this._monitorSelection(this._trigger);
             } else {
                 if(this._selectionChangedID)
                     global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
             }
         });
-        this._listenSelection(this._trigger);
+        this._monitorSelection(this._trigger);
 
         this._filterId     = gsettings.connect(`changed::${Fields.FILTER}`, () => { this._filter = gsettings.get_string(Fields.FILTER); });
         this._appslistId   = gsettings.connect(`changed::${Fields.APPSLIST}`, () => { this._appslist = gsettings.get_string(Fields.APPSLIST); });
@@ -535,7 +534,7 @@ class LightDict extends GObject.Object {
             this._trigger = gsettings.get_uint(Fields.TRIGGER);
             if(this._selectionChangedID)
                 global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-            if(this._trigger === 0 || this._trigger === 2) this._listenSelection(this._trigger);
+            this._monitorSelection(this._trigger);
         });
         this._shortcutId = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => {
             this._shortcut = gsettings.get_boolean(Fields.SHORTCUT);
@@ -554,7 +553,7 @@ class LightDict extends GObject.Object {
         this._blackwhite = gsettings.get_boolean(Fields.BLACKWHITE);
     }
 
-    _listenSelection(tgg) {
+    _monitorSelection(tgg) {
         switch(tgg) {
         case TRIGGER.ICON:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
@@ -592,6 +591,18 @@ class LightDict extends GObject.Object {
                 });
             });
             break;
+        case TRIGGER.KEYBOARD:
+            this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
+                if(type != St.ClipboardType.PRIMARY || global.get_pointer()[2] != MODIFIERS) return;
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
+                    if(!text) return;
+                    this._pointer = global.get_pointer().slice(0, 2);
+                    this._selection = this._textstrip ? text.trim() : text;
+                    if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
+                        this._panel._lookUp(this._selection, this._pointer);
+                });
+            });
+            break;
         default:
            break;
         }
@@ -611,10 +622,10 @@ class LightDict extends GObject.Object {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                     if(proc.get_exit_status() === 0) {
                         if(paste) {
-                            this._copyToClip(stdout.trim());
-                            this._action.paste();
+                            this._action.copy(stdout.trim());
+                            this._action.stroke('Control_L+v');
                         } else {
-                            if(clip) this._copyToClip(stdout.trim());
+                            if(clip) this._action.copy(stdout.trim());
                             if(popup) this._panel._show(stdout.trim(), this._selection, this._pointer);
                         }
                     } else {
@@ -633,11 +644,11 @@ class LightDict extends GObject.Object {
         try {
             let LDWORD = this._selection;
             let LDTITLE = global.display.get_focus_window().title;
-            let key = x => this._action._stroke(x);
-            let copy = x => this._copyToClip(x);
+            let key = x => this._action.stroke(x);
+            let copy = x => this._action.copy(x);
             if(paste) {
-                copy(eval(cmd).toString());
-                this._action.paste();
+                this._action.copy(eval(cmd).toString());
+                this._action.stroke('Control_L+v');
             } else if(popup|clip) {
                 if(clip) copy(eval(cmd).toString());
                 if(popup) this._panel._show(eval(cmd).toString(), this._selection, this._pointer);
@@ -652,14 +663,9 @@ class LightDict extends GObject.Object {
     _addKeyBindings() {
         let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
         Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
-            if(this._trigger === 2) {
-                gsettings.set_uint(Fields.TRIGGER, 2 - this._trigger);
-            } else {
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
-                    if(!text) return;
-                    this._panel._lookUp(text, global.get_pointer().slice(0,2));
-                });
-            }
+            gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 3);
+            if(this._iconBar._tooltips)
+                Main.notify(Me.metadata.name, _("Switch to %s mode").format(Object.keys(TRIGGER)[(this._trigger + 1) % 3]));
         });
     }
 
@@ -688,11 +694,11 @@ class DictAction extends GObject.Object {
     _init() {
         super._init();
         let seat = Clutter.get_default_backend().get_default_seat();
-        this._virtualDevice = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        this._keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 
     _release(keyname) {
-        this._virtualDevice.notify_keyval(
+        this._keyboard.notify_keyval(
             Clutter.get_current_event_time(),
             Gdk.keyval_from_name(keyname),
             Clutter.KeyState.RELEASED
@@ -700,14 +706,14 @@ class DictAction extends GObject.Object {
     }
 
     _press(keyname) {
-        this._virtualDevice.notify_keyval(
+        this._keyboard.notify_keyval(
             Clutter.get_current_event_time(),
             Gdk.keyval_from_name(keyname),
             Clutter.KeyState.PRESSED
         );
     }
 
-    _stroke(keystring) {
+    stroke(keystring) { // TODO: Modifier keys aren't working on Wayland (input area)
         try {
             keystring.split(/\s+/).forEach((keys, i) => {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
@@ -722,12 +728,16 @@ class DictAction extends GObject.Object {
         }
     }
 
-    paste() {
-        this._stroke('Control_L+v');
+    paste(string) { // TODO: not working
+        Main.inputMethod.commit(string);
+    }
+
+    copy(string) {
+        St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, string);
     }
 
     search() {
-        this._stroke('Control_L+c Super_L Control_L+v');
+        this.stroke('Control_L+c Super_L Control_L+v');
     }
 });
 

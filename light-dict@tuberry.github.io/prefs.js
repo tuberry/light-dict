@@ -190,7 +190,7 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._field_default_theme,  _("Default theme"));
         this._common._add(this._field_trigger_style,  _("Trigger style"));
         this._common._add(this._field_auto_hide,      _("Autohide interval"));
-        this._common._add(this._field_toggle,         _("Toggle style or show panel"), this._field_enable_toggle);
+        this._common._add(this._field_toggle,         _("Toggle style"), this._field_enable_toggle);
         this._common._add(this._field_apps_list);
 
         this._iconbar = this._listFrameMaker(_('Icon Bar'));

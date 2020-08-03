@@ -119,7 +119,7 @@ msgid "Trigger style"
 msgstr "触发方式"
 
 #: prefs.js:187
-msgid "Toggle style or show panel"
+msgid "Toggle style"
 msgstr "方式切换"
 
 #: prefs.js:224
