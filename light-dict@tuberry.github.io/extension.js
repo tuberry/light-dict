@@ -14,7 +14,8 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const MODIFIERS = Clutter.ModifierType.BUTTON1_MASK + Clutter.ModifierType.MOD2_MASK + Clutter.ModifierType.CONTROL_MASK;
+const MODIFIERS1 = Clutter.ModifierType.MOD2_MASK | Clutter.ModifierType.CONTROL_MASK;
+const MODIFIERS2 = MODIFIERS1 | Clutter.ModifierType.BUTTON1_MASK;
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -593,7 +594,9 @@ class LightDict extends GObject.Object {
             break;
         case TRIGGER.KEYBOARD:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY || global.get_pointer()[2] != MODIFIERS) return;
+                if(type != St.ClipboardType.PRIMARY) return;
+                let mod = global.get_pointer()[2];
+                if(mod != MODIFIERS1 && mod != MODIFIERS2) return;
                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
                     if(!text) return;
                     this._pointer = global.get_pointer().slice(0, 2);
