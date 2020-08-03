@@ -663,9 +663,9 @@ class LightDict extends GObject.Object {
     _addKeyBindings() {
         let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
         Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
-            gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 3);
             if(this._iconBar._tooltips)
                 Main.notify(Me.metadata.name, _("Switch to %s mode").format(Object.keys(TRIGGER)[(this._trigger + 1) % 3]));
+            gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 3);
         });
     }
 
