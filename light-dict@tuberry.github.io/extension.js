@@ -14,7 +14,8 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const MODIFIERS1 = Clutter.ModifierType.MOD2_MASK | Clutter.ModifierType.CONTROL_MASK;
+const DEFAULTMOD = global.get_pointer()[2]; // NOTE: is it?
+const MODIFIERS1 = DEFAULTMOD | Clutter.ModifierType.CONTROL_MASK;
 const MODIFIERS2 = MODIFIERS1 | Clutter.ModifierType.BUTTON1_MASK;
 
 const DictIconBar = GObject.registerClass({
