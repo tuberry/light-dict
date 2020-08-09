@@ -608,7 +608,6 @@ class LightDict extends GObject.Object {
                 if(type != St.ClipboardType.PRIMARY) return;
                 if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
                 let [, , initModifier] = global.get_pointer();
-                Main.notify(initModifier.toString());
                 if((initModifier & MODIFIERS) == 0) return;
                 let showPanel = () => { this._panel._lookUp(this._selection, this._pointer); };
                 if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
