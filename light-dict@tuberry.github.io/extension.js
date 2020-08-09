@@ -14,9 +14,7 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const DEFAULTMOD = global.get_pointer()[2]; // NOTE: is it?
-const MODIFIERS1 = DEFAULTMOD | Clutter.ModifierType.CONTROL_MASK;
-const MODIFIERS2 = MODIFIERS1 | Clutter.ModifierType.BUTTON1_MASK;
+const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -127,12 +125,12 @@ const DictIconBar = GObject.registerClass({
         return Clutter.EVENT_PROPAGATE;
     }
 
-    _show(x, y, fw, text) {
+    _show(pointer, fw, text) {
         if(this._xoffset || this._yoffset) {
-            this.set_position(Math.round(x + this._xoffset), Math.round(y + this._yoffset));
+            this.set_position(Math.round(pointer[0] + this._xoffset), Math.round(pointer[1] + this._yoffset));
         } else {
             let [W, H] = this.get_size();
-            this.set_position(Math.round(x - W / 2), Math.round(y - H * 1.5));
+            this.set_position(Math.round(pointer[0] - W / 2), Math.round(pointer[1] - H * 1.5));
         }
 
         this._updateVisible(fw, text);
@@ -396,7 +394,7 @@ class DictPanel extends BoxPointer.BoxPointer {
             try {
                 let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                 this._notFound = proc.get_exit_status() !== 0;
-                this._show(this._notFound ? stderr.trim() : stdout.trim(), text, pointer);
+                this._show(pointer, this._notFound ? stderr.trim() : stdout.trim(), text);
                 if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
             } catch(e) {
                 Main.notifyError(Me.metadata.name, e.message);
@@ -412,14 +410,14 @@ class DictPanel extends BoxPointer.BoxPointer {
         this._dummyCursor.set_position(...global.display.get_size());
     }
 
-    _show(info, word, pointer) {
+    _show(pointer, info, word) {
         this._selection = word;
 
         this._toggleScroll(info.split(/\n/).length > this._minlines);
         if(this._scrollable)
             this._scrollView.vscroll.get_adjustment().set_value(0);
 
-        this._dummyCursor.set_position(...pointer.map(x => x - 20));
+        this._dummyCursor.set_position(pointer[0] - 20, pointer[1] - 20);
         this._panelBox._info.clutter_text.set_markup(info);
         if(this._panelBox._word.visible)
             this._panelBox._word.set_text(word);
@@ -560,56 +558,87 @@ class LightDict extends GObject.Object {
         case TRIGGER.ICON:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY) return;
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) => {
-                    if(!text) return;
-                    this._pointer = global.get_pointer().slice(0,2);
-                    let tmpSelection = this._textstrip ? text.trim() : text;
-                    this._selection = tmpSelection;
-                    GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                        if(this._selection !== tmpSelection) return;
-                        if(!this._lazymode) {
-                            this._iconBar._show(...this._pointer, this._wmclass, this._selection);
+                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
+                let [, , initModifier] = global.get_pointer();
+                if(this._lazymode && (initModifier & MODIFIERS) == 0) return;
+                let showIconbar = () => { this._iconBar._show(this._pointer, this._wmclass, this._selection); };
+                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
+                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                        let [, , tmpModifier] = global.get_pointer();
+                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                            this._fetchSelection(showIconbar);
+                            this._mouseUpID = 0;
+                            return GLib.SOURCE_REMOVE;
                         } else {
-                            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
-                                if(this._pointer[1] - global.get_pointer()[1] > 5)
-                                    this._iconBar._show(...this._pointer, this._wmclass, this._selection);
-                                return GLib.SOURCE_REMOVE;
-                            });
+                            return GLib.SOURCE_CONTINUE;
                         }
-                        return GLib.SOURCE_REMOVE;
                     });
-                });
+                } else {
+                    this._fetchSelection(showIconbar);
+                }
             });
             break;
         case TRIGGER.AUTO:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY) return;
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
-                    if(!text) return;
-                    this._pointer = global.get_pointer().slice(0, 2);
-                    this._selection = this._textstrip ? text.trim() : text;
+                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
+                let [, , initModifier] = global.get_pointer();
+                let showPanelRgx = () => {
                     if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
                         this._panel._lookUp(this._selection, this._pointer);
-                });
+                };
+                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
+                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                        let [, , tmpModifier] = global.get_pointer();
+                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                            this._fetchSelection(showPanelRgx);
+                            this._mouseUpID = 0;
+                            return GLib.SOURCE_REMOVE;
+                        } else {
+                            return GLib.SOURCE_CONTINUE;
+                        }
+                    });
+                } else {
+                    this._fetchSelection(showPanelRgx);
+                }
             });
             break;
         case TRIGGER.KEYBOARD:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY) return;
-                let mod = global.get_pointer()[2];
-                if(mod != MODIFIERS1 && mod != MODIFIERS2) return;
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clipboard, text) =>  {
-                    if(!text) return;
-                    this._pointer = global.get_pointer().slice(0, 2);
-                    this._selection = this._textstrip ? text.trim() : text;
-                    if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
-                        this._panel._lookUp(this._selection, this._pointer);
-                });
+                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
+                let [, , initModifier] = global.get_pointer();
+                Main.notify(initModifier.toString());
+                if((initModifier & MODIFIERS) == 0) return;
+                let showPanel = () => { this._panel._lookUp(this._selection, this._pointer); };
+                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
+                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                        let [, , tmpModifier] = global.get_pointer();
+                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                            this._fetchSelection(showPanel);
+                            this._mouseUpID = 0;
+                            return GLib.SOURCE_REMOVE;
+                        } else {
+                            return GLib.SOURCE_CONTINUE;
+                        }
+                    });
+                } else {
+                    // this._fetchSelection(showPanel);
+                }
             });
             break;
         default:
            break;
         }
+    }
+
+    _fetchSelection(func) {
+        St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+            if(!text) return;
+            this._pointer = global.get_pointer();
+            this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+            func();
+        });
     }
 
     _runWithBash(popup, clip, paste, cmd) {
@@ -626,14 +655,13 @@ class LightDict extends GObject.Object {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                     if(proc.get_exit_status() === 0) {
                         if(paste) {
-                            this._action.copy(stdout.trim());
-                            this._action.stroke('Control_L+v');
+                            this._action.paste(stdout.trim());
                         } else {
                             if(clip) this._action.copy(stdout.trim());
-                            if(popup) this._panel._show(stdout.trim(), this._selection, this._pointer);
+                            if(popup) this._panel._show(this._pointer, stdout.trim(), this._selection);
                         }
                     } else {
-                        this._panel._show(stderr.trim(), this._selection, this._pointer);
+                        this._panel._show(this._pointer, stderr.trim(), this._selection);
                     }
                 } catch(e) {
                     Main.notifyError(Me.metadata.name, e.message);
@@ -651,11 +679,10 @@ class LightDict extends GObject.Object {
             let key = x => this._action.stroke(x);
             let copy = x => this._action.copy(x);
             if(paste) {
-                this._action.copy(eval(cmd).toString());
-                this._action.stroke('Control_L+v');
+                this._action.paste(eval(cmd).toStrinG());
             } else if(popup|clip) {
                 if(clip) copy(eval(cmd).toString());
-                if(popup) this._panel._show(eval(cmd).toString(), this._selection, this._pointer);
+                if(popup) this._panel._show(this._pointer, eval(cmd).toString(), this._selection);
             } else {
                 eval(cmd);
             }
@@ -674,6 +701,8 @@ class LightDict extends GObject.Object {
     }
 
     destory() {
+        if(this._mouseUpID)
+            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
         if(this._shortcut)
             Main.wm.removeKeybinding(Fields.TOGGLE);
         if(this._iconBarID)
@@ -732,8 +761,10 @@ class DictAction extends GObject.Object {
         }
     }
 
-    paste(string) { // TODO: not working
-        Main.inputMethod.commit(string);
+    paste(string) {
+        this.copy(string);
+        this.stroke('Control_L+v');
+        // Main.inputMethod.commit(string); // TODO: not working
     }
 
     copy(string) {
@@ -767,10 +798,13 @@ class Extension extends GObject.Object {
                 this._dict._panel.remove_style_class_name('default');
                 this._dict._iconBar.remove_style_class_name('default');
             }
-        })
+        });
+
+        this._testId = global.connect('locate-pointer', () => { Main.notify('sss'); });
     }
 
     disable() {
+        if(this._testId) global.disconnect(this._testId), this._testId = 0;
         if(this._defaultId)
             gsettings.disconnect(this._defaultId), this._defaultId = 0;
         this._dict.destory();
@@ -779,6 +813,7 @@ class Extension extends GObject.Object {
 });
 
 function init() {
+    ExtensionUtils.initTranslations();
     return new Extension();
 }
 

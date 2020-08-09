@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-05-02 17:06+0800\n"
-"PO-Revision-Date: 2020-05-02 17:06+0800\n"
+"POT-Creation-Date: 2020-08-09 13:52+0800\n"
+"PO-Revision-Date: 2020-08-09 13:52+0800\n"
 "Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
 "Language: zh_CN\n"
@@ -16,97 +16,102 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: prefs.js:52
+#: extension.js:696
+#, javascript-format
+msgid "Switch to %s mode"
+msgstr "切换至 %s 模式"
+
+#: prefs.js:56
 msgid "Basic"
 msgstr "基本"
 
-#: prefs.js:56
+#: prefs.js:60
 msgid "Advanced"
 msgstr "进阶"
 
-#: prefs.js:60
+#: prefs.js:64
 msgid "About"
 msgstr "关于"
 
-#: prefs.js:120
+#: prefs.js:125
 msgid "GNU General Public License, version 3 or later"
 msgstr "GNU 通用公共许可证，第3版以上"
 
-#: prefs.js:123
+#: prefs.js:128
 #, javascript-format
 msgid "Version %d"
 msgstr "版本 %d"
 
-#: prefs.js:124
+#: prefs.js:129
 msgid ""
 "Lightweight selection-popup extension with icon bar and tooltips-style "
 "panel, especially optimized for Dictionary."
 msgstr "带图标栏和提示气泡的轻量级选择弹出式扩展，特别针对词典进行了优化。"
 
-#: prefs.js:126
+#: prefs.js:131
 #, javascript-format
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
 msgstr "本程序不含任何担保。\n详情见<a href=\"%s\">%s</a>"
 
-#: prefs.js:206
+#: prefs.js:173
 msgid "Icon"
 msgstr "图标"
 
-#: prefs.js:206
+#: prefs.js:173
 msgid "Keyboard"
-msgstr "键盘"
+msgstr "按键"
 
-#: prefs.js:206
+#: prefs.js:173
 msgid "Auto"
 msgstr "自动"
 
-#: prefs.js:207
+#: prefs.js:174
 msgid "Never"
-msgstr "从不"
+msgstr "禁用"
 
-#: prefs.js:207
+#: prefs.js:174
 msgid "Click"
 msgstr "单击"
 
-#: prefs.js:207
+#: prefs.js:174
 msgid "Hover"
 msgstr "悬停"
 
-#: prefs.js:207
+#: prefs.js:174
 msgid "Always"
 msgstr "总是"
 
-#: prefs.js:212
+#: prefs.js:179
 msgid "Command to run in auto mode"
 msgstr "自动模式执行该命令"
 
-#: prefs.js:213
+#: prefs.js:180
 msgid "App white/black list (asterisk for all)"
 msgstr "应用黑白名单（星号代表所有）"
 
-#: prefs.js:214
+#: prefs.js:181
 msgid "Text RegExp filter for auto mode"
 msgstr "自动模式文本正则过滤"
 
-#: prefs.js:215
+#: prefs.js:182
 msgid "Left click: command to run when clicking panel"
 msgstr "左键：点击气泡执行该命令"
 
-#: prefs.js:216
+#: prefs.js:183
 msgid "Right click: search in default browser"
 msgstr "右键：在默认浏览器中搜索"
 
-#: prefs.js:220
+#: prefs.js:187
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:221
+#: prefs.js:188
 msgid "Trim whitespaces"
 msgstr "去除空白"
 
-#: prefs.js:222
+#: prefs.js:189
 msgid "Black/whitelist"
 msgstr "黑白名单"
 
@@ -114,138 +119,144 @@ msgstr "黑白名单"
 msgid "Default theme"
 msgstr "默认主题"
 
-#: prefs.js:223
+#: prefs.js:191
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: prefs.js:187
-msgid "Toggle style"
-msgstr "方式切换"
-
-#: prefs.js:224
+#: prefs.js:192
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:227
+#: prefs.js:193
+msgid "Toggle style"
+msgstr "快速切换"
+
+#: prefs.js:196
 msgid "Icon Bar"
 msgstr "图标"
 
-#: prefs.js:228
+#: prefs.js:197
 msgid "Enable tooltips"
 msgstr "启用提示"
 
-#: prefs.js:229
+#: prefs.js:198
 msgid "Lazy mode"
 msgstr "被动模式"
 
-#: prefs.js:230
+#: prefs.js:199
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:231
+#: prefs.js:200
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:232
+#: prefs.js:201
 msgid "Vertical offset"
 msgstr "垂直偏移"
 
-#: prefs.js:234
+#: prefs.js:203
 msgid "Panel"
 msgstr "气泡"
 
-#: prefs.js:235
+#: prefs.js:204
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: prefs.js:236
+#: prefs.js:205
 msgid "Seamless mode"
 msgstr "无缝模式"
 
-#: prefs.js:237
+#: prefs.js:206
 msgid "Logs level"
 msgstr "日志级别"
 
-#: prefs.js:238
+#: prefs.js:207
 msgid "Min lines to scroll"
 msgstr "滚动下限"
 
-#: prefs.js:394
+#: prefs.js:403
 msgid "Missing some required properties in JSON data"
 msgstr "JSON 数据中缺失部分必需字段"
 
-#: prefs.js:406
-msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
-msgstr "添加图标至 <u>~/.local/share/icons/xxxx</u>"
+#: prefs.js:415
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
+msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
 
-#: prefs.js:407
+#: prefs.js:416
 msgid "Use relative position when both X and Y offset are <b>0</b>"
 msgstr "当水平与垂直偏移均为 <b>0</b> 时使用相对位置"
 
-#: prefs.js:408
+#: prefs.js:417
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
 msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
 
-#: prefs.js:409
+#: prefs.js:418
 msgid ""
 "Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
 "clipboard"
 msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>true</i>"
 
-#: prefs.js:410
+#: prefs.js:419
 msgid ""
-"Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"
-msgstr "JS 语句支持模拟键盘输入: <u>key('Control_L+c')</u>"
+"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
+msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
 
-#: prefs.js:411
-msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
-msgstr "日志位于 <u>~/.cache/gnome-shell-extension-light-dict/</u>"
+#: prefs.js:420
+msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
 
-#: prefs.js:415
+#: prefs.js:421
+msgid ""
+"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy "
+"mode</b>"
+msgstr "<b>按键</b>或<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift|Ctrl</b> 以触发"
+
+#: prefs.js:425
 msgid "Required / text showing on the entry"
 msgstr "必需 / 条目显示文本"
 
-#: prefs.js:416
+#: prefs.js:426
 msgid "Optional / additional information about the entry"
 msgstr "可选 / 条目附加信息"
 
-#: prefs.js:417
+#: prefs.js:427
 msgid "Required / the icon name"
 msgstr "必需 / 图标名"
 
-#: prefs.js:418
+#: prefs.js:428
 msgid "Required / Bash command (false) or JS statement (true)"
 msgstr "必需 / Bash 命令(false)或 JS 语句(true)"
 
-#: prefs.js:419
+#: prefs.js:429
 msgid "Required / command to run when clicking icon"
 msgstr "必需 / 点击图标时执行"
 
-#: prefs.js:420
+#: prefs.js:430
 msgid "Optional / popup the panel or not"
 msgstr "可选 / 是否弹出气泡"
 
-#: prefs.js:421
+#: prefs.js:431
 msgid "Optional / write the clipboard or not"
 msgstr "可选 / 是否写入剪切板"
 
-#: prefs.js:422
+#: prefs.js:432
 msgid "Optional / paste the result (Ctrl+v) or not"
 msgstr "可选 / 是否粘贴结果 (Ctrl+v)"
 
-#: prefs.js:423
+#: prefs.js:433
 msgid "Optional / tooltip of icon when hovering"
 msgstr "可选 / 鼠标悬停时显示提示"
 
-#: prefs.js:424
+#: prefs.js:434
 msgid "Optional / app white list of the icon"
 msgstr "可选 / 应用白名单"
 
-#: prefs.js:425
+#: prefs.js:435
 msgid "Optional / show the icon only when matching the RegExp"
 msgstr "可选 / 仅匹配正则时显示该图标"
 
-#: prefs.js:426
+#: prefs.js:436
 msgid ""
 "Required / the details of the entry, which is convenient to enable or "
 "disable a group of icons in one click"

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-05-17 16:33+0800\n"
+"POT-Creation-Date: 2020-08-09 13:52+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,11 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:696
+#, javascript-format
+msgid "Switch to %s mode"
+msgstr ""
 
 #: prefs.js:56
 msgid "Basic"
@@ -171,82 +176,88 @@ msgstr ""
 msgid "Min lines to scroll"
 msgstr ""
 
-#: prefs.js:401
+#: prefs.js:403
 msgid "Missing some required properties in JSON data"
 msgstr ""
 
-#: prefs.js:413
-msgid "Add the icon to <u>~/.local/share/icons/xxxx</u>"
-msgstr ""
-
-#: prefs.js:414
-msgid "Use relative position when both X and Y offset are <b>0</b>"
-msgstr ""
-
 #: prefs.js:415
-msgid "Substitute <b>LDWORD</b> for the selection in commands"
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
 msgstr ""
 
 #: prefs.js:416
+msgid "Use relative position when both X and Y offset are <b>0</b>"
+msgstr ""
+
+#: prefs.js:417
+msgid "Substitute <b>LDWORD</b> for the selection in commands"
+msgstr ""
+
+#: prefs.js:418
 msgid ""
 "Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
 "clipboard"
 msgstr ""
 
-#: prefs.js:417
+#: prefs.js:419
 msgid ""
-"Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"
+"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
 msgstr ""
 
-#: prefs.js:418
-msgid "Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>"
+#: prefs.js:420
+msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
 msgstr ""
 
-#: prefs.js:422
-msgid "Required / text showing on the entry"
-msgstr ""
-
-#: prefs.js:423
-msgid "Optional / additional information about the entry"
-msgstr ""
-
-#: prefs.js:424
-msgid "Required / the icon name"
+#: prefs.js:421
+msgid ""
+"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy "
+"mode</b>"
 msgstr ""
 
 #: prefs.js:425
-msgid "Required / Bash command (false) or JS statement (true)"
+msgid "Required / text showing on the entry"
 msgstr ""
 
 #: prefs.js:426
-msgid "Required / command to run when clicking icon"
+msgid "Optional / additional information about the entry"
 msgstr ""
 
 #: prefs.js:427
-msgid "Optional / popup the panel or not"
+msgid "Required / the icon name"
 msgstr ""
 
 #: prefs.js:428
-msgid "Optional / write the clipboard or not"
+msgid "Required / Bash command (false) or JS statement (true)"
 msgstr ""
 
 #: prefs.js:429
-msgid "Optional / paste the result (Ctrl+v) or not"
+msgid "Required / command to run when clicking icon"
 msgstr ""
 
 #: prefs.js:430
-msgid "Optional / tooltip of icon when hovering"
+msgid "Optional / popup the panel or not"
 msgstr ""
 
 #: prefs.js:431
-msgid "Optional / app white list of the icon"
+msgid "Optional / write the clipboard or not"
 msgstr ""
 
 #: prefs.js:432
-msgid "Optional / show the icon only when matching the RegExp"
+msgid "Optional / paste the result (Ctrl+v) or not"
 msgstr ""
 
 #: prefs.js:433
+msgid "Optional / tooltip of icon when hovering"
+msgstr ""
+
+#: prefs.js:434
+msgid "Optional / app white list of the icon"
+msgstr ""
+
+#: prefs.js:435
+msgid "Optional / show the icon only when matching the RegExp"
+msgstr ""
+
+#: prefs.js:436
 msgid ""
 "Required / the details of the entry, which is convenient to enable or "
 "disable a group of icons in one click"

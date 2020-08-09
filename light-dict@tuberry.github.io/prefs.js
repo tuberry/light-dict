@@ -412,12 +412,13 @@ class LightDictAdvanced extends Gtk.Box {
 
     _initStrings() {
         this.TIPS = [
-            _('Add the icon to <u>~/.local/share/icons/xxxx</u>'),
+            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
             _('Use relative position when both X and Y offset are <b>0</b>'),
             _('Substitute <b>LDWORD</b> for the selection in commands'),
             _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
-            _("Fake keyboard input is supported in JS statement: <u>key('Control_L+c')</u>"),
-            _('Log file locates in <u>~/.cache/gnome-shell-extension-light-dict/</u>')
+            _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
+            _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
+            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy mode</b>')
         ];
 
         this.COMMENTS = [
