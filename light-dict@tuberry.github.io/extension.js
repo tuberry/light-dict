@@ -14,6 +14,7 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
+const DEFAULTMOD = global.get_pointer()[2]; // NOTE: committing IME preedit string of some input widgets (St.Entry) will emit clipboard `owner-changed`
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
 
 const DictIconBar = GObject.registerClass({
@@ -324,9 +325,10 @@ class DictPanel extends BoxPointer.BoxPointer {
         this._scrollView.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC); // St.PolicyType.EXTERNAL);
 
         this._panelBox = new St.BoxLayout({
+            visible: false,
             reactive: true,
             vertical: true,
-            visible: false,
+            track_hover: true,
             style_class: 'light-dict-content',
         });
 
@@ -517,13 +519,13 @@ class LightDict extends GObject.Object {
             this._wmclass = FW ? FW.wm_class : null;
             let wlist = this._appslist === '*' | this._appslist.split('#').includes(this._wmclass);
             if(this._blackwhite ? wlist : !wlist) {
-                if(!this._selectionChangedID) this._monitorSelection(this._trigger);
+                if(!this._selectionChangedID) this._listenSelection(this._trigger);
             } else {
                 if(this._selectionChangedID)
                     global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
             }
         });
-        this._monitorSelection(this._trigger);
+        this._listenSelection(this._trigger);
 
         this._filterId     = gsettings.connect(`changed::${Fields.FILTER}`, () => { this._filter = gsettings.get_string(Fields.FILTER); });
         this._appslistId   = gsettings.connect(`changed::${Fields.APPSLIST}`, () => { this._appslist = gsettings.get_string(Fields.APPSLIST); });
@@ -534,7 +536,7 @@ class LightDict extends GObject.Object {
             this._trigger = gsettings.get_uint(Fields.TRIGGER);
             if(this._selectionChangedID)
                 global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-            this._monitorSelection(this._trigger);
+            this._listenSelection(this._trigger);
         });
         this._shortcutId = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => {
             this._shortcut = gsettings.get_boolean(Fields.SHORTCUT);
@@ -553,14 +555,14 @@ class LightDict extends GObject.Object {
         this._blackwhite = gsettings.get_boolean(Fields.BLACKWHITE);
     }
 
-    _monitorSelection(tgg) {
+    _listenSelection(tgg) {
         switch(tgg) {
         case TRIGGER.ICON:
             this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
                 if(type != St.ClipboardType.PRIMARY) return;
                 if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
                 let [, , initModifier] = global.get_pointer();
-                if(this._lazymode && (initModifier & MODIFIERS) == 0) return;
+                if((this._lazymode && (initModifier & MODIFIERS) == 0) || (initModifier ^ DEFAULTMOD) == 0) return;
                 let showIconbar = () => { this._iconBar._show(this._pointer, this._wmclass, this._selection); };
                 if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
                     this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
@@ -583,6 +585,7 @@ class LightDict extends GObject.Object {
                 if(type != St.ClipboardType.PRIMARY) return;
                 if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
                 let [, , initModifier] = global.get_pointer();
+                if((initModifier ^ DEFAULTMOD) == 0) return;
                 let showPanelRgx = () => {
                     if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
                         this._panel._lookUp(this._selection, this._pointer);
@@ -622,7 +625,7 @@ class LightDict extends GObject.Object {
                         }
                     });
                 } else {
-                    // this._fetchSelection(showPanel);
+                    this._fetchSelection(showPanel);
                 }
             });
             break;

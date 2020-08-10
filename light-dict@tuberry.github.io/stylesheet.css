@@ -21,6 +21,11 @@
     padding: 4px 8px;
 }
 
+.default .light-dict-content:hover {
+    transition-duration: 200ms;
+    background-color: rgba(98, 98, 98, 1);
+}
+
 .default .light-dict-word {
     border-width: 0;
     border-color: rgba(0, 0, 0, 0.38);
