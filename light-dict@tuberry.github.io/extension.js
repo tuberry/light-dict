@@ -149,11 +149,11 @@ const DictIconBar = GObject.registerClass({
 
     _updateVisible(fw, text) {
         this._iconsBox.forEach(x => {
-            switch((x.hasOwnProperty("regexp") << 1) + x.hasOwnProperty("windows")) {
+            switch((x.hasOwnProperty("windows") << 1) + x.hasOwnProperty("regexp")) {
             case 0: x._visible = true; break;
-            case 1: x._visible = x.windows.includes(fw); break;
-            case 2: x._visible = RegExp(x.regexp, 'i').test(text); break;
-            case 3: x._visible = x.windows.includes(fw) & RegExp(x.regexp, 'i').test(text); break;
+            case 1: x._visible = RegExp(x.regexp).test(text); break;
+            case 2: x._visible = x.windows.some(y => y.toLowerCase() == fw.toLowerCase()); break;// wmclass is a litte different on Xog and Wayland
+            case 3: x._visible = x.windows.some(y => y.toLowerCase() == fw.toLowerCase()) & RegExp(x.regexp).test(text); break;
             }
         });
         this._visibleBox = this._iconsBox.filter(x => x._visible);
@@ -517,7 +517,7 @@ class LightDict extends GObject.Object {
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
             this._wmclass = FW ? FW.wm_class : null;
-            let wlist = this._appslist === '*' | this._appslist.split('#').includes(this._wmclass);
+            let wlist = this._appslist === '*' | this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedID) this._listenSelection(this._trigger);
             } else {
@@ -587,7 +587,7 @@ class LightDict extends GObject.Object {
                 let [, , initModifier] = global.get_pointer();
                 if((initModifier ^ DEFAULTMOD) == 0) return;
                 let showPanelRgx = () => {
-                    if(!this._filter || RegExp(this._filter, 'i').test(this._selection))
+                    if(!this._filter || RegExp(this._filter).test(this._selection))
                         this._panel._lookUp(this._selection, this._pointer);
                 };
                 if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
@@ -801,12 +801,9 @@ class Extension extends GObject.Object {
                 this._dict._iconBar.remove_style_class_name('default');
             }
         });
-
-        this._testId = global.connect('locate-pointer', () => { Main.notify('sss'); });
     }
 
     disable() {
-        if(this._testId) global.disconnect(this._testId), this._testId = 0;
         if(this._defaultId)
             gsettings.disconnect(this._defaultId), this._defaultId = 0;
         this._dict.destory();
