@@ -516,7 +516,7 @@ class LightDict extends GObject.Object {
             this._panel._hide();
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
-            this._wmclass = FW ? FW.wm_class : null;
+            this._wmclass = FW ? FW.wm_class : 'NULL';
             let wlist = this._appslist === '*' | this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedID) this._listenSelection(this._trigger);
