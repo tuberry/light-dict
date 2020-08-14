@@ -14,7 +14,6 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const DEFAULTMOD = global.get_pointer()[2]; // NOTE: committing IME preedit string of some input widgets (St.Entry) will emit clipboard `owner-changed`
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
 
 const DictIconBar = GObject.registerClass({
@@ -78,7 +77,7 @@ const DictIconBar = GObject.registerClass({
     }
 
     _removeTooltips() {
-        Main.layoutManager.uiGroup.remove_actor(this._iconTooltips);
+        Main.layoutManager.removeChrome(this._iconTooltips);
         this._iconTooltips.destroy();
         this._iconTooltips = null;
     }
@@ -88,7 +87,7 @@ const DictIconBar = GObject.registerClass({
             visible: false,
             style_class: 'light-dict-tooltips',
         });
-        Main.layoutManager.uiGroup.add_actor(this._iconTooltips);
+        Main.layoutManager.addTopChrome(this._iconTooltips);
     }
 
     _updateIconBar() {
@@ -352,7 +351,7 @@ class DictPanel extends BoxPointer.BoxPointer {
         this._dummyCursor.set_size(Math.round(40), Math.round(40));
         this.setPosition(this._dummyCursor, 0);
         if(sen) {
-            Main.layoutManager.uiGroup.add_actor(this._dummyCursor);
+            Main.layoutManager.addTopChrome(this._dummyCursor);
         } else {
             this._scrollID = this._dummyCursor.connect('scroll-event', this._hide.bind(this));
             this._clickID = this._dummyCursor.connect('button-press-event', this._hide.bind(this));
@@ -362,7 +361,7 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _removeDummyCursor(sen) {
         if(sen) {
-            Main.layoutManager.uiGroup.remove_actor(this._dummyCursor);
+            Main.layoutManager.removeChrome(this._dummyCursor);
         } else {
             if(this._scrollID)
                 this._dummyCursor.disconnect(this._scrollID), this._scrollID = 0;
@@ -409,6 +408,7 @@ class DictPanel extends BoxPointer.BoxPointer {
 
         this._panelBox.visible = false;
         this.close(BoxPointer.PopupAnimation.FADE);
+        this._panelBox._info.set_text(Me.metadata.name);
         this._dummyCursor.set_position(...global.display.get_size());
     }
 
@@ -495,7 +495,7 @@ class LightDict extends GObject.Object {
         super._init();
 
         this._pointer = [];
-        this._wmclass = null;
+        this._wmclass = '';
         this._selection = '';
         this._panel = new DictPanel();
         this._action = new DictAction();
@@ -516,8 +516,8 @@ class LightDict extends GObject.Object {
             this._panel._hide();
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
-            this._wmclass = FW ? FW.wm_class : 'NULL';
-            let wlist = this._appslist === '*' | this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
+            this._wmclass = FW ? FW.wm_class : '';
+            let wlist = this._appslist === '*' || this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedID) this._listenSelection(this._trigger);
             } else {
@@ -562,7 +562,7 @@ class LightDict extends GObject.Object {
                 if(type != St.ClipboardType.PRIMARY) return;
                 if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
                 let [, , initModifier] = global.get_pointer();
-                if((this._lazymode && (initModifier & MODIFIERS) == 0) || (initModifier ^ DEFAULTMOD) == 0) return;
+                if((this._lazymode && (initModifier & MODIFIERS) == 0)) return;
                 let showIconbar = () => { this._iconBar._show(this._pointer, this._wmclass, this._selection); };
                 if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
                     this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
@@ -585,10 +585,8 @@ class LightDict extends GObject.Object {
                 if(type != St.ClipboardType.PRIMARY) return;
                 if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
                 let [, , initModifier] = global.get_pointer();
-                if((initModifier ^ DEFAULTMOD) == 0) return;
                 let showPanelRgx = () => {
-                    if(!this._filter || RegExp(this._filter).test(this._selection))
-                        this._panel._lookUp(this._selection, this._pointer);
+                    if(!this._filter || RegExp(this._filter).test(this._selection)) this._panel._lookUp(this._selection, this._pointer);
                 };
                 if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
                     this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
@@ -625,7 +623,12 @@ class LightDict extends GObject.Object {
                         }
                     });
                 } else {
-                    this._fetchSelection(showPanel);
+                    this._fetchSelection(() => {// NOTE: Ctrl + C in Chromium will trigger primary selection
+                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
+                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
+                                showPanel();
+                        });
+                    });
                 }
             });
             break;
