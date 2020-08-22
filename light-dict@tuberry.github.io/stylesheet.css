@@ -5,10 +5,10 @@
  */
 
 .default .light-dict-boxpointer {
+    -arrow-background-color: transparent;
 }
 
 .default .light-dict-scroll {
-    height: 500px;
 }
 
 .default .light-dict-content {
@@ -19,11 +19,6 @@
     max-height: 700px;
     text-align: left;
     padding: 4px 8px;
-}
-
-.default .light-dict-content:hover {
-    transition-duration: 200ms;
-    background-color: rgba(98, 98, 98, 1);
 }
 
 .default .light-dict-word {

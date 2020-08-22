@@ -231,14 +231,12 @@ const DictIconBar = GObject.registerClass({
 const DictPanel = GObject.registerClass(
 class DictPanel extends BoxPointer.BoxPointer {
     _init() {
-        super._init(St.Side.TOP, {
-            style_class: 'light-dict-boxpointer',
-        });
+        super._init(St.Side.TOP, {});
+        this.style_class = 'light-dict-boxpointer';
         Main.layoutManager.addChrome(this);
 
         this._selection = '';
         this._notFound = false;
-        this._scrollable = false;
         this._panelClicked = false;
 
         this._loadSettings();
@@ -260,7 +258,7 @@ class DictPanel extends BoxPointer.BoxPointer {
                 this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
             switch(event.get_button()*!this._panelClicked) {
             case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
-            case 2: this._action.copy(this._panelBox._info.get_text()); break;
+            case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text()); break;
             case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
             }
             if(event.get_button() === 3) this._hide();
@@ -282,10 +280,6 @@ class DictPanel extends BoxPointer.BoxPointer {
             this._removeDummyCursor(!this._sensitive);
             this._addDummyCursor(this._sensitive);
         });
-        this._minlinesId = gsettings.connect(`changed::${Fields.MINLINES}`, () => {
-            this._minlines = gsettings.get_uint(Fields.MINLINES);
-            if(this._minlines == 0 && this._scrollable) this._toggleScroll(false);
-        });
     }
 
     _fetchSettings() {
@@ -297,21 +291,14 @@ class DictPanel extends BoxPointer.BoxPointer {
         this._dcommand  = gsettings.get_string(Fields.DCOMMAND);
         this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE);
         this._sensitive = gsettings.get_boolean(Fields.SENSITIVE);
-        this._minlines  = gsettings.get_uint(Fields.MINLINES);
     }
 
-    _toggleScroll(scroll) {
-        if(scroll == this._scrollable || !this._minlines) return;
-        if(scroll) {
-            this.bin.remove_actor(this._panelBox);
-            this._scrollView.add_actor(this._panelBox);
-            this.bin.add_actor(this._scrollView);
-        } else {
-            this.bin.remove_actor(this._scrollView);
-            this._scrollView.remove_actor(this._panelBox);
-            this.bin.add_actor(this._panelBox);
-        }
-        this._scrollable = scroll;
+    get _scrollable() {
+        let [, height] = this._scrollView.get_preferred_height(-1);
+        let maxHeight = this._scrollView.get_theme_node().get_max_height();
+        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 7 / 16;
+
+        return height >= maxHeight;
     }
 
     _buildPopupPanel() {
@@ -320,11 +307,10 @@ class DictPanel extends BoxPointer.BoxPointer {
             y_expand: true,
             overlay_scrollbars: true,
             style_class: 'light-dict-scroll',
+            style: 'max-height: %dpx'.format(global.display.get_size()[1] * 7 / 16),
         });
-        this._scrollView.set_policy(St.PolicyType.NEVER, St.PolicyType.AUTOMATIC); // St.PolicyType.EXTERNAL);
 
         this._panelBox = new St.BoxLayout({
-            visible: false,
             reactive: true,
             vertical: true,
             track_hover: true,
@@ -343,7 +329,8 @@ class DictPanel extends BoxPointer.BoxPointer {
         this._panelBox._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
         this._panelBox.add_child(this._panelBox._info);
 
-        this.bin.add_actor(this._panelBox);
+        this._scrollView.add_actor(this._panelBox);
+        this.bin.add_actor(this._scrollView);
     }
 
     _addDummyCursor(sen) {
@@ -404,9 +391,14 @@ class DictPanel extends BoxPointer.BoxPointer {
     }
 
     _hide() {
-        if(!this._panelBox.visible) return;
+        if(!this._scrollView.visible) return;
+        // fix unknown and unwanted vanish
+        let [mx, my] = global.get_pointer();
+        let [wt, ht] = this.get_size();
+        let [px, py] = this.get_position();
+        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
-        this._panelBox.visible = false;
+        this._scrollView.visible = false;
         this.close(BoxPointer.PopupAnimation.FADE);
         this._panelBox._info.set_text(Me.metadata.name);
         this._dummyCursor.set_position(...global.display.get_size());
@@ -414,17 +406,26 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _show(pointer, info, word) {
         this._selection = word;
-
-        this._toggleScroll(info.split(/\n/).length > this._minlines);
-        if(this._scrollable)
-            this._scrollView.vscroll.get_adjustment().set_value(0);
-
         this._dummyCursor.set_position(pointer[0] - 20, pointer[1] - 20);
-        this._panelBox._info.clutter_text.set_markup(info);
-        if(this._panelBox._word.visible)
+
+        try {
+            Pango.parse_markup(info, -1, '');
+            this._panelBox._info.clutter_text.set_markup(info);
+        } catch(e) {
+            this._panelBox._info.set_text(info);
+        }
+
+        if(this._scrollable) {
+            this._scrollView.vscrollbar_policy = St.PolicyType.AUTOMATIC;
+            this._scrollView.vscroll.get_adjustment().set_value(0);
+        } else {
+            this._scrollView.vscrollbar_policy = St.PolicyType.NEVER;
+        }
+
+        if(this._hidetitle)
             this._panelBox._word.set_text(word);
-        if(!this._panelBox.visible) {
-            this._panelBox.visible = true;
+        if(!this._scrollView.visible) {
+            this._scrollView.visible = true;
             this.open(BoxPointer.PopupAnimation.FADE);
             this.get_parent().set_child_above_sibling(this, null);
         }
@@ -481,10 +482,8 @@ class DictPanel extends BoxPointer.BoxPointer {
 
         Main.layoutManager.removeChrome(this);
         this._scrollView.destroy();
-        this._panelBox.destroy();
         this._removeDummyCursor();
         this._scrollView = null;
-        this._panelBox = null;
         super.destroy();
     }
 });
@@ -516,7 +515,7 @@ class LightDict extends GObject.Object {
             this._panel._hide();
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
-            this._wmclass = FW ? FW.wm_class : '';
+            this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
             let wlist = this._appslist === '*' || this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedID) this._listenSelection(this._trigger);
@@ -576,7 +575,12 @@ class LightDict extends GObject.Object {
                         }
                     });
                 } else {
-                    this._fetchSelection(showIconbar);
+                    this._fetchSelection(() => {// NOTE: Ctrl + C in Chromium will trigger primary selection
+                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
+                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
+                                showIconbar();
+                        });
+                    });
                 }
             });
             break;
@@ -600,7 +604,12 @@ class LightDict extends GObject.Object {
                         }
                     });
                 } else {
-                    this._fetchSelection(showPanelRgx);
+                    this._fetchSelection(() => {
+                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
+                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
+                                showPanelRgx();
+                        });
+                    });
                 }
             });
             break;
@@ -623,7 +632,7 @@ class LightDict extends GObject.Object {
                         }
                     });
                 } else {
-                    this._fetchSelection(() => {// NOTE: Ctrl + C in Chromium will trigger primary selection
+                    this._fetchSelection(() => {
                         St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
                             if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
                                 showPanel();
@@ -697,8 +706,7 @@ class LightDict extends GObject.Object {
     }
 
     _addKeyBindings() {
-        let ModeType = Shell.hasOwnProperty('ActionMode') ? Shell.ActionMode : Shell.KeyBindingMode;
-        Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, ModeType.ALL, () => {
+        Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => {
             let next = (this._trigger + 1) % 3;
             Main.notify(Me.metadata.name, _("Switch to %s mode").format(Object.keys(TRIGGER)[next]));
             gsettings.set_uint(Fields.TRIGGER, next);

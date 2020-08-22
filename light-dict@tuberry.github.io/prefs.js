@@ -23,7 +23,6 @@ var Fields = {
     TRIGGER:    'trigger-style',
     BLACKWHITE: 'black-or-white',
     SENSITIVE:  'sensitive-mode',
-    MINLINES:   'panel-min-lines',
     SHORTCUT:   'enable-shortcut',
     STYLESHEET: 'user-stylesheet',
     TOGGLE:     'toggle-shortcut',
@@ -165,7 +164,6 @@ class LightDictBasic extends Gtk.Box {
         this._field_sensitive_mode   = new Gtk.Switch();
 
         this._field_auto_hide        = this._spinMaker(500, 10000, 250);
-        this._field_min_lines        = this._spinMaker(0, 40, 2);
         this._field_icon_pagesize    = this._spinMaker(0, 10, 1);
         this._field_icon_xoffset     = this._spinMaker(-400,400,5);
         this._field_icon_yoffset     = this._spinMaker(-400,400,5);
@@ -204,7 +202,6 @@ class LightDictBasic extends Gtk.Box {
         this._panel._add(this._field_hide_panel_title,  _("Hide title"));
         this._panel._add(this._field_sensitive_mode,    _("Seamless mode"));
         this._panel._add(this._field_log_level,         _("Logs level"));
-        this._panel._add(this._field_min_lines,         _("Min lines to scroll"));
         this._panel._add(this._field_dict_command);
         this._panel._add(this._field_open_url);
         this._panel._add(this._field_click_command);
@@ -226,7 +223,6 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.APPSLIST,   this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.MINLINES,   this._field_min_lines,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.YOFFSET,    this._field_icon_yoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);

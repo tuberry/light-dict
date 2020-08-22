@@ -41,10 +41,6 @@
         <default>2500</default>
         <summary>autohide popup interval</summary>
     </key>
-    <key type="u" name="panel-min-lines">
-        <default>0</default>
-        <summary>the min lines of panel to enable scrollbar</summary>
-    </key>
     <key type="u" name="icon-pagesize">
         <default>0</default>
         <summary>icon bar page size</summary>
