@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-08-09 13:52+0800\n"
-"PO-Revision-Date: 2020-08-09 13:52+0800\n"
+"POT-Creation-Date: 2020-08-25 10:21+0800\n"
+"PO-Revision-Date: 2020-08-25 10:22+0800\n"
 "Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
 "Language: zh_CN\n"
@@ -16,248 +16,238 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:696
+#: extension.js:712
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr "切换至 %s 模式"
 
-#: prefs.js:56
+#: prefs.js:53
 msgid "Basic"
 msgstr "基本"
 
-#: prefs.js:60
+#: prefs.js:57
 msgid "Advanced"
 msgstr "进阶"
 
-#: prefs.js:64
+#: prefs.js:61
 msgid "About"
 msgstr "关于"
 
-#: prefs.js:125
+#: prefs.js:89
+msgid "Tips"
+msgstr "提示"
+
+#: prefs.js:97
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
+msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
+
+#: prefs.js:98
+msgid "Use relative position when both X and Y offset are <b>0</b>"
+msgstr "当水平与垂直偏移均为 <b>0</b> 时使用相对位置"
+
+#: prefs.js:99
+msgid "Substitute <b>LDWORD</b> for the selection in commands"
+msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
+
+#: prefs.js:100
+msgid ""
+"Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
+"clipboard"
+msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>true</i>"
+
+#: prefs.js:101
+msgid ""
+"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
+msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
+
+#: prefs.js:102
+msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+
+#: prefs.js:103
+msgid ""
+"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or "
+"<b>Lazy mode</b>"
+msgstr "<b>按键</b>或<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift|Ctrl</b> 以触发"
+
+#: prefs.js:159
 msgid "GNU General Public License, version 3 or later"
 msgstr "GNU 通用公共许可证，第3版以上"
 
-#: prefs.js:128
+#: prefs.js:162
 #, javascript-format
 msgid "Version %d"
 msgstr "版本 %d"
 
-#: prefs.js:129
+#: prefs.js:163
 msgid ""
 "Lightweight selection-popup extension with icon bar and tooltips-style "
 "panel, especially optimized for Dictionary."
 msgstr "带图标栏和提示气泡的轻量级选择弹出式扩展，特别针对词典进行了优化。"
 
-#: prefs.js:131
+#: prefs.js:165
 #, javascript-format
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
 msgstr "本程序不含任何担保。\n详情见<a href=\"%s\">%s</a>"
 
-#: prefs.js:173
+#: prefs.js:206
 msgid "Icon"
 msgstr "图标"
 
-#: prefs.js:173
+#: prefs.js:206
 msgid "Keyboard"
 msgstr "按键"
 
-#: prefs.js:173
+#: prefs.js:206
 msgid "Auto"
 msgstr "自动"
 
-#: prefs.js:174
+#: prefs.js:207
 msgid "Never"
 msgstr "禁用"
 
-#: prefs.js:174
+#: prefs.js:207
 msgid "Click"
 msgstr "单击"
 
-#: prefs.js:174
+#: prefs.js:207
 msgid "Hover"
 msgstr "悬停"
 
-#: prefs.js:174
+#: prefs.js:207
 msgid "Always"
 msgstr "总是"
 
-#: prefs.js:179
+#: prefs.js:212
 msgid "Command to run in auto mode"
 msgstr "自动模式执行该命令"
 
-#: prefs.js:180
+#: prefs.js:213
 msgid "App white/black list (asterisk for all)"
 msgstr "应用黑白名单（星号代表所有）"
 
-#: prefs.js:181
+#: prefs.js:214
 msgid "Text RegExp filter for auto mode"
 msgstr "自动模式文本正则过滤"
 
-#: prefs.js:182
+#: prefs.js:215
 msgid "Left click: command to run when clicking panel"
 msgstr "左键：点击气泡执行该命令"
 
-#: prefs.js:183
+#: prefs.js:216
 msgid "Right click: search in default browser"
 msgstr "右键：在默认浏览器中搜索"
 
-#: prefs.js:187
+#: prefs.js:220
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:188
+#: prefs.js:221
 msgid "Trim whitespaces"
 msgstr "去除空白"
 
-#: prefs.js:189
+#: prefs.js:222
 msgid "Black/whitelist"
 msgstr "黑白名单"
 
-#: prefs.js:190
+#: prefs.js:223
 msgid "Default theme"
 msgstr "默认主题"
 
-#: prefs.js:191
+#: prefs.js:224
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: prefs.js:192
+#: prefs.js:225
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:193
+#: prefs.js:226
 msgid "Toggle style"
 msgstr "快速切换"
 
-#: prefs.js:196
+#: prefs.js:229
 msgid "Icon Bar"
 msgstr "图标"
 
-#: prefs.js:197
+#: prefs.js:230
 msgid "Enable tooltips"
 msgstr "启用提示"
 
-#: prefs.js:198
+#: prefs.js:231
 msgid "Lazy mode"
 msgstr "被动模式"
 
-#: prefs.js:199
+#: prefs.js:232
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:200
+#: prefs.js:233
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:201
+#: prefs.js:234
 msgid "Vertical offset"
 msgstr "垂直偏移"
 
-#: prefs.js:203
+#: prefs.js:236
 msgid "Panel"
 msgstr "气泡"
 
-#: prefs.js:204
+#: prefs.js:237
 msgid "Hide title"
-msgstr "隐藏标题"
+msgstr "隐藏延迟"
 
-#: prefs.js:205
+#: prefs.js:238
 msgid "Seamless mode"
 msgstr "无缝模式"
 
-#: prefs.js:206
+#: prefs.js:239
 msgid "Logs level"
 msgstr "日志级别"
 
-#: prefs.js:207
-msgid "Min lines to scroll"
-msgstr "滚动下限"
+#: prefs.js:443
+msgid "Name showing on left side"
+msgstr "显示在左边的名字"
 
-#: prefs.js:403
-msgid "Missing some required properties in JSON data"
-msgstr "JSON 数据中缺失部分必需字段"
+#: prefs.js:444
+msgid "Icon showing in the bar"
+msgstr "图标名"
 
-#: prefs.js:415
-msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
-msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
+#: prefs.js:445
+msgid "Regexp to filter selected text"
+msgstr "过滤文本正则表达式"
 
-#: prefs.js:416
-msgid "Use relative position when both X and Y offset are <b>0</b>"
-msgstr "当水平与垂直偏移均为 <b>0</b> 时使用相对位置"
+#: prefs.js:446
+msgid "Command to run when clicking"
+msgstr "点击执行命令"
 
-#: prefs.js:417
-msgid "Substitute <b>LDWORD</b> for the selection in commands"
-msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
+#: prefs.js:447
+msgid "Windows allowed to function"
+msgstr "应用白名单"
 
-#: prefs.js:418
-msgid ""
-"Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
-"clipboard"
-msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>true</i>"
+#: prefs.js:448
+msgid "Tooltip showing when hovering"
+msgstr "悬停时显示提示"
 
-#: prefs.js:419
-msgid ""
-"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
-msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
+#: prefs.js:464
+msgid "Enable"
+msgstr "启用"
 
-#: prefs.js:420
-msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+#: prefs.js:468
+msgid "Command type"
+msgstr "命令类型"
 
-#: prefs.js:421
-msgid ""
-"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy "
-"mode</b>"
-msgstr "<b>按键</b>或<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift|Ctrl</b> 以触发"
+#: prefs.js:469
+msgid "Show result"
+msgstr "显示结果"
 
-#: prefs.js:425
-msgid "Required / text showing on the entry"
-msgstr "必需 / 条目显示文本"
+#: prefs.js:470
+msgid "Copy result"
+msgstr "复制结果"
 
-#: prefs.js:426
-msgid "Optional / additional information about the entry"
-msgstr "可选 / 条目附加信息"
-
-#: prefs.js:427
-msgid "Required / the icon name"
-msgstr "必需 / 图标名"
-
-#: prefs.js:428
-msgid "Required / Bash command (false) or JS statement (true)"
-msgstr "必需 / Bash 命令(false)或 JS 语句(true)"
-
-#: prefs.js:429
-msgid "Required / command to run when clicking icon"
-msgstr "必需 / 点击图标时执行"
-
-#: prefs.js:430
-msgid "Optional / popup the panel or not"
-msgstr "可选 / 是否弹出气泡"
-
-#: prefs.js:431
-msgid "Optional / write the clipboard or not"
-msgstr "可选 / 是否写入剪切板"
-
-#: prefs.js:432
-msgid "Optional / paste the result (Ctrl+v) or not"
-msgstr "可选 / 是否粘贴结果 (Ctrl+v)"
-
-#: prefs.js:433
-msgid "Optional / tooltip of icon when hovering"
-msgstr "可选 / 鼠标悬停时显示提示"
-
-#: prefs.js:434
-msgid "Optional / app white list of the icon"
-msgstr "可选 / 应用白名单"
-
-#: prefs.js:435
-msgid "Optional / show the icon only when matching the RegExp"
-msgstr "可选 / 仅匹配正则时显示该图标"
-
-#: prefs.js:436
-msgid ""
-"Required / the details of the entry, which is convenient to enable or "
-"disable a group of icons in one click"
-msgstr "必需 / 条目详细内容, 可一次启用或禁用一组图标"
+#: prefs.js:471
+msgid "Paste result"
+msgstr "粘贴结果"

@@ -85,13 +85,9 @@
         <default>"{}"</default>
         <summary>user stylesheet</summary>
     </key>
-    <key type="as" name="icon-commands">
+    <key type="as" name="iconbar-commands">
         <default>[]</default>
         <summary>icon bar commands</summary>
-    </key>
-    <key type="as" name="icon-commands-active">
-        <default>[]</default>
-        <summary>active icon bar commands</summary>
     </key>
   </schema>
 </schemalist>

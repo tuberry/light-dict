@@ -41,7 +41,7 @@ const DictIconBar = GObject.registerClass({
     _loadSettings() {
         this._fetchSettings();
         if(this._tooltips) this._addTooltips();
-        this._acommands.forEach(x => this._iconBarMaker(x));
+        this._bcommands.forEach(x => this._iconBarMaker(x));
         this._leaveIconBarID = this.connect('leave-event', () => {
             if(this._tooltips) this._iconTooltips.hide();
             this.visible = false;
@@ -55,11 +55,11 @@ const DictIconBar = GObject.registerClass({
         this._yoffsetId   = gsettings.connect(`changed::${Fields.YOFFSET}`, () => { this._yoffset = gsettings.get_int(Fields.YOFFSET); });
         this._autohideId  = gsettings.connect(`changed::${Fields.AUTOHIDE}`, () => { this._autohide = gsettings.get_uint(Fields.AUTOHIDE); });
         this._pagesizeId  = gsettings.connect(`changed::${Fields.PAGESIZE}`, () => { this._pageIndex = 1; this._pagesize = gsettings.get_uint(Fields.PAGESIZE); });
-        this._acommandsId = gsettings.connect(`changed::${Fields.ACOMMANDS}`, () => {
+        this._bcommandsId = gsettings.connect(`changed::${Fields.BCOMMANDS}`, () => {
             this._pageIndex = 1;
             this._iconBarEraser();
-            this._acommands = gsettings.get_strv(Fields.ACOMMANDS);
-            this._acommands.forEach(x => this._iconBarMaker(x));
+            this._bcommands = gsettings.get_strv(Fields.BCOMMANDS);
+            this._bcommands.forEach(x => this._iconBarMaker(x));
         });
         this._tooltipsId  = gsettings.connect(`changed::${Fields.TOOLTIPS}`, () => {
             this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS);
@@ -72,7 +72,7 @@ const DictIconBar = GObject.registerClass({
         this._yoffset   = gsettings.get_int(Fields.YOFFSET);
         this._autohide  = gsettings.get_uint(Fields.AUTOHIDE);
         this._pagesize  = gsettings.get_uint(Fields.PAGESIZE);
-        this._acommands = gsettings.get_strv(Fields.ACOMMANDS);
+        this._bcommands = gsettings.get_strv(Fields.BCOMMANDS);
         this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
     }
 
@@ -151,52 +151,52 @@ const DictIconBar = GObject.registerClass({
             switch((x.hasOwnProperty("windows") << 1) + x.hasOwnProperty("regexp")) {
             case 0: x._visible = true; break;
             case 1: x._visible = RegExp(x.regexp).test(text); break;
-            case 2: x._visible = x.windows.some(y => y.toLowerCase() == fw.toLowerCase()); break;// wmclass is a litte different on Xog and Wayland
-            case 3: x._visible = x.windows.some(y => y.toLowerCase() == fw.toLowerCase()) & RegExp(x.regexp).test(text); break;
+            case 2: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()); break;// wmclass is a litte different on Xog and Wayland
+            case 3: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()) & RegExp(x.regexp).test(text); break;
             }
         });
         this._visibleBox = this._iconsBox.filter(x => x._visible);
         this._updateIconBar();
     }
 
-    _iconBarMaker(cmds) {
-        JSON.parse(cmds).entries.forEach(x => {
-            let btn = new St.Button({
-                reactive: true,
-                track_hover: true,
-                style_class: `light-dict-button-${x.icon} light-dict-button`,
-            });
-            btn.child = new St.Icon({
-                icon_name: x.icon,
-                fallback_icon_name: 'help',
-                style_class: `light-dict-button-icon-${x.icon} light-dict-button-icon`,
-            }); // St.Bin.child
-            if(x.windows && x.windows.length) btn.windows = x.windows;
-            if(x.regexp) btn.regexp = x.regexp;
-            btn.onClickID = btn.connect('clicked', (actor, event) => {
-                this.visible = false;
-                this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.paste].map(x => x ? '1' : '0').join(''), x.command);
-                return Clutter.EVENT_PROPAGATE;
-            });
-            btn.onEnterID = btn.connect('enter-event', () => {
-                if(!this._tooltips) return;
-                btn.entered = true;
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide / 2, () => {
-                    if(!btn.entered || !this.visible) return GLib.SOURCE_REMOVE;
-                    this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                    this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon);
-                    this._iconTooltips.show();
-                    return GLib.SOURCE_REMOVE;
-                });
-            });
-            btn.onLeaveID = btn.connect('leave-event', () => {
-                if(!this._tooltips) return;
-                btn.entered = false;
-                this._iconTooltips.hide();
-            });
-            this._iconsBox.push(btn);
-            this.add_child(btn);
+    _iconBarMaker(cmd) {
+        let x = JSON.parse(cmd);
+        if(!x.enable) return;
+        let btn = new St.Button({
+            reactive: true,
+            track_hover: true,
+            style_class: `light-dict-button-${x.icon || 'help'} light-dict-button`,
         });
+        btn.child = new St.Icon({
+            icon_name: x.icon || 'help',
+            fallback_icon_name: 'help',
+            style_class: `light-dict-button-icon-${x.icon || 'help'} light-dict-button-icon`,
+        }); // St.Bin.child
+        if(x.windows) btn.windows = x.windows;
+        if(x.regexp) btn.regexp = x.regexp;
+        btn.onClickID = btn.connect('clicked', (actor, event) => {
+            this.visible = false;
+            this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.paste].map(x => x ? '1' : '0').join(''), x.command);
+            return Clutter.EVENT_PROPAGATE;
+        });
+        btn.onEnterID = btn.connect('enter-event', () => {
+            if(!this._tooltips) return;
+            btn.entered = true;
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide / 2, () => {
+                if(!btn.entered || !this.visible) return GLib.SOURCE_REMOVE;
+                this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
+                this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon || 'help');
+                this._iconTooltips.show();
+                return GLib.SOURCE_REMOVE;
+            });
+        });
+        btn.onLeaveID = btn.connect('leave-event', () => {
+            if(!this._tooltips) return;
+            btn.entered = false;
+            this._iconTooltips.hide();
+        });
+        this._iconsBox.push(btn);
+        this.add_child(btn);
     }
 
     _iconBarEraser() {
@@ -303,6 +303,7 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _buildPopupPanel() {
         this._scrollView = new St.ScrollView({
+            visible: false,
             x_expand: true,
             y_expand: true,
             overlay_scrollbars: true,
@@ -392,7 +393,7 @@ class DictPanel extends BoxPointer.BoxPointer {
 
     _hide() {
         if(!this._scrollView.visible) return;
-        // fix unknown and unwanted vanish
+        //NOTE: do not hide on scrolling
         let [mx, my] = global.get_pointer();
         let [wt, ht] = this.get_size();
         let [px, py] = this.get_position();
@@ -516,7 +517,7 @@ class LightDict extends GObject.Object {
             this._iconBar.hide();
             let FW = global.display.get_focus_window();
             this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
-            let wlist = this._appslist === '*' || this._appslist.split('#').some(x => x.toLowerCase() == this._wmclass.toLowerCase());
+            let wlist = this._appslist === '*' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
             if(this._blackwhite ? wlist : !wlist) {
                 if(!this._selectionChangedID) this._listenSelection(this._trigger);
             } else {

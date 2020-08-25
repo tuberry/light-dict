@@ -17,10 +17,10 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 
 ## Features
 
-The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict), and I always desire them outside browser.
+The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict).
 
-![Screencast](https://user-images.githubusercontent.com/17917040/80081294-574c8a80-8585-11ea-9b74-64b32d973425.gif)
- 
+![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
+
 ## Acknowledgements
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup panel
 * [swift-selection-search](https://github.com/CanisLupus/swift-selection-search): stylesheet of iconbar

@@ -18,7 +18,6 @@ var Fields = {
     TEXTSTRIP:  'enable-strip',
     CCOMMAND:   'click-command',
     DEFAULT:    'default-theme',
-    ICOMMANDS:  'icon-commands',
     PAGESIZE:   'icon-pagesize',
     TRIGGER:    'trigger-style',
     BLACKWHITE: 'black-or-white',
@@ -29,9 +28,9 @@ var Fields = {
     TOOLTIPS:   'enable-tooltips',
     APPSLIST:   'application-list',
     AUTOHIDE:   'autohide-timeout',
+    BCOMMANDS:  'iconbar-commands',
     FILTER:     'selection-filter',
     HIDETITLE:  'hide-panel-title',
-    ACOMMANDS:  'icon-commands-active',
 };
 
 function init() {
@@ -49,7 +48,6 @@ class LightDictPrefsWidget extends Gtk.Stack {
             expand: true,
             transition_type: Gtk.StackTransitionType.NONE,
         });
-
         this._basic = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
         this._basic.add(new LightDictBasic());
         this.add_titled(this._basic, 'basic', _('Basic'));
@@ -83,23 +81,61 @@ class LightDictAbout extends Gtk.Box {
 
         this._bulidIcons();
         this._buildInfo();
+        this._buildTips();
+    }
+
+    _buildTips() {
+        const tips = new Gtk.Button({
+            label: _('Tips'),
+            margin_left: 550,
+            margin_right: 30,
+        });
+        let pop = new Gtk.Popover(tips);
+        pop.set_relative_to(tips);
+
+        let msgs = [
+            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
+            _('Use relative position when both X and Y offset are <b>0</b>'),
+            _('Substitute <b>LDWORD</b> for the selection in commands'),
+            _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
+            _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
+            _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
+            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy mode</b>')
+        ];
+
+        const vbox = new Gtk.VBox();
+        msgs.map((msg, i) => {
+            const label = new Gtk.Label();
+            label.set_margin_top(5);
+            label.set_line_wrap(true);
+            label.set_alignment(0, 0.5);
+            label.set_max_width_chars(60);
+            label.set_markup((i + 1) + '. ' + msg);
+            return label;
+        }).forEach(l => vbox.add(l));
+        pop.add(vbox);
+
+        tips.connect('clicked', () => { pop.show_all(); });
+
+        this.pack_end(tips, false, false, 0);
     }
 
     _bulidIcons() {
         let hbox = new Gtk.Box({
             halign: Gtk.Align.CENTER,
         });
-        let active = gsettings.get_strv(Fields.ACOMMANDS);
+        let active = gsettings.get_strv(Fields.BCOMMANDS);
         let count = gsettings.get_uint(Fields.PAGESIZE);
         let icons = [];
         let icon_size = 5;
         if(active.length) {
-            active.forEach(x => JSON.parse(x).entries.forEach(y => {
+            active.forEach(x => {
+                let y = JSON.parse(x)
                 icons.push(new Gtk.Image({
                     icon_size: icon_size,
                     icon_name: y.icon,
                 }));
-            }));
+            });
         } else {
             icons.push(new Gtk.Image({
                 icon_size: icon_size,
@@ -114,7 +150,6 @@ class LightDictAbout extends Gtk.Box {
             margin_right: 350 - (icon_size * 4 + 2) * count,
             shadow_type: Gtk.ShadowType.ETCHED_IN,
         });
-        // frame.override_background_color(Gtk.StateType.NORMAL, new Gdk.RGBA({red: 245/255, green: 212/255, blue: 217/255, alpha: 1}));
         frame.add(hbox)
         this.add(frame);
     }
@@ -123,7 +158,7 @@ class LightDictAbout extends Gtk.Box {
         let gpl = "https://www.gnu.org/licenses/gpl-3.0.html";
         let license  = _("GNU General Public License, version 3 or later");
         let info = [
-            "<b>" + Me.metadata.name + "</b>",
+            `<b><big>${Me.metadata.name}</big></b>`,
             _("Version %d").format(Me.metadata.version),
             _("Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary."),
             "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
@@ -320,9 +355,8 @@ class LightDictBasic extends Gtk.Box {
         let model = new Gtk.ListStore();
         model.set_column_types([GObject.TYPE_INT, GObject.TYPE_INT]);
 
-        const row = model.insert(0);
         let [key, mods] = Gtk.accelerator_parse(gsettings.get_strv(hotkey)[0]);
-        model.set(row, [0, 1], [mods, key]);
+        model.set(model.insert(0), [0, 1], [mods, key]);
 
         let treeView = new Gtk.TreeView({ model: model, });
         treeView.set_headers_visible(false);
@@ -351,346 +385,275 @@ class LightDictBasic extends Gtk.Box {
 });
 
 const LightDictAdvanced = GObject.registerClass(
-class LightDictAdvanced extends Gtk.Box {
+class LightDictAdvanced extends Gtk.HBox {
     _init() {
         super._init({
             margin: 30,
-            orientation: Gtk.Orientation.VERTICAL,
         });
-        this._initStrings();
-        this._toggle = true;
-        this._changed = false;
-        this._add = true;
-        this._boxes = [];
-        this._row = 0;
 
-        this._cmdsList   = gsettings.get_strv(Fields.ICOMMANDS);
-        this._cmdsActive = gsettings.get_strv(Fields.ACOMMANDS);
-        this._templete   = JSON.stringify(JSON.parse(this.TEMPLETE), null, 0);
-        this._default    = JSON.stringify(JSON.parse(this.DEFAULTLINK), null, 0);
+        this.isSetting = false;
+
+        this._commands = gsettings.get_strv(Fields.BCOMMANDS);
+        this._default =
+`{
+    "name" : "name",
+    "icon" : "",
+    "type" : 0,
+    "command" : "",
+    "popup" : false,
+    "enable" : false,
+    "clip"  : false,
+    "paste" : false,
+    "tooltip" : "",
+    "windows" : "",
+    "regexp" : ""
+}`;
+        this._buildWidgets();
         this._buildUI();
+        this._syncStatus();
+    }
+
+    _buildWidgets() {
+        let listStore = new Gtk.ListStore();
+        listStore.set_column_types([GObject.TYPE_STRING]);
+        this._treeView = new Gtk.TreeView({ model: listStore });
+
+        let cell = new Gtk.CellRendererText({ editable: false });
+        let name = new Gtk.TreeViewColumn({ title: 'Name' });
+        name.pack_start(cell, true);
+        name.add_attribute(cell, 'text', 0);
+        this._treeView.append_column(name);
+        this._treeView.set_headers_visible(false);
+        this._commands.forEach(x => {
+            let conf = JSON.parse(x);
+            this._treeView.model.set(this._treeView.model.append(), [0], [conf.name]);
+        });
+        this._treeView.expand_all();
+
+        this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: "list-add-symbolic" }) });
+        this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: "list-remove-symbolic" }) });
+        this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: "go-down-symbolic" }) });
+        this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: "go-up-symbolic" }) });
+
+        this._enable = new Gtk.Switch();
+        this._popup = new Gtk.Switch();
+        this._paste = new Gtk.Switch();
+        this._clip = new Gtk.Switch();
+        this._type = this._comboMaker(['Bash', 'Javascript']);
+        this._name = this._entryMaker('Link', _('Name showing on left side'));
+        this._icon = this._entryMaker('face-cool-symbolic', _('Icon showing in the bar'));
+        this._regx = this._entryMaker('(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]', _('Regexp to filter selected text'));
+        this._cmd = this._entryMaker('gio open LDWORD', _('Command to run when clicking'));
+        this._win = this._entryMaker('Yelp,Evince,Gedit', _('Windows allowed to function'));
+        this._tip = this._entryMaker('Open URL with gio open', _('Tooltip showing when hovering'));
     }
 
     _buildUI() {
-        let frame = new Gtk.Frame({
-            label_yalign: 1,
-        });
-        this.add(frame);
+        let leftBox = new Gtk.VBox({ margin_right: 30 });
 
-        this._grid = new Gtk.Grid({
+        let toolBar = new Gtk.HBox({});
+        toolBar.pack_start(this._add, false, false, 2);
+        toolBar.pack_start(this._del, false, false, 2);
+        toolBar.pack_start(this._nxt, false, false, 2);
+        toolBar.pack_start(this._prv, false, false, 2);
+
+        leftBox.pack_start(this._treeView, true, true, 2);
+        leftBox.pack_end(toolBar, false, false, 2);
+
+        let rightBox = this._listFrameMaker();
+        rightBox._add(this._enable, _('Enable'));
+        rightBox._add(this._name);
+        rightBox._add(this._icon);
+        rightBox._add(this._cmd);
+        rightBox._add(this._type, _('Command type'));
+        rightBox._add(this._popup, _('Show result'));
+        rightBox._add(this._clip, _('Copy result'));
+        rightBox._add(this._paste, _('Paste result'));
+        rightBox._add(this._regx);
+        rightBox._add(this._win);
+        rightBox._add(this._tip);
+
+        this.pack_start(leftBox, false, false, 0);
+        this.pack_end(rightBox, true, true, 0);
+    }
+
+    _syncStatus() {
+        this._treeView.get_selection().connect('changed', this._onSelected.bind(this));
+
+        this._add.connect('clicked', this._onAddClicked.bind(this));
+        this._del.connect('clicked', this._onDelClicked.bind(this));
+        this._prv.connect('clicked', this._onPrvClicked.bind(this));
+        this._nxt.connect('clicked', this._onNxtClicked.bind(this));
+
+        this._name.connect('changed', this._onNameCHanged.bind(this));
+        this._enable.connect('state-set', (widget, state) => { this._setConfig('enable', state); });
+        this._popup.connect('state-set', (widget, state) => { this._setConfig('popup', state); });
+        this._paste.connect('state-set', (widget, state) => { this._setConfig('paste', state); });
+        this._clip.connect('state-set', (widget, state) => { this._setConfig('clip', state); });
+        this._type.connect('changed', () => { this._setConfig('type', this._type.get_active()); });
+        this._icon.connect('changed', () => { this._setConfig('icon', this._icon.get_text()); });
+        this._regx.connect('changed', () => { this._setConfig('regexp', this._regx.get_text()); });
+        this._cmd.connect('changed', () => { this._setConfig('command', this._cmd.get_text()); });
+        this._win.connect('changed', () => { this._setConfig('windows', this._win.get_text()); });
+        this._tip.connect('changed', () => { this._setConfig('tooltip', this._tip.get_text()); });
+    }
+
+    _onSelected() {
+        let [ok, model, iter, index] = this.selected;
+        if(!ok) return;
+        this.isSetting = true;
+        this.conf = JSON.parse(this._commands[index]);
+        this._icon.set_text(this.conf.icon);
+        this._name.set_text(this.conf.name);
+        this._clip.set_state(this.conf.clip);
+        this._win.set_text(this.conf.windows)
+        this._cmd.set_text(this.conf.command);
+        this._regx.set_text(this.conf.regexp);
+        this._tip.set_text(this.conf.tooltip);
+        this._type.set_active(this.conf.type);
+        this._paste.set_state(this.conf.paste);
+        this._popup.set_state(this.conf.popup);
+        this._enable.set_state(this.conf.enable);
+        this.isSetting = false;
+    }
+
+    _onNameCHanged() {
+        let name = this._name.get_text();
+        this._setConfig('name', name);
+        let [ok, model, iter, index] = this.selected;
+        if(!ok) return;
+        model.set(iter, [0], [name]);
+    }
+
+    get selected() {
+        let [ok, model, iter] = this._treeView.get_selection().get_selected();
+        if(ok)
+            return [ok, model, iter, model.get_path(iter).get_indices()[0]];
+        else
+            return [ok, model, iter, -1];
+    }
+
+    _swapArrary(index1, index2) {
+        let tmp = this._commands[index1];
+        this._commands[index1] = this._commands[index2];
+        this._commands[index2] = tmp;
+    }
+
+    _onPrvClicked() {
+        let [ok, model, iter, index] = this.selected;
+        if(!ok || index === 0) return;
+
+        this._swapArrary(index, index - 1);
+        model.set(iter, [0], [JSON.parse(this._commands[index]).name]);
+        model.iter_previous(iter);
+        model.set(iter, [0], [JSON.parse(this._commands[index - 1]).name]);
+        this._treeView.get_selection().select_iter(iter);
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+    }
+
+    _onNxtClicked() {
+        let [ok, model, iter, index] = this.selected;
+        if(!ok || index >= this._commands.length - 1) return;
+
+        this._swapArrary(index, index + 1);
+        model.set(iter, [0], [JSON.parse(this._commands[index]).name]);
+        model.iter_next(iter);
+        model.set(iter, [0], [JSON.parse(this._commands[index + 1]).name]);
+        this._treeView.get_selection().select_iter(iter);
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+    }
+
+    _onDelClicked() {
+        let [ok, model, iter, index] = this.selected;
+        if(!ok) return;
+
+        this._commands.splice(index, 1);
+        model.remove(iter);
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+    }
+
+    _onAddClicked() {
+        let [ok, model, iter, index] = this.selected;
+        if(!ok) {
+            let defaults = JSON.stringify(JSON.parse(this._default), null, 0);
+            this._commands.splice(0, 0, defaults);
+            model.set(model.insert(0), [0], ['name']);
+            gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+            return;
+        }
+
+        this._commands.splice(index + 1, 0, this._default);
+        model.set(model.insert(index + 1), [0], ['name']);
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+    }
+
+    _setConfig(key, value) {
+        if(this.isSetting) return;
+        this.conf[key] = value;
+        let [ok, model, iter, index] = this.selected;
+        if(!ok) return;
+        this._commands[index] = JSON.stringify(this.conf, null, 0);
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
+    }
+
+    _listFrameMaker() {
+        let frame = new Gtk.Frame();
+
+        frame.grid = new Gtk.Grid({
             margin: 10,
             hexpand: true,
             row_spacing: 12,
             column_spacing: 18,
-            row_homogeneous: false,
-            column_homogeneous: false,
-        });
-        frame.add(this._grid);
-
-        this._grid.attach(this._defaultRowMaker(this._default), 0, this._row++, 1, 1);
-        this._cmdsList.slice(1).forEach(x => this._grid.attach(this._customRowMaker(x), 0, this._row++, 1, 1));
-    }
-
-    _checkJSON(str) {
-        try {
-            let obj = JSON.parse(str);
-            let req = ['icon', 'type', 'command'];
-            if(!obj.hasOwnProperty('name') || !obj.hasOwnProperty('entries') || obj.entries.some(x => req.some(y => !x.hasOwnProperty(y)))) {
-                GLib.spawn_command_line_async('notify-send ' + GLib.shell_quote(Me.metadata.name) + ' ' + GLib.shell_quote(_("Missing some required properties in JSON data")));
-                return false;
-            }
-        } catch (e) {
-            GLib.spawn_command_line_async('notify-send ' + GLib.shell_quote(Me.metadata.name) + ' ' + GLib.shell_quote(e.message));
-            return false;
-        }
-        return true;
-    }
-
-    _initStrings() {
-        this.TIPS = [
-            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
-            _('Use relative position when both X and Y offset are <b>0</b>'),
-            _('Substitute <b>LDWORD</b> for the selection in commands'),
-            _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
-            _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
-            _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
-            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy mode</b>')
-        ];
-
-        this.COMMENTS = [
-            _('Required / text showing on the entry'),
-            _('Optional / additional information about the entry'),
-            _('Required / the icon name'),
-            _('Required / Bash command (false) or JS statement (true)'),
-            _('Required / command to run when clicking icon'),
-            _('Optional / popup the panel or not'),
-            _('Optional / write the clipboard or not'),
-            _('Optional / paste the result (Ctrl+v) or not'),
-            _('Optional / tooltip of icon when hovering'),
-            _('Optional / app white list of the icon'),
-            _('Optional / show the icon only when matching the RegExp'),
-            _('Required / the details of the entry, which is convenient to enable or disable a group of icons in one click')
-        ];
-
-        this.DEFAULTLINK =
-`{
-    "name" : "link",
-    "?name" : "%s",
-    "description" : "open URL with gio open",
-    "?description" : "%s",
-    "entries" : [
-        {
-            "icon" : "link",
-            "?icon" : "%s",
-            "type" : false,
-            "?type" : "%s",
-            "command" : "gio open LDWORD",
-            "?command" : "%s",
-            "popup" : false,
-            "?popup" : "%s",
-            "clip"  : false,
-            "?clip" : "%s",
-            "paste" : false,
-            "?paste" : "%s",
-            "tooltip" : "open URL in default browser",
-            "?tooltip" : "%s",
-            "windows" : ["Yelp", "Evince", "Gedit"],
-            "?windows" : "%s",
-            "regexp" : "^(https?://)?(www\\\\.)?([-a-z0-9]{1,63}\\\\.)*?[a-z0-9][-a-z0-9]{0,61}[a-z0-9]\\\\.[a-z]{2,6}(/[-\\\\w@\\\\+\\\\.~#\\\\?&/=]*)?$",
-            "?regexp" : "%s"
-        }
-    ],
-    "?entries" : "%s"
-}`.format(...this.COMMENTS);
-        this.TEMPLETE =
-`{
-    "name" : "name",
-    "description" : "",
-    "entries" : [
-        {
-            "icon" : "",
-            "type" : false,
-            "command" : "",
-            "popup" : false,
-            "clip"  : false,
-            "paste" : false,
-            "tooltip" : "",
-            "windows" : [],
-            "regexp" : ""
-        }
-    ]
-}`;
-    }
-
-    _defaultRowMaker(cmd) {
-        let hbox = new Gtk.HBox({ hexpand: true, });
-        let cmdj = JSON.parse(cmd);
-
-        hbox._text = cmd;
-        hbox.row = this._row;
-        this._boxes.push(hbox);
-
-        hbox.check = new Gtk.CheckButton({ active: this._cmdsActive.includes(cmd) });
-        hbox.check.connect("toggled", () => this._updateCommands(true));
-
-        hbox.label = new Gtk.Label({
-            xalign: 0,
-            selectable: true,
-            use_markup: true,
-            ellipsize: Pango.EllipsizeMode.END,
-        });
-        hbox.label.set_line_wrap(false);
-        hbox.label.set_markup('<b>' + cmdj.name + '</b> ' + cmdj.description);
-
-        hbox.view = this._popSourceviewMaker('');
-        hbox.view.set_image(new Gtk.Image({ icon_name: 'view-hidden' }));
-        hbox.view.connect('clicked', () => {
-            hbox.view.buf.text = JSON.stringify(cmdj, null, 2);
-            hbox.view.pop.show_all();
         });
 
-        hbox.toggle = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-jump-symbolic', sensitive: false }) });
-        hbox.toggle.connect("clicked", () => {
-            this._toggle = !this._toggle;
-            for(let i = 1; i < this._boxes.length; i++)
-                this._boxes[i].updown.set_image(new Gtk.Image({ icon_name: this._toggle ? 'go-up-symbolic' : 'go-down-symbolic' }));
-        });
-
-        hbox.add = new Gtk.Button({ image: new Gtk.Image({ icon_name: this._cmdsList.length > 1 ? 'rotation-allowed-symbolic' : 'list-add-symbolic' }) });
-        hbox.add.connect("clicked", () => {
-            this._add = !this._add;
-            if(this._boxes.length > 1) {
-                for(let i = 1; i < this._boxes.length; i++)
-                    this._boxes[i].adddel.set_image(new Gtk.Image({ icon_name: this._add ? 'list-add-symbolic' : 'list-remove-symbolic' }));
+        frame.grid._row = 0;
+        frame.add(frame.grid);
+        frame._add = (x, y, z) => {
+            const hbox = new Gtk.Box();
+            if(z) {
+                hbox.pack_start(z, false, false, 4);
+                hbox.pack_start(this._labelMaker(y), true, true, 0);
+                hbox.pack_start(x, false, false, 4);
+            } else if(y) {
+                hbox.pack_start(this._labelMaker(y), true, true, 4);
+                hbox.pack_start(x, false, false, 4);
             } else {
-                this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
-                this._updateCommands(false);
-                this.show_all();
+                hbox.pack_start(x, true, true, 4);
             }
-        });
-
-        hbox.tips = this._popLabelViewMaker(this.TIPS);
-        hbox.tips.connect("clicked", () => { hbox.tips.pop.show_all(); });
-
-        hbox.pack_start(hbox.check, false, false, 0);
-        hbox.pack_start(hbox.view, false, false, 10);
-        hbox.pack_start(hbox.label, true, true, 10);
-        hbox.pack_start(hbox.tips, false, false, 0);
-        hbox.pack_start(hbox.toggle, false, false, 10);
-        hbox.pack_end(hbox.add, false, false, 0);
-
-        return hbox;
-    }
-
-    _customRowMaker(cmd) {
-        let hbox = new Gtk.HBox({ hexpand: true, });
-        let cmdj = JSON.parse(cmd ? cmd : this._templete);
-
-        hbox.row = this._row;
-        this._boxes.push(hbox);
-        hbox._text = cmd ? cmd : this._templete;
-
-        hbox.label = new Gtk.Label({
-            xalign : 0,
-            hexpand : true,
-            use_markup: true,
-            ellipsize: Pango.EllipsizeMode.END,
-        });
-        hbox.label.set_line_wrap(false);
-        hbox.label.set_markup('<b>' + cmdj.name + '</b> ' + cmdj.description);
-
-        hbox.edit = this._popSourceviewMaker(JSON.stringify(cmdj, null, 2));
-        hbox.edit.src.set_editable(cmd ? !this._cmdsActive.includes(cmd) : true);
-        hbox.edit.set_image(new Gtk.Image({ icon_name: hbox.edit.src.editable ? 'entry-edit' : 'view-hidden' }));
-        hbox.edit.connect('clicked', () => hbox.edit.pop.show_all());
-        hbox.edit.pop.connect('closed', () => {
-            if(!hbox.edit.src.editable || !this._checkJSON(hbox.edit.buf.text)) return;
-            let json = JSON.parse(hbox.edit.buf.text);
-            let text = JSON.stringify(json, null, 0);
-            if(hbox._text === text) return;
-            hbox._text = text;
-            hbox.label.set_markup('<b>' + json.name + '</b> ' + json.description);
-            this._updateCommands(false);
-        });
-
-        hbox.check = new Gtk.CheckButton({ active: cmd ? this._cmdsActive.includes(cmd) : false});
-        hbox.check.connect("toggled", widget => {
-            hbox.edit.src.set_editable(!widget.active);
-            hbox.edit.set_image(new Gtk.Image({ icon_name: hbox.edit.src.editable ? 'entry-edit' : 'view-hidden' }));
-            if(!this._changed) this._updateCommands(true);
-        });
-
-        hbox.updown = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
-        hbox.updown.connect("clicked", () => {
-            let idx = this._boxes.findIndex(x => x.row == hbox.row);
-            this._changed = true;
-            if(this._toggle) {
-                if(idx > 1)
-                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
-                        eval(`let tmp = this._boxes[idx]${x}; this._boxes[idx]${x} = this._boxes[idx-1]${x}; this._boxes[idx-1]${x} = tmp;`);
-                    });
-            } else {
-                if(idx < this._boxes.length - 1)
-                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
-                        eval(`let tmp = this._boxes[idx]${x}; this._boxes[idx]${x} = this._boxes[idx+1]${x}; this._boxes[idx+1]${x} = tmp;`);
-                    });
-            }
-            this._updateCommands(false);
-            this._updateCommands(true);
-            this._changed = false;
-            this.show_all();
-        });
-
-        hbox.adddel = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
-        hbox.adddel.connect("clicked", () => {
-            if(this._add) {
-                this._grid.attach(this._customRowMaker(''), 0, this._row++, 1, 1);
-                let idx = this._boxes.findIndex(x => x.row == hbox.row);
-                this._changed = true;
-                for(let i = this._boxes.length - 1; i > idx + 1; i--) {
-                    ['.check.active', '._text', '.label.label', '.edit.buf.text'].forEach(x => {
-                        eval(`let tmp = this._boxes[i]${x}; this._boxes[i]${x} = this._boxes[i-1]${x}; this._boxes[i-1]${x} = tmp;`);
-                    });
-                }
-                this._updateCommands(false);
-                this._changed = false;
-                this.show_all();
-            } else {
-                this._boxes = this._boxes.filter(x => x.row != hbox.row);
-                if(hbox.check.active) this._updateCommands(true);
-                this._updateCommands(false);
-                this._grid.remove(hbox);
-            }
-        });
-
-        hbox.pack_start(hbox.check, false, false, 0);
-        hbox.pack_start(hbox.edit, false, false, 10);
-        hbox.pack_start(hbox.label, true, true, 10);
-        hbox.pack_start(hbox.updown, false, false, 10);
-        hbox.pack_end(hbox.adddel, false, false, 0);
-
-        return hbox;
-    }
-
-    _popSourceviewMaker(text) {
-        const btn = new Gtk.Button();
-        btn.pop = new Gtk.Popover(btn);
-        btn.pop.set_relative_to(btn);
-
-        btn.buf = new GtkSource.Buffer();
-        btn.buf.set_highlight_matching_brackets(true);
-        btn.buf.set_language(new GtkSource.LanguageManager().get_language("json"));
-        btn.buf.set_style_scheme(new GtkSource.StyleSchemeManager().get_scheme("oblivion"));
-        btn.buf.text = text;
-
-        btn.src = GtkSource.View.new_with_buffer(btn.buf);
-        btn.src.set_tab_width(2);
-        btn.src.set_indent_width(2);
-        btn.src.set_auto_indent(true);
-        btn.src.set_indent_on_tab(true);
-        btn.src.set_show_line_numbers(true);
-        btn.src.set_show_right_margin(true);
-        btn.src.set_right_margin_position(10);
-        btn.src.set_highlight_current_line(true);
-        btn.src.set_insert_spaces_instead_of_tabs(true);
-        btn.src.modify_font(Pango.font_description_from_string("Hack 13"));
-
-        let scroll = new Gtk.ScrolledWindow({
-            min_content_height: 400,
-            min_content_width: 660,
-        });
-        scroll.add(btn.src);
-        btn.pop.add(scroll);
-
-        return btn;
-    }
-
-    _popLabelViewMaker(msgs) {
-        const tips = new Gtk.Button({ image: new Gtk.Image({ icon_name: "system-help-symbolic" }) });
-        tips.pop = new Gtk.Popover(tips);
-        tips.pop.set_relative_to(tips);
-
-        const vbox = new Gtk.VBox();
-        msgs.map((msg, i) => {
-            const label = new Gtk.Label();
-            label.set_margin_top(5);
-            label.set_line_wrap(true);
-            label.set_alignment(0, 0.5);
-            label.set_max_width_chars(60);
-            label.set_markup((i + 1) + '. ' + msg);
-            return label;
-        }).forEach(l => vbox.add(l));
-        tips.pop.add(vbox);
-
-        return tips;
-    }
-
-    _updateCommands(type) {
-        if(type) {
-            gsettings.set_strv(Fields.ACOMMANDS, Array.from(this._boxes.filter(x => x.check.active), y => y._text));
-        } else {
-            gsettings.set_strv(Fields.ICOMMANDS, Array.from(this._boxes, x => x._text));
+            frame.grid.attach(hbox, 0, frame.grid._row++, 1, 1);
         }
+
+        return frame;
+    }
+
+    _labelMaker(x) {
+        return new Gtk.Label({
+            label: x,
+            hexpand: true,
+            halign: Gtk.Align.START,
+        });
+    }
+
+    _entryMaker(x, y) {
+        return new Gtk.Entry({
+            hexpand: true,
+            placeholder_text: x,
+            secondary_icon_sensitive: true,
+            secondary_icon_tooltip_text: y,
+            secondary_icon_activatable: true,
+            secondary_icon_name: "dialog-information-symbolic",
+        });
+    }
+
+    _comboMaker(ops) {
+        let l = new Gtk.ListStore();
+        l.set_column_types([GObject.TYPE_STRING]);
+        ops.map(name => ({name})).forEach((p,i) => l.set(l.append(),[0],[p.name]));
+        let c = new Gtk.ComboBox({ model: l, });
+        let r = new Gtk.CellRendererText();
+        c.pack_start(r, false);
+        c.add_attribute(r, "text", 0);
+        return c;
     }
 });
 
