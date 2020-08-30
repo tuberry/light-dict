@@ -2,7 +2,7 @@
 // by: tuberry@github
 'use strict';
 
-const { Pango, GLib, Gtk, Gdk, GtkSource, GObject, Gio } = imports.gi;
+const { Pango, GLib, Gtk, Gdk, GObject, Gio } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
@@ -403,7 +403,7 @@ class LightDictAdvanced extends Gtk.HBox {
     "popup" : false,
     "enable" : false,
     "clip"  : false,
-    "paste" : false,
+    "commit" : false,
     "tooltip" : "",
     "windows" : "",
     "regexp" : ""
@@ -437,7 +437,7 @@ class LightDictAdvanced extends Gtk.HBox {
 
         this._enable = new Gtk.Switch();
         this._popup = new Gtk.Switch();
-        this._paste = new Gtk.Switch();
+        this._commit = new Gtk.Switch();
         this._clip = new Gtk.Switch();
         this._type = this._comboMaker(['Bash', 'Javascript']);
         this._name = this._entryMaker('Link', _('Name showing on left side'));
@@ -468,7 +468,7 @@ class LightDictAdvanced extends Gtk.HBox {
         rightBox._add(this._type, _('Command type'));
         rightBox._add(this._popup, _('Show result'));
         rightBox._add(this._clip, _('Copy result'));
-        rightBox._add(this._paste, _('Paste result'));
+        rightBox._add(this._commit, _('Commit result'));
         rightBox._add(this._regx);
         rightBox._add(this._win);
         rightBox._add(this._tip);
@@ -485,10 +485,10 @@ class LightDictAdvanced extends Gtk.HBox {
         this._prv.connect('clicked', this._onPrvClicked.bind(this));
         this._nxt.connect('clicked', this._onNxtClicked.bind(this));
 
-        this._name.connect('changed', this._onNameCHanged.bind(this));
+        this._name.connect('changed', this._onNameChanged.bind(this));
         this._enable.connect('state-set', (widget, state) => { this._setConfig('enable', state); });
         this._popup.connect('state-set', (widget, state) => { this._setConfig('popup', state); });
-        this._paste.connect('state-set', (widget, state) => { this._setConfig('paste', state); });
+        this._commit.connect('state-set', (widget, state) => { this._setConfig('commit', state); });
         this._clip.connect('state-set', (widget, state) => { this._setConfig('clip', state); });
         this._type.connect('changed', () => { this._setConfig('type', this._type.get_active()); });
         this._icon.connect('changed', () => { this._setConfig('icon', this._icon.get_text()); });
@@ -511,13 +511,13 @@ class LightDictAdvanced extends Gtk.HBox {
         this._regx.set_text(this.conf.regexp);
         this._tip.set_text(this.conf.tooltip);
         this._type.set_active(this.conf.type);
-        this._paste.set_state(this.conf.paste);
+        this._commit.set_state(this.conf.commit);
         this._popup.set_state(this.conf.popup);
         this._enable.set_state(this.conf.enable);
         this.isSetting = false;
     }
 
-    _onNameCHanged() {
+    _onNameChanged() {
         let name = this._name.get_text();
         this._setConfig('name', name);
         let [ok, model, iter, index] = this.selected;
@@ -527,13 +527,10 @@ class LightDictAdvanced extends Gtk.HBox {
 
     get selected() {
         let [ok, model, iter] = this._treeView.get_selection().get_selected();
-        if(ok)
-            return [ok, model, iter, model.get_path(iter).get_indices()[0]];
-        else
-            return [ok, model, iter, -1];
+        return [ok, model, iter, ok ? model.get_path(iter).get_indices()[0] : -1];
     }
 
-    _swapArrary(index1, index2) {
+    _swapArray(index1, index2) {
         let tmp = this._commands[index1];
         this._commands[index1] = this._commands[index2];
         this._commands[index2] = tmp;
@@ -543,7 +540,7 @@ class LightDictAdvanced extends Gtk.HBox {
         let [ok, model, iter, index] = this.selected;
         if(!ok || index === 0) return;
 
-        this._swapArrary(index, index - 1);
+        this._swapArray(index, index - 1);
         model.set(iter, [0], [JSON.parse(this._commands[index]).name]);
         model.iter_previous(iter);
         model.set(iter, [0], [JSON.parse(this._commands[index - 1]).name]);
@@ -555,7 +552,7 @@ class LightDictAdvanced extends Gtk.HBox {
         let [ok, model, iter, index] = this.selected;
         if(!ok || index >= this._commands.length - 1) return;
 
-        this._swapArrary(index, index + 1);
+        this._swapArray(index, index + 1);
         model.set(iter, [0], [JSON.parse(this._commands[index]).name]);
         model.iter_next(iter);
         model.set(iter, [0], [JSON.parse(this._commands[index + 1]).name]);

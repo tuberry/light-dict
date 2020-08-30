@@ -4,7 +4,8 @@
 
 const Main = imports.ui.main;
 const BoxPointer = imports.ui.boxpointer;
-const { Meta, Shell, Clutter, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
+const Keyboard = imports.ui.status.keyboard;
+const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -176,7 +177,7 @@ const DictIconBar = GObject.registerClass({
         if(x.regexp) btn.regexp = x.regexp;
         btn.onClickID = btn.connect('clicked', (actor, event) => {
             this.visible = false;
-            this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.paste].map(x => x ? '1' : '0').join(''), x.command);
+            this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
             return Clutter.EVENT_PROPAGATE;
         });
         btn.onEnterID = btn.connect('enter-event', () => {
@@ -509,8 +510,8 @@ class LightDict extends GObject.Object {
         if(this._shortcut) this._addKeyBindings();
         this._spawnWithGio = x => this._panel._spawnWithGio(x);
         this._iconBarID = this._iconBar.connect('iconbar-signals', (area, tag, cmd) => {
-            let [popup, clip, type, paste] = Array.from(tag, i => i === '1');
-            type ? this._runWithEval(popup, clip, paste, cmd) : this._runWithBash(popup, clip, paste, cmd);
+            let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
+            type ? this._runWithEval(popup, clip, commit, cmd) : this._runWithBash(popup, clip, commit, cmd);
         });
         this._onWindowChangedID = global.display.connect('notify::focus-window', () => {
             this._panel._hide();
@@ -656,10 +657,10 @@ class LightDict extends GObject.Object {
         });
     }
 
-    _runWithBash(popup, clip, paste, cmd) {
+    _runWithBash(popup, clip, commit, cmd) {
         let title = global.display.get_focus_window().title.toString();
         let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/LDTITLE/g, GLib.shell_quote(title));
-        if(popup|clip|paste) {
+        if(popup|clip|commit) {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
                 flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
@@ -669,12 +670,10 @@ class LightDict extends GObject.Object {
                 try {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                     if(proc.get_exit_status() === 0) {
-                        if(paste) {
-                            this._action.paste(stdout.trim());
-                        } else {
-                            if(clip) this._action.copy(stdout.trim());
-                            if(popup) this._panel._show(this._pointer, stdout.trim(), this._selection);
-                        }
+                        let result = stdout.trim();
+                        if(commit) this._action.commit(result);
+                        if(clip) this._action.copy(result);
+                        if(popup) this._panel._show(this._pointer, result, this._selection);
                     } else {
                         this._panel._show(this._pointer, stderr.trim(), this._selection);
                     }
@@ -687,17 +686,16 @@ class LightDict extends GObject.Object {
         }
     }
 
-    _runWithEval(popup, clip, paste, cmd) {
+    _runWithEval(popup, clip, commit, cmd) {
         try {
             let LDWORD = this._selection;
             let LDTITLE = global.display.get_focus_window().title;
             let key = x => this._action.stroke(x);
-            let copy = x => this._action.copy(x);
-            if(paste) {
-                this._action.paste(eval(cmd).toStrinG());
-            } else if(popup|clip) {
-                if(clip) copy(eval(cmd).toString());
-                if(popup) this._panel._show(this._pointer, eval(cmd).toString(), this._selection);
+            if(popup|clip|commit) {
+                let result = eval(cmd).toString();
+                if(clip) this._action.copy(result);
+                if(commit) this._action.commit(result);
+                if(popup) this._panel._show(this._pointer, result, this._selection);
             } else {
                 eval(cmd);
             }
@@ -742,6 +740,7 @@ class DictAction extends GObject.Object {
         super._init();
         let seat = Clutter.get_default_backend().get_default_seat();
         this._keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        this._input = Keyboard.getInputSourceManager();
     }
 
     _release(keyname) {
@@ -775,10 +774,13 @@ class DictAction extends GObject.Object {
         }
     }
 
-    paste(string) {
-        this.copy(string);
-        this.stroke('Control_L+v');
-        // Main.inputMethod.commit(string); // TODO: not working
+    commit(string) {
+        if(this._input.currentSource.type == Keyboard.INPUT_SOURCE_TYPE_IBUS) {
+            if(this._input._ibusManager._panelService)
+                this._input._ibusManager._panelService.commit_text(IBus.Text.new_from_string(string));
+        } else {
+            Main.inputMethod.commit(string); // TODO: not tested
+        }
     }
 
     copy(string) {

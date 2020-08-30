@@ -250,5 +250,5 @@ msgid "Copy result"
 msgstr ""
 
 #: prefs.js:471
-msgid "Paste result"
+msgid "Commit result"
 msgstr ""

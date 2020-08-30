@@ -198,7 +198,7 @@ msgstr "气泡"
 
 #: prefs.js:237
 msgid "Hide title"
-msgstr "隐藏延迟"
+msgstr "隐藏标题"
 
 #: prefs.js:238
 msgid "Seamless mode"
@@ -210,7 +210,7 @@ msgstr "日志级别"
 
 #: prefs.js:443
 msgid "Name showing on left side"
-msgstr "显示在左边的名字"
+msgstr "显示在左侧的名字"
 
 #: prefs.js:444
 msgid "Icon showing in the bar"
@@ -249,5 +249,5 @@ msgid "Copy result"
 msgstr "复制结果"
 
 #: prefs.js:471
-msgid "Paste result"
-msgstr "粘贴结果"
+msgid "Commit result"
+msgstr "提交结果"
