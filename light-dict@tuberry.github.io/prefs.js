@@ -97,7 +97,6 @@ class LightDictAbout extends Gtk.Box {
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
             _('Use relative position when both X and Y offset are <b>0</b>'),
             _('Substitute <b>LDWORD</b> for the selection in commands'),
-            _('Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change clipboard'),
             _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
             _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
             _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy mode</b>')
@@ -586,9 +585,9 @@ class LightDictAdvanced extends Gtk.HBox {
 
     _setConfig(key, value) {
         if(this.isSetting) return;
-        this.conf[key] = value;
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
+        this.conf[key] = value;
         this._commands[index] = JSON.stringify(this.conf, null, 0);
         gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }

@@ -21,6 +21,12 @@ The inspiration comes from two lovely extensions in Firefox, [SSS](https://githu
 
 ![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
 
+[DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. OCR to translate).
+```shell
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/lightdict --method org.gnome.Shell.Extensions.lightdict.lookUp "word" # look up 'word'
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/lightdict --method org.gnome.Shell.Extensions.lightdict.lookUp "" # look up primary selection 
+```
+
 ## Acknowledgements
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup panel
 * [swift-selection-search](https://github.com/CanisLupus/swift-selection-search): stylesheet of iconbar

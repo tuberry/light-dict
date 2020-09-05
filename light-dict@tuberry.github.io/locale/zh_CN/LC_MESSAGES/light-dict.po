@@ -49,12 +49,6 @@ msgstr "当水平与垂直偏移均为 <b>0</b> 时使用相对位置"
 msgid "Substitute <b>LDWORD</b> for the selection in commands"
 msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
 
-#: prefs.js:100
-msgid ""
-"Do <b>NOT</b> set the <i>clip</i> to <i>true</i> if the command will change "
-"clipboard"
-msgstr "若命令会修改剪切板，切<b>忌</b>将 <i>clip</i> 设为 <i>true</i>"
-
 #: prefs.js:101
 msgid ""
 "Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"

@@ -16,6 +16,18 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
+const DBUSINTERFACE = `
+<node>
+    <interface name="org.gnome.Shell.Extensions.lightdict">
+        <method name="lookUp">
+            <arg name="name" type="s" direction="in"/>
+        </method>
+        <method name="iconBar">
+            <arg name="name" type="s" direction="in"/>
+        </method>
+    </interface>
+</node>
+`
 
 const DictIconBar = GObject.registerClass({
     Signals: {
@@ -502,6 +514,9 @@ class LightDict extends GObject.Object {
         this._action = new DictAction();
         this._iconBar = new DictIconBar();
 
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
+        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/lightdict');
+
         this._loadSettings();
     }
 
@@ -691,6 +706,7 @@ class LightDict extends GObject.Object {
             let LDWORD = this._selection;
             let LDTITLE = global.display.get_focus_window().title;
             let key = x => this._action.stroke(x);
+            let copy = x => this._action.copy(x);
             if(popup|clip|commit) {
                 let result = eval(cmd).toString();
                 if(clip) this._action.copy(result);
@@ -712,6 +728,26 @@ class LightDict extends GObject.Object {
         });
     }
 
+    lookUp(word) {
+        if(word) {
+            this._selection = word;
+            this._pointer = global.get_pointer();
+            this._panel._lookUp(this._selection, this._pointer);
+        } else {
+            this._fetchSelection(() => { this._panel._lookUp(this._selection, this._pointer); });
+        }
+    }
+
+    iconBar(word) {
+        if(word) {
+            this._selection = word;
+            this._pointer = global.get_pointer();
+            this._iconBar._show(this._pointer, this._wmclass, this._selection);
+        } else {
+            this._fetchSelection(() => { this._iconBar._show(this._pointer, this._wmclass, this._selection); });
+        }
+    }
+
     destory() {
         if(this._mouseUpID)
             GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
@@ -726,6 +762,8 @@ class LightDict extends GObject.Object {
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
 
+        this._dbus.flush();
+        this._dbus.unexport();
         this._iconBar.destory();
         this._panel.destroy();
         this._iconBar = null;
