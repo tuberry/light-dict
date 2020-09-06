@@ -23,8 +23,8 @@ The inspiration comes from two lovely extensions in Firefox, [SSS](https://githu
 
 [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. OCR to translate).
 ```shell
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/lightdict --method org.gnome.Shell.Extensions.lightdict.lookUp "word" # look up 'word'
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/lightdict --method org.gnome.Shell.Extensions.lightdict.lookUp "" # look up primary selection 
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "word" # look up 'word'
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "" # look up primary selection
 ```
 
 ## Acknowledgements

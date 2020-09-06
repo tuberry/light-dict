@@ -18,12 +18,12 @@ const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
-    <interface name="org.gnome.Shell.Extensions.lightdict">
-        <method name="lookUp">
-            <arg name="name" type="s" direction="in"/>
+    <interface name="org.gnome.Shell.Extensions.LightDict">
+        <method name="LookUp">
+            <arg type="s" direction="in" name="word"/>
         </method>
-        <method name="iconBar">
-            <arg name="name" type="s" direction="in"/>
+        <method name="IconBar">
+            <arg type="s" direction="in" name="word"/>
         </method>
     </interface>
 </node>
@@ -515,7 +515,7 @@ class LightDict extends GObject.Object {
         this._iconBar = new DictIconBar();
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
-        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/lightdict');
+        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
 
         this._loadSettings();
     }
@@ -728,7 +728,7 @@ class LightDict extends GObject.Object {
         });
     }
 
-    lookUp(word) {
+    LookUp(word) {
         if(word) {
             this._selection = word;
             this._pointer = global.get_pointer();
@@ -738,7 +738,7 @@ class LightDict extends GObject.Object {
         }
     }
 
-    iconBar(word) {
+    IconBar(word) {
         if(word) {
             this._selection = word;
             this._pointer = global.get_pointer();
