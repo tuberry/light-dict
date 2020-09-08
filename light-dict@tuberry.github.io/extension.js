@@ -13,7 +13,7 @@ const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
-const TRIGGER   = { ICON: 0, KEYBOARD: 1, AUTO: 2 };
+const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 }
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
@@ -22,141 +22,132 @@ const DBUSINTERFACE = `
         <method name="LookUp">
             <arg type="s" direction="in" name="word"/>
         </method>
-        <method name="IconBar">
+        <method name="ShowBar">
             <arg type="s" direction="in" name="word"/>
         </method>
     </interface>
-</node>
-`
+</node>`;
 
-const DictIconBar = GObject.registerClass({
+const DictBar = GObject.registerClass({
     Signals: {
         'iconbar-signals': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
     },
-}, class DictIconBar extends St.BoxLayout {
+}, class DictBar extends BoxPointer.BoxPointer {
     _init() {
-        super._init({
-            reactive: true,
+        super._init(St.Side.BOTTOM, {});
+        this.style_class = 'light-dict-bar-boxpointer';
+        Main.layoutManager.addChrome(this);
+
+        this._pages = 1;
+        this._pageIndex = 1;
+
+        this._buildWidget();
+        this._fetchSettings();
+        this._loadSettings();
+    }
+
+    _buildWidget() {
+        this._box = new St.BoxLayout({
             visible: false,
+            reactive: true,
             vertical: false,
             track_hover: true,
             style_class: 'light-dict-iconbox',
         });
-        Main.layoutManager.addChrome(this);
-
-        this._pageIndex = 1;
-        this._iconsBox = [];
-        this._visibleBox = [];
-
-        this._loadSettings();
-    }
-
-    _loadSettings() {
-        this._fetchSettings();
-        if(this._tooltips) this._addTooltips();
-        this._bcommands.forEach(x => this._iconBarMaker(x));
-        this._leaveIconBarID = this.connect('leave-event', () => {
-            if(this._tooltips) this._iconTooltips.hide();
-            this.visible = false;
-        });
-        this._enterIconBarID = this.connect('enter-event', () => {
-            if(this._autohideDelayID) GLib.source_remove(this._autohideDelayID), this._autohideDelayID = 0;
-            this.visible = true;
-        });
-
-        this._xoffsetId   = gsettings.connect(`changed::${Fields.XOFFSET}`, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
-        this._yoffsetId   = gsettings.connect(`changed::${Fields.YOFFSET}`, () => { this._yoffset = gsettings.get_int(Fields.YOFFSET); });
-        this._autohideId  = gsettings.connect(`changed::${Fields.AUTOHIDE}`, () => { this._autohide = gsettings.get_uint(Fields.AUTOHIDE); });
-        this._pagesizeId  = gsettings.connect(`changed::${Fields.PAGESIZE}`, () => { this._pageIndex = 1; this._pagesize = gsettings.get_uint(Fields.PAGESIZE); });
-        this._bcommandsId = gsettings.connect(`changed::${Fields.BCOMMANDS}`, () => {
-            this._pageIndex = 1;
-            this._iconBarEraser();
-            this._bcommands = gsettings.get_strv(Fields.BCOMMANDS);
-            this._bcommands.forEach(x => this._iconBarMaker(x));
-        });
-        this._tooltipsId  = gsettings.connect(`changed::${Fields.TOOLTIPS}`, () => {
-            this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS);
-            this._tooltips ? this._addTooltips() : this._removeTooltips();
-        });
+        this.bin.add_actor(this._box);
     }
 
     _fetchSettings() {
         this._xoffset   = gsettings.get_int(Fields.XOFFSET);
-        this._yoffset   = gsettings.get_int(Fields.YOFFSET);
-        this._autohide  = gsettings.get_uint(Fields.AUTOHIDE);
-        this._pagesize  = gsettings.get_uint(Fields.PAGESIZE);
         this._bcommands = gsettings.get_strv(Fields.BCOMMANDS);
         this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
     }
 
-    _removeTooltips() {
-        Main.layoutManager.removeChrome(this._iconTooltips);
-        this._iconTooltips.destroy();
-        this._iconTooltips = null;
+    _loadSettings() {
+        this._leaveID = this._box.connect('leave-event', this._onLeave.bind(this));
+        this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
+        this._scrollID = this._box.connect('scroll-event', this._onScroll.bind(this));
+
+        this._xoffsetId   = gsettings.connect(`changed::${Fields.XOFFSET}`, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
+        this._bcommandsId = gsettings.connect(`changed::${Fields.BCOMMANDS}`, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
+        this._tooltipsId  = gsettings.connect(`changed::${Fields.TOOLTIPS}`, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
     }
 
-    _addTooltips() {
-        this._iconTooltips = new St.Label({
-            visible: false,
-            style_class: 'light-dict-tooltips',
-        });
-        Main.layoutManager.addTopChrome(this._iconTooltips);
+    set _bcommands(commands) {
+        this._pageIndex = 1;
+        this._box.remove_all_children();
+        commands.forEach(x => this._iconMaker(x));
     }
 
-    _updateIconBar() {
-        this._iconsBox.forEach(x => x.visible = false);
-        if(this._pagesize === 0) {
-            this._visibleBox.forEach(x => x.visible = true);
-            return;
-        }
-        let pages = Math.ceil(this._visibleBox.length / this._pagesize);
-        if(pages === 1) {
-            this._visibleBox.forEach(x => x.visible = true);
-            return;
-        };
-        this._pageIndex = this._pageIndex < 1 ? pages : (this._pageIndex > pages ? 1 : this._pageIndex);
-        if(this._pageIndex === pages && this._visibleBox.length % this._pagesize) {
-            this._visibleBox.forEach((x, i) => {
-                x.visible = i >= this._visibleBox.length - this._pagesize && i < this._visibleBox.length;
+    set _xoffset(offset) {
+        this.set_style('-arrow-border-radius: %dpx;'.format(-offset));
+    }
+
+    set _tooltips(tooltips) {
+        if(tooltips) {
+            if(this._iconTooltips) return;
+            this._iconTooltips = new St.Label({
+                visible: false,
+                style_class: 'light-dict-tooltips',
             });
+            Main.layoutManager.addTopChrome(this._iconTooltips);
         } else {
-            this._visibleBox.forEach((x, i) => {
-                x.visible = i >= (this._pageIndex - 1)*this._pagesize && i < this._pageIndex*this._pagesize;
-            });
+            if(!this._iconTooltips) return;
+            Main.layoutManager.removeChrome(this._iconTooltips);
+            this._iconTooltips.destroy();
+            this._iconTooltips = null;
         }
     }
 
-    vfunc_scroll_event(scrollEvent) {
+    get _tooltips() {
+        return gsettings.get_boolean(Fields.TOOLTIPS);
+    }
+
+    get _autohide() {
+        return gsettings.get_uint(Fields.AUTOHIDE);
+    }
+
+    get _pagesize() {
+        return gsettings.get_uint(Fields.PAGESIZE);
+    }
+
+    get _iconsBox() {
+        return this._box.get_children();
+    }
+
+    _onScroll(actor, event) {
         if(this._tooltips) this._iconTooltips.hide();
-        if(this._pagesize === 0) return;
-        this._visibleBox.forEach(x => x.entered = false);
-        switch (scrollEvent.direction) {
+        this._iconsBox.forEach(x => x.entered = false);
+        switch (event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP: this._pageIndex--; break;
         case Clutter.ScrollDirection.DOWN: this._pageIndex++; break;
         }
-        this._updateIconBar();
-        return Clutter.EVENT_PROPAGATE;
+        this._updatePages();
     }
 
-    _show(pointer, fw, text) {
-        if(this._xoffset || this._yoffset) {
-            this.set_position(Math.round(pointer[0] + this._xoffset), Math.round(pointer[1] + this._yoffset));
+    _onLeave() {
+        this._box.visible = false;
+        if(this._tooltips) this._iconTooltips.hide();
+    }
+
+    _onEnter() {
+        if(this._delayID)
+            GLib.source_remove(this._delayID), this._delayID = 0;
+        this._box.visible = true;
+    }
+
+    _updatePages() {
+        this._iconsBox.forEach(x => x.visible = x._visible);
+        if(this._pagesize === 0) return;
+        let visibleBox = this._iconsBox.filter(x => x._visible);
+        this._pages = Math.ceil(visibleBox.length / this._pagesize);
+        if(this._pages === 1 || this._pages === 0) return;
+        this._pageIndex = this._pageIndex < 1 ? this._pages : (this._pageIndex > this._pages ? 1 : this._pageIndex);
+        if(this._pageIndex === this._pages && visibleBox.length % this._pagesize) {
+            visibleBox.forEach((x, i) => { x.visible = i >= visibleBox.length - this._pagesize && i < visibleBox.length; });
         } else {
-            let [W, H] = this.get_size();
-            this.set_position(Math.round(pointer[0] - W / 2), Math.round(pointer[1] - H * 1.5));
+            visibleBox.forEach((x, i) => { x.visible = i >= (this._pageIndex - 1)*this._pagesize && i < this._pageIndex*this._pagesize; });
         }
-
-        this._updateVisible(fw, text);
-        this.visible = true;
-
-        if(this._autohideDelayID)
-            GLib.source_remove(this._autohideDelayID), this._autohideDelayID = 0;
-
-        this._autohideDelayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
-            this.visible = false;
-            this._autohideDelayID = 0;
-            return GLib.SOURCE_REMOVE;
-        });
     }
 
     _updateVisible(fw, text) {
@@ -164,15 +155,14 @@ const DictIconBar = GObject.registerClass({
             switch((x.hasOwnProperty("windows") << 1) + x.hasOwnProperty("regexp")) {
             case 0: x._visible = true; break;
             case 1: x._visible = RegExp(x.regexp).test(text); break;
-            case 2: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()); break;// wmclass is a litte different on Xog and Wayland
+            case 2: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()); break;
             case 3: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()) & RegExp(x.regexp).test(text); break;
             }
         });
-        this._visibleBox = this._iconsBox.filter(x => x._visible);
-        this._updateIconBar();
+        this._updatePages();
     }
 
-    _iconBarMaker(cmd) {
+    _iconMaker(cmd) {
         let x = JSON.parse(cmd);
         if(!x.enable) return;
         let btn = new St.Button({
@@ -184,138 +174,100 @@ const DictIconBar = GObject.registerClass({
             icon_name: x.icon || 'help',
             fallback_icon_name: 'help',
             style_class: `light-dict-button-icon-${x.icon || 'help'} light-dict-button-icon`,
-        }); // St.Bin.child
+        });
         if(x.windows) btn.windows = x.windows;
         if(x.regexp) btn.regexp = x.regexp;
-        btn.onClickID = btn.connect('clicked', (actor, event) => {
-            this.visible = false;
+        btn.connect('clicked', (actor, event) => {
+            this._box.visible = false;
             this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
             return Clutter.EVENT_PROPAGATE;
         });
-        btn.onEnterID = btn.connect('enter-event', () => {
+        btn.connect('enter-event', () => {
             if(!this._tooltips) return;
             btn.entered = true;
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide / 2, () => {
-                if(!btn.entered || !this.visible) return GLib.SOURCE_REMOVE;
+                if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
                 this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon || 'help');
+                this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon || 'tooltips');
                 this._iconTooltips.show();
                 return GLib.SOURCE_REMOVE;
             });
         });
-        btn.onLeaveID = btn.connect('leave-event', () => {
+        btn.connect('leave-event', () => {
             if(!this._tooltips) return;
             btn.entered = false;
             this._iconTooltips.hide();
         });
-        this._iconsBox.push(btn);
-        this.add_child(btn);
+        btn._visible = true;
+        this._box.add_child(btn);
     }
 
-    _iconBarEraser() {
-        this._iconsBox.forEach(x => {
-            if(x.onClickID) x.disconnect(x.onClickID), x.onClickID = undefined;
-            if(x.onEnterID) x.disconnect(x.onClickID), x.onEnterID = undefined;
-            if(x.onLeaveID) x.disconnect(x.onClickID), x.onLeaveID = undefined;
-            x.entered = undefined;
-            this.remove_child(x);
-            x = null;
+    _show(fw, text) {
+        this._updateVisible(fw, text);
+        if(this._pages < 1) return;
+        if(!this._box.visible) {
+            this._box.visible = true;
+            this.open(BoxPointer.PopupAnimation.FADE);
+            this.get_parent().set_child_above_sibling(this, null);
+        }
+
+        if(this._delayID)
+            GLib.source_remove(this._delayID), this._delayID = 0;
+
+        this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
+            this._box.visible = false;
+            this._delayID = 0;
+            return GLib.SOURCE_REMOVE;
         });
-        this._iconsBox.length = 0;
-        this._visibleBox.length = 0;
+    }
+
+    _hide() {
+        if(!this._box.visible) return;
+
+        this._box.visible = false;
+        this.close(BoxPointer.PopupAnimation.FADE);
+        if(this._tooltips) this._iconTooltips.hide();
     }
 
     destory() {
-        if(this._leaveIconBarID)
-            this.disconnect(this._leaveIconBarID), this._leaveIconBarID = 0;
-        if(this._enterIconBarID)
-            this.disconnect(this._enterIconBarID), this._enterIconBarID = 0;
-        if(this._autohideDelayID)
-            GLib.source_remove(this._autohideDelayID), this._autohideDelayID = 0;
+        if(this._delayID)
+            GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this._leaveID)
+            this._box.disconnect(this._leaveID), this._leaveID = 0;
+        if(this._enterID)
+            this._box.disconnect(this._enterID), this._enterID = 0;
+        if(this._scrollID)
+            this._box.disconnect(this._scrollID), this._scrollID = 0;
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
-        if(this._tooltips) this._removeTooltips();
         Main.layoutManager.removeChrome(this);
-        this._iconBarEraser();
+        this._bcommands = [];
+        this._tooltips = false;
+        this._box.destroy();
+        this._box = null;
         super.destroy();
     }
 });
 
-const DictPanel = GObject.registerClass(
-class DictPanel extends BoxPointer.BoxPointer {
+const DictBox = GObject.registerClass(
+class DictBox extends BoxPointer.BoxPointer {
     _init() {
         super._init(St.Side.TOP, {});
-        this.style_class = 'light-dict-boxpointer';
+        this.style_class = 'light-dict-box-boxpointer';
+        this.style = '-arrow-border-radius: 10px;';
         Main.layoutManager.addChrome(this);
 
         this._selection = '';
         this._notFound = false;
-        this._panelClicked = false;
+        this._boxClicked = false;
 
+        this._buildWidget();
+        this._fetchSettings();
         this._loadSettings();
     }
 
-    _loadSettings() {
-        this._fetchSettings();
-        this._buildPopupPanel();
-        this._addDummyCursor(this._sensitive);
-        this._leavePanelID = this._panelBox.connect('leave-event', this._hide.bind(this));
-        this._enterPanelID = this._panelBox.connect('enter-event', (actor, event) => {
-            this._panelClicked = false;
-            this._panelBox.visible = true;
-            if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
-            if(this._autohideDelayID) GLib.source_remove(this._autohideDelayID), this._autohideDelayID = 0;
-        });
-        this._clickPanelID = this._panelBox.connect('button-press-event', (actor, event) => {
-            if(event.get_button() === 1 && this._ccommand)
-                this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
-            switch(event.get_button()*!this._panelClicked) {
-            case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
-            case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._panelBox._info.get_text()); break;
-            case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
-            }
-            if(event.get_button() === 3) this._hide();
-            this._panelClicked = true;
-        });
-
-        this._triggerId    = gsettings.connect(`changed::${Fields.TRIGGER}`, () => { this._trigger = gsettings.get_uint(Fields.TRIGGER); });
-        this._openurlId    = gsettings.connect(`changed::${Fields.OPENURL}`, () => { this._openurl = gsettings.get_string(Fields.OPENURL); });
-        this._autohideId   = gsettings.connect(`changed::${Fields.AUTOHIDE}`, () => { this._autohide = gsettings.get_uint(Fields.AUTOHIDE); });
-        this._ccommandId   = gsettings.connect(`changed::${Fields.CCOMMAND}`, () => { this._ccommand = gsettings.get_string(Fields.CCOMMAND); });
-        this._dcommandId   = gsettings.connect(`changed::${Fields.DCOMMAND}`, () => { this._dcommand = gsettings.get_string(Fields.DCOMMAND); });
-        this._logslevelId  = gsettings.connect(`changed::${Fields.LOGSLEVEL}`, () => { this._logslevel = gsettings.get_uint(Fields.LOGSLEVEL); });
-        this._hidetitleId  = gsettings.connect(`changed::${Fields.HIDETITLE}`, () => {
-            this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE);
-            this._panelBox._word.visible = !this._hidetitle;
-        });
-        this._sensitiveId = gsettings.connect(`changed::${Fields.SENSITIVE}`, () => {
-            this._sensitive = gsettings.get_boolean(Fields.SENSITIVE);
-            this._removeDummyCursor(!this._sensitive);
-            this._addDummyCursor(this._sensitive);
-        });
-    }
-
-    _fetchSettings() {
-        this._trigger   = gsettings.get_uint(Fields.TRIGGER);
-        this._autohide  = gsettings.get_uint(Fields.AUTOHIDE);
-        this._logslevel = gsettings.get_uint(Fields.LOGSLEVEL);
-        this._openurl   = gsettings.get_string(Fields.OPENURL);
-        this._ccommand  = gsettings.get_string(Fields.CCOMMAND);
-        this._dcommand  = gsettings.get_string(Fields.DCOMMAND);
-        this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE);
-        this._sensitive = gsettings.get_boolean(Fields.SENSITIVE);
-    }
-
-    get _scrollable() {
-        let [, height] = this._scrollView.get_preferred_height(-1);
-        let maxHeight = this._scrollView.get_theme_node().get_max_height();
-        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 7 / 16;
-
-        return height >= maxHeight;
-    }
-
-    _buildPopupPanel() {
-        this._scrollView = new St.ScrollView({
+    _buildWidget() {
+        this._view = new St.ScrollView({
             visible: false,
             x_expand: true,
             y_expand: true,
@@ -324,53 +276,93 @@ class DictPanel extends BoxPointer.BoxPointer {
             style: 'max-height: %dpx'.format(global.display.get_size()[1] * 7 / 16),
         });
 
-        this._panelBox = new St.BoxLayout({
+        this._box = new St.BoxLayout({
             reactive: true,
             vertical: true,
             track_hover: true,
             style_class: 'light-dict-content',
         });
 
-        this._panelBox._word = new St.Label({style_class: 'light-dict-word', visible: !this._hidetitle});
-        this._panelBox._word.clutter_text.line_wrap = true;
-        this._panelBox._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
-        this._panelBox._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        this._panelBox.add_child(this._panelBox._word);
+        this._word = new St.Label({style_class: 'light-dict-word' });
+        this._word.clutter_text.line_wrap = true;
+        this._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
+        this._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
-        this._panelBox._info = new St.Label({style_class: 'light-dict-info'});
-        this._panelBox._info.clutter_text.line_wrap = true;
-        this._panelBox._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
-        this._panelBox._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        this._panelBox.add_child(this._panelBox._info);
+        this._info = new St.Label({style_class: 'light-dict-info'});
+        this._info.clutter_text.line_wrap = true;
+        this._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
+        this._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
-        this._scrollView.add_actor(this._panelBox);
-        this.bin.add_actor(this._scrollView);
+        this._box.add_child(this._word);
+        this._box.add_child(this._info);
+        this._view.add_actor(this._box);
+        this.bin.add_actor(this._view);
     }
 
-    _addDummyCursor(sen) {
-        this._dummyCursor = new St.Widget({ opacity: 0, reactive: true });
-        this._dummyCursor.set_size(Math.round(40), Math.round(40));
-        this.setPosition(this._dummyCursor, 0);
-        if(sen) {
-            Main.layoutManager.addTopChrome(this._dummyCursor);
-        } else {
-            this._scrollID = this._dummyCursor.connect('scroll-event', this._hide.bind(this));
-            this._clickID = this._dummyCursor.connect('button-press-event', this._hide.bind(this));
-            Main.layoutManager.addChrome(this._dummyCursor);
-        }
+    _fetchSettings() {
+        this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE);
     }
 
-    _removeDummyCursor(sen) {
-        if(sen) {
-            Main.layoutManager.removeChrome(this._dummyCursor);
-        } else {
-            if(this._scrollID)
-                this._dummyCursor.disconnect(this._scrollID), this._scrollID = 0;
-            if(this._clickID)
-                this._dummyCursor.disconnect(this._clickID), this._scrollID = 0;
-            Main.layoutManager.removeChrome(this._dummyCursor);
+    _loadSettings() {
+        this._leaveID = this._box.connect('leave-event', this._hide.bind(this));
+        this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
+        this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
+
+        this._hidetitleId = gsettings.connect(`changed::${Fields.HIDETITLE}`, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
+    }
+
+    set _hidetitle(hide) {
+        this._word.visible = !hide;
+    }
+
+    get _autohide() {
+        return gsettings.get_uint(Fields.AUTOHIDE);
+    }
+
+    get _logslevel() {
+        return gsettings.get_uint(Fields.LOGSLEVEL);
+    }
+
+    get _openurl() {
+        return gsettings.get_string(Fields.OPENURL);
+    }
+
+    get _ccommand() {
+        return gsettings.get_string(Fields.CCOMMAND);
+    }
+
+    get _dcommand() {
+        return gsettings.get_string(Fields.DCOMMAND);
+    }
+
+    get _scrollable() {
+        let [, height] = this._view.get_preferred_height(-1);
+        let maxHeight = this._view.get_theme_node().get_max_height();
+        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 7 / 16;
+
+        return height >= maxHeight;
+    }
+
+    _onEnter() {
+        this._view.visible = true;
+        this._boxClicked = false;
+        if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
+        if(this._delayID) GLib.source_remove(this._delayID), this._delayID = 0;
+    }
+
+    _onClick(actor, event) {
+        if(event.get_button() === 1 && this._ccommand)
+            this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
+        switch(event.get_button()*!this._boxClicked) {
+        case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
+        case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
+        case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
         }
-        this._dummyCursor = null;
+        if(event.get_button() === 3) {
+            this._view.visible = false;
+            this.close(BoxPointer.PopupAnimation.FADE);
+        }
+        this._boxClicked = true;
     }
 
     _spawnWithGio(rcmd) {
@@ -385,77 +377,7 @@ class DictPanel extends BoxPointer.BoxPointer {
         }
     }
 
-    _lookUp(text, pointer) {
-        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(text));
-        let proc = new Gio.Subprocess({
-            argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-        });
-        proc.init(null);
-        proc.communicate_utf8_async(null, null, (proc, res) => {
-            try {
-                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                this._notFound = proc.get_exit_status() !== 0;
-                this._show(pointer, this._notFound ? stderr.trim() : stdout.trim(), text);
-                if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
-            } catch(e) {
-                Main.notifyError(Me.metadata.name, e.message);
-            }
-        });
-    }
-
-    _hide() {
-        if(!this._scrollView.visible) return;
-        //NOTE: do not hide on scrolling
-        let [mx, my] = global.get_pointer();
-        let [wt, ht] = this.get_size();
-        let [px, py] = this.get_position();
-        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
-
-        this._scrollView.visible = false;
-        this.close(BoxPointer.PopupAnimation.FADE);
-        this._panelBox._info.set_text(Me.metadata.name);
-        this._dummyCursor.set_position(...global.display.get_size());
-    }
-
-    _show(pointer, info, word) {
-        this._selection = word;
-        this._dummyCursor.set_position(pointer[0] - 20, pointer[1] - 20);
-
-        try {
-            Pango.parse_markup(info, -1, '');
-            this._panelBox._info.clutter_text.set_markup(info);
-        } catch(e) {
-            this._panelBox._info.set_text(info);
-        }
-
-        if(this._scrollable) {
-            this._scrollView.vscrollbar_policy = St.PolicyType.AUTOMATIC;
-            this._scrollView.vscroll.get_adjustment().set_value(0);
-        } else {
-            this._scrollView.vscrollbar_policy = St.PolicyType.NEVER;
-        }
-
-        if(this._hidetitle)
-            this._panelBox._word.set_text(word);
-        if(!this._scrollView.visible) {
-            this._scrollView.visible = true;
-            this.open(BoxPointer.PopupAnimation.FADE);
-            this.get_parent().set_child_above_sibling(this, null);
-        }
-
-        if(this._autohideDelayID)
-            GLib.source_remove(this._autohideDelayID);
-
-        this._autohideDelayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
-            this._hide();
-            this._autohideDelayID = 0;
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
     _recordLog() {
-        if(this._trigger == TRIGGER.ICON) return;
         let dateFormat = (fmt, date) => {
             const opt = {
                 "Y+": date.getFullYear().toString(),
@@ -482,298 +404,100 @@ class DictPanel extends BoxPointer.BoxPointer {
         }
     }
 
+    _lookUp(text) {
+        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(text));
+        let proc = new Gio.Subprocess({
+            argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
+            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+        });
+        proc.init(null);
+        proc.communicate_utf8_async(null, null, (proc, res) => {
+            try {
+                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                this._notFound = proc.get_exit_status() !== 0;
+                this._show(this._notFound ? stderr.trim() : stdout.trim(), text);
+                if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
+            } catch(e) {
+                Main.notifyError(Me.metadata.name, e.message);
+            }
+        });
+    }
+
+    _hide() {
+        if(!this._view.visible) return;
+        //NOTE: do not hide on scrolling
+        let [mx, my] = global.get_pointer();
+        let [wt, ht] = this.get_size();
+        let [px, py] = this.get_position();
+        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
+
+        this._view.visible = false;
+        this.close(BoxPointer.PopupAnimation.FADE);
+        this._info.set_text(Me.metadata.name);
+    }
+
+    _show(info, word) {
+        this._selection = word;
+
+        try {
+            Pango.parse_markup(info, -1, '');
+            this._info.clutter_text.set_markup(info);
+        } catch(e) {
+            this._info.set_text(info);
+        }
+        if(this._word.visible)
+            this._word.set_text(word);
+
+        if(this._scrollable) {
+            this._view.vscrollbar_policy = St.PolicyType.AUTOMATIC;
+            this._view.vscroll.get_adjustment().set_value(0);
+        } else {
+            this._view.vscrollbar_policy = St.PolicyType.NEVER;
+        }
+
+        if(!this._view.visible) {
+            this._view.visible = true;
+            this.open(BoxPointer.PopupAnimation.FADE);
+            this.get_parent().set_child_above_sibling(this, null);
+        }
+
+        if(this._delayID)
+            GLib.source_remove(this._delayID);
+
+        this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
+            this._hide();
+            this._delayID = 0;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     destory() {
-        if(this._autohideDelayID)
-            GLib.source_remove(this._autohideDelayID), this._autohideDelayID = 0;
-        if(this._enterPanelID)
-            this._panelBox.disconnect(this._enterPanelID), this._enterPanelID = 0;
-        if(this._leavePanelID)
-            this._panelBox.disconnect(this._leavePanelID), this._leavePanelID = 0;
-        if(this._clickPanelID)
-            this._panelBox.disconnect(this._clickPanelID), this._clickPanelID = 0;
+        if(this._delayID)
+            GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this._leaveID)
+            this._box.disconnect(this._leaveID), this._leaveID = 0;
+        if(this._enterID)
+            this._box.disconnect(this._enterID), this._enterID = 0;
+        if(this._clickID)
+            this._box.disconnect(this._clickID), this._clickID = 0;
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
 
         Main.layoutManager.removeChrome(this);
-        this._scrollView.destroy();
-        this._removeDummyCursor();
-        this._scrollView = null;
+        this._word.destroy();
+        this._info.destroy();
+        this._box.destroy();
+        this._view.destroy();
+        this._word = null;
+        this._info = null;
+        this._box = null;
+        this._view = null
         super.destroy();
     }
 });
 
-const LightDict = GObject.registerClass(
-class LightDict extends GObject.Object {
-    _init() {
-        super._init();
-
-        this._pointer = [];
-        this._wmclass = '';
-        this._selection = '';
-        this._panel = new DictPanel();
-        this._action = new DictAction();
-        this._iconBar = new DictIconBar();
-
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
-        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-
-        this._loadSettings();
-    }
-
-    _loadSettings() {
-        this._fetchSettings();
-        if(this._shortcut) this._addKeyBindings();
-        this._spawnWithGio = x => this._panel._spawnWithGio(x);
-        this._iconBarID = this._iconBar.connect('iconbar-signals', (area, tag, cmd) => {
-            let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
-            type ? this._runWithEval(popup, clip, commit, cmd) : this._runWithBash(popup, clip, commit, cmd);
-        });
-        this._onWindowChangedID = global.display.connect('notify::focus-window', () => {
-            this._panel._hide();
-            this._iconBar.hide();
-            let FW = global.display.get_focus_window();
-            this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
-            let wlist = this._appslist === '*' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
-            if(this._blackwhite ? wlist : !wlist) {
-                if(!this._selectionChangedID) this._listenSelection(this._trigger);
-            } else {
-                if(this._selectionChangedID)
-                    global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-            }
-        });
-        this._listenSelection(this._trigger);
-
-        this._filterId     = gsettings.connect(`changed::${Fields.FILTER}`, () => { this._filter = gsettings.get_string(Fields.FILTER); });
-        this._appslistId   = gsettings.connect(`changed::${Fields.APPSLIST}`, () => { this._appslist = gsettings.get_string(Fields.APPSLIST); });
-        this._lazymodeId   = gsettings.connect(`changed::${Fields.LAZYMODE}`, () => { this._lazymode = gsettings.get_boolean(Fields.LAZYMODE); });
-        this._textstripId  = gsettings.connect(`changed::${Fields.TEXTSTRIP}`, () => { this._textstrip = gsettings.get_boolean(Fields.TEXTSTRIP); });
-        this._blackwhiteId = gsettings.connect(`changed::${Fields.BLACKWHITE}`, () => { this._blackwhite = gsettings.get_boolean(Fields.BLACKWHITE); });
-        this._triggerId    = gsettings.connect(`changed::${Fields.TRIGGER}`, () => {
-            this._trigger = gsettings.get_uint(Fields.TRIGGER);
-            if(this._selectionChangedID)
-                global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-            this._listenSelection(this._trigger);
-        });
-        this._shortcutId = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => {
-            this._shortcut = gsettings.get_boolean(Fields.SHORTCUT);
-            Main.wm.removeKeybinding(Fields.TOGGLE);
-            if(this._shortcut) this._addKeyBindings();
-        });
-    }
-
-    _fetchSettings() {
-        this._trigger    = gsettings.get_uint(Fields.TRIGGER);
-        this._filter     = gsettings.get_string(Fields.FILTER);
-        this._appslist   = gsettings.get_string(Fields.APPSLIST);
-        this._lazymode   = gsettings.get_boolean(Fields.LAZYMODE);
-        this._shortcut   = gsettings.get_boolean(Fields.SHORTCUT);
-        this._textstrip  = gsettings.get_boolean(Fields.TEXTSTRIP);
-        this._blackwhite = gsettings.get_boolean(Fields.BLACKWHITE);
-    }
-
-    _listenSelection(tgg) {
-        switch(tgg) {
-        case TRIGGER.ICON:
-            this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY) return;
-                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-                let [, , initModifier] = global.get_pointer();
-                if((this._lazymode && (initModifier & MODIFIERS) == 0)) return;
-                let showIconbar = () => { this._iconBar._show(this._pointer, this._wmclass, this._selection); };
-                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
-                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                        let [, , tmpModifier] = global.get_pointer();
-                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                            this._fetchSelection(showIconbar);
-                            this._mouseUpID = 0;
-                            return GLib.SOURCE_REMOVE;
-                        } else {
-                            return GLib.SOURCE_CONTINUE;
-                        }
-                    });
-                } else {
-                    this._fetchSelection(() => {// NOTE: Ctrl + C in Chromium will trigger primary selection
-                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
-                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
-                                showIconbar();
-                        });
-                    });
-                }
-            });
-            break;
-        case TRIGGER.AUTO:
-            this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY) return;
-                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-                let [, , initModifier] = global.get_pointer();
-                let showPanelRgx = () => {
-                    if(!this._filter || RegExp(this._filter).test(this._selection)) this._panel._lookUp(this._selection, this._pointer);
-                };
-                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
-                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                        let [, , tmpModifier] = global.get_pointer();
-                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                            this._fetchSelection(showPanelRgx);
-                            this._mouseUpID = 0;
-                            return GLib.SOURCE_REMOVE;
-                        } else {
-                            return GLib.SOURCE_CONTINUE;
-                        }
-                    });
-                } else {
-                    this._fetchSelection(() => {
-                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
-                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
-                                showPanelRgx();
-                        });
-                    });
-                }
-            });
-            break;
-        case TRIGGER.KEYBOARD:
-            this._selectionChangedID = global.display.get_selection().connect('owner-changed', (sel, type, source) => {
-                if(type != St.ClipboardType.PRIMARY) return;
-                if(this._mouseUpID) GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-                let [, , initModifier] = global.get_pointer();
-                if((initModifier & MODIFIERS) == 0) return;
-                let showPanel = () => { this._panel._lookUp(this._selection, this._pointer); };
-                if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
-                    this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                        let [, , tmpModifier] = global.get_pointer();
-                        if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                            this._fetchSelection(showPanel);
-                            this._mouseUpID = 0;
-                            return GLib.SOURCE_REMOVE;
-                        } else {
-                            return GLib.SOURCE_CONTINUE;
-                        }
-                    });
-                } else {
-                    this._fetchSelection(() => {
-                        St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
-                            if(!text || this._selection != (this._textstrip ? text.trim().replace(/\n/g, ' ') : text))
-                                showPanel();
-                        });
-                    });
-                }
-            });
-            break;
-        default:
-           break;
-        }
-    }
-
-    _fetchSelection(func) {
-        St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-            if(!text) return;
-            this._pointer = global.get_pointer();
-            this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-            func();
-        });
-    }
-
-    _runWithBash(popup, clip, commit, cmd) {
-        let title = global.display.get_focus_window().title.toString();
-        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/LDTITLE/g, GLib.shell_quote(title));
-        if(popup|clip|commit) {
-            let proc = new Gio.Subprocess({
-                argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-            });
-            proc.init(null);
-            proc.communicate_utf8_async(null, null, (proc, res) => {
-                try {
-                    let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                    if(proc.get_exit_status() === 0) {
-                        let result = stdout.trim();
-                        if(commit) this._action.commit(result);
-                        if(clip) this._action.copy(result);
-                        if(popup) this._panel._show(this._pointer, result, this._selection);
-                    } else {
-                        this._panel._show(this._pointer, stderr.trim(), this._selection);
-                    }
-                } catch(e) {
-                    Main.notifyError(Me.metadata.name, e.message);
-                }
-            });
-        } else {
-            this._spawnWithGio(rcmd);
-        }
-    }
-
-    _runWithEval(popup, clip, commit, cmd) {
-        try {
-            let LDWORD = this._selection;
-            let LDTITLE = global.display.get_focus_window().title;
-            let key = x => this._action.stroke(x);
-            let copy = x => this._action.copy(x);
-            if(popup|clip|commit) {
-                let result = eval(cmd).toString();
-                if(clip) this._action.copy(result);
-                if(commit) this._action.commit(result);
-                if(popup) this._panel._show(this._pointer, result, this._selection);
-            } else {
-                eval(cmd);
-            }
-        } catch(e) {
-            Main.notifyError(Me.metadata.name, e.message);
-        }
-    }
-
-    _addKeyBindings() {
-        Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => {
-            let next = (this._trigger + 1) % 3;
-            Main.notify(Me.metadata.name, _("Switch to %s mode").format(Object.keys(TRIGGER)[next]));
-            gsettings.set_uint(Fields.TRIGGER, next);
-        });
-    }
-
-    LookUp(word) {
-        if(word) {
-            this._selection = word;
-            this._pointer = global.get_pointer();
-            this._panel._lookUp(this._selection, this._pointer);
-        } else {
-            this._fetchSelection(() => { this._panel._lookUp(this._selection, this._pointer); });
-        }
-    }
-
-    IconBar(word) {
-        if(word) {
-            this._selection = word;
-            this._pointer = global.get_pointer();
-            this._iconBar._show(this._pointer, this._wmclass, this._selection);
-        } else {
-            this._fetchSelection(() => { this._iconBar._show(this._pointer, this._wmclass, this._selection); });
-        }
-    }
-
-    destory() {
-        if(this._mouseUpID)
-            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-        if(this._shortcut)
-            Main.wm.removeKeybinding(Fields.TOGGLE);
-        if(this._iconBarID)
-            this._iconBar.disconnect(this._iconBarID), this._iconBarID = 0;
-        if(this._onWindowChangedID)
-            global.display.disconnect(this._onWindowChangedID), this._onWindowChangedID = 0;
-        if(this._selectionChangedID)
-            global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-        for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
-
-        this._dbus.flush();
-        this._dbus.unexport();
-        this._iconBar.destory();
-        this._panel.destroy();
-        this._iconBar = null;
-        this._panel = null;
-        this._action = null;
-    }
-});
-
-const DictAction = GObject.registerClass(
-class DictAction extends GObject.Object {
+const DictAct = GObject.registerClass(
+class DictAct extends GObject.Object {
     _init() {
         super._init();
         let seat = Clutter.get_default_backend().get_default_seat();
@@ -797,7 +521,7 @@ class DictAction extends GObject.Object {
         );
     }
 
-    stroke(keystring) { // TODO: Modifier keys aren't working on Wayland (input area)
+    stroke(keystring) {
         try {
             keystring.split(/\s+/).forEach((keys, i) => {
                 GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
@@ -810,6 +534,7 @@ class DictAction extends GObject.Object {
         } catch(e) {
             Main.notifyError(Me.metadata.name, e.message);
         }
+        // TODO: Modifier keys aren't working on Wayland (input area)
     }
 
     commit(string) {
@@ -830,6 +555,285 @@ class DictAction extends GObject.Object {
     }
 });
 
+const LightDict = GObject.registerClass(
+class LightDict extends St.Widget {
+    _init() {
+        super._init({
+            width: 40,
+            height: 40,
+            opacity: 0,
+        });
+        Main.layoutManager.addChrome(this);
+
+        this._wmclass = '';
+        this._selection = '';
+        this._disable = false;
+
+        this._buildWidget();
+        this._fetchSettings();
+        this._loadSettings();
+    }
+
+    _buildWidget() {
+        this._box = new DictBox();
+        this._act = new DictAct();
+        this._bar = new DictBar();
+
+        this._box.setPosition(this, 0);
+        this._bar.setPosition(this, 0);
+
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
+        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
+        this._spawnWithGio = x => this._box._spawnWithGio(x);
+    }
+
+    _fetchSettings() {
+        this._shortcut  = gsettings.get_boolean(Fields.SHORTCUT);
+        this._sensitive = gsettings.get_boolean(Fields.SENSITIVE);
+    }
+
+    _loadSettings() {
+        this._scrollID = this.connect('scroll-event', this._hide.bind(this));
+        this._clickID = this.connect('button-press-event', this._hide.bind(this));
+        this._barEmitID = this._bar.connect('iconbar-signals', this._onBarEmit.bind(this));
+        this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
+        this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
+
+        this._shortcutId   = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
+        this._sensitiveId  = gsettings.connect(`changed::${Fields.SENSITIVE}`, () => { this._sensitive = gsettings.get_boolean(Fields.SENSITIVE); });
+    }
+
+    get _passive() {
+        return gsettings.get_boolean(Fields.PASSIVE);
+    }
+
+    get _filter() {
+        return gsettings.get_string(Fields.FILTER);
+    }
+
+    get _trigger() {
+        return gsettings.get_uint(Fields.TRIGGER);
+    }
+
+    get _appslist() {
+        return gsettings.get_string(Fields.APPSLIST);
+    }
+
+    get _blackwhite() {
+        return gsettings.get_boolean(Fields.BLACKWHITE);
+    }
+
+    get _textstrip() {
+        return gsettings.get_boolean(Fields.TEXTSTRIP);
+    }
+
+    set _sensitive(sen) {
+        this.set_reactive(!sen);
+    }
+
+    set _pointer(pointer) {
+        this.set_position(pointer[0] - 20, pointer[1] - 20);
+    }
+
+    set _shortcut(shortcut) {
+        if(shortcut) {
+            Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._changeMode.bind(this));
+        } else {
+            Main.wm.removeKeybinding(Fields.TOGGLE);
+        }
+    }
+
+    _changeMode() {
+        let next = (this._trigger + 1) % 3;
+        Main.notify(Me.metadata.name, _('Switch to %s mode').format(Object.keys(TRIGGER)[next]));
+        gsettings.set_uint(Fields.TRIGGER, next);
+    }
+
+    _onWindowChanged() {
+        this._hide();
+        let FW = global.display.get_focus_window();
+        this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
+        let wlist = this._appslist === '*' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
+        this._disable = this._blackwhite ? !wlist : wlist;
+    }
+
+    _onBarEmit(actor, tag, cmd) {
+        let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
+        if(type) {
+            this._runWithEval(popup, clip, commit, cmd);
+        } else {
+            this._runWithBash(popup, clip, commit, cmd);
+        }
+    }
+
+    _selectionChanged(sel, type, src) {
+        if(type != St.ClipboardType.PRIMARY) return;
+        if(this._mouseUpID)
+            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
+        if(this._disable || this._trigger == TRIGGER.NIL) return;
+        let [, , initModifier] = global.get_pointer();
+        if(this._passive && (initModifier & MODIFIERS) == 0) return;
+        if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
+            this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                let [, , tmpModifier] = global.get_pointer();
+                if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                    this._fetchSelection(false);
+                    this._mouseUpID = 0;
+                    return GLib.SOURCE_REMOVE;
+                } else {
+                    return GLib.SOURCE_CONTINUE;
+                }
+            });
+        } else {
+            this._fetchSelection(true);
+        }
+    }
+
+    _fetchSelection(check) {
+        if(check) {
+            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+                if(!text) return;
+                this._pointer = global.get_pointer();
+                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+                St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
+                    if(text && this._selection == (this._textstrip ? text.trim().replace(/\n/g, ' ') : text)) return;
+                    this._show();
+                    // NOTE: Ctrl + C in Chromium will trigger primary selection
+                });
+            });
+        } else {
+            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+                if(!text) return;
+                this._pointer = global.get_pointer();
+                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+                this._show();
+            });
+        }
+    }
+
+    _runWithBash(popup, clip, commit, cmd) {
+        let title = global.display.get_focus_window().title.toString();
+        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/LDTITLE/g, GLib.shell_quote(title));
+        if(popup|clip|commit) {
+            let proc = new Gio.Subprocess({
+                argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
+                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+            });
+            proc.init(null);
+            proc.communicate_utf8_async(null, null, (proc, res) => {
+                try {
+                    let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                    if(proc.get_exit_status() === 0) {
+                        let result = stdout.trim();
+                        if(clip) this._act.copy(result);
+                        if(commit) this._act.commit(result);
+                        if(popup) this._box._show(result, this._selection);
+                    } else {
+                        this._box._show(stderr.trim(), this._selection);
+                    }
+                } catch(e) {
+                    Main.notifyError(Me.metadata.name, e.message);
+                }
+            });
+        } else {
+            this._spawnWithGio(rcmd);
+        }
+    }
+
+    _runWithEval(popup, clip, commit, cmd) {
+        try {
+            let LDWORD = this._selection;
+            let LDTITLE = global.display.get_focus_window().title;
+            let key = x => this._act.stroke(x);
+            let copy = x => this._act.copy(x);
+            if(popup|clip|commit) {
+                let result = eval(cmd).toString();
+                if(clip) this._act.copy(result);
+                if(commit) this._act.commit(result);
+                if(popup) this._box._show(result, this._selection);
+            } else {
+                eval(cmd);
+            }
+        } catch(e) {
+            Main.notifyError(Me.metadata.name, e.message);
+        }
+    }
+
+    _show() {
+        if(this._trigger == TRIGGER.BAR) {
+            this._box._hide();
+            this._bar._show(this._wmclass, this._selection);
+        } else {
+            if(!this._passive && this._filter && !RegExp(this._filter).test(this._selection)) return;
+            this._bar._hide();
+            this._box._lookUp(this._selection);
+        }
+    }
+
+    _hide() {
+        this._box._hide();
+        this._bar._hide();
+    }
+
+    LookUp(word) {
+        if(word) {
+            this._selection = word;
+            this._pointer = global.get_pointer();
+            this._box._lookUp(this._selection);
+        } else {
+            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+                if(!text) return;
+                this._pointer = global.get_pointer();
+                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+                this._box._lookUp(this._selection);
+            });
+        }
+    }
+
+    ShowBar(word) {
+        if(word) {
+            this._selection = word;
+            this._pointer = global.get_pointer();
+            this._bar._show(this._wmclass, this._selection);
+        } else {
+            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+                if(!text) return;
+                this._pointer = global.get_pointer();
+                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+                this._bar._show(this._wmclass, this._selection);
+            });
+        }
+    }
+
+    destory() {
+        if(this._mouseUpID)
+            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
+        if(this._scrollID)
+            this.disconnect(this._scrollID), this._scrollID = 0;
+        if(this._clickID)
+            this.disconnect(this._clickID), this._clickID = 0;
+        if(this._barEmitID)
+            this._bar.disconnect(this._barEmitID), this._barEmitID = 0;
+        if(this._onWindowChangedID)
+            global.display.disconnect(this._onWindowChangedID), this._onWindowChangedID = 0;
+        if(this._selectionChangedID)
+            global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
+        for(let x in this)
+            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
+
+        Main.layoutManager.removeChrome(this);
+        this._shortcut = false;
+        this._dbus.flush();
+        this._dbus.unexport();
+        this._bar.destory();
+        this._box.destroy();
+        this._dbus = null;
+        this._bar = null;
+        this._box = null;
+        super.destroy();
+    }
+});
+
 const Extension = GObject.registerClass(
 class Extension extends GObject.Object {
     _init() {
@@ -840,19 +844,18 @@ class Extension extends GObject.Object {
 
     enable() {
         this._dict = new LightDict();
-        if(gsettings.get_boolean(Fields.DEFAULT)) {
-            this._dict._panel.add_style_class_name('default');
-            this._dict._iconBar.add_style_class_name('default');
+        this._default = gsettings.get_boolean(Fields.DEFAULT);
+        this._defaultId = gsettings.connect(`changed::${Fields.DEFAULT}`, () => { this._default = gsettings.get_boolean(Fields.DEFAULT); });
+    }
+
+    set _default(def) {
+        if(def) {
+            this._dict._box.add_style_class_name('default');
+            this._dict._bar.add_style_class_name('default');
+        } else {
+            this._dict._box.remove_style_class_name('default');
+            this._dict._bar.remove_style_class_name('default');
         }
-        this._defaultId = gsettings.connect(`changed::${Fields.DEFAULT}`, () => {
-            if(gsettings.get_boolean(Fields.DEFAULT)) {
-                this._dict._panel.add_style_class_name('default');
-                this._dict._iconBar.add_style_class_name('default');
-            } else {
-                this._dict._panel.remove_style_class_name('default');
-                this._dict._iconBar.remove_style_class_name('default');
-            }
-        });
     }
 
     disable() {

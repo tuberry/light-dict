@@ -29,11 +29,11 @@
         <default>false</default>
         <summary>enable tooltips for icon bar</summary>
     </key>
-    <key type="b" name="lazy-mode">
+    <key type="b" name="passive-mode">
         <default>false</default>
-        <summary>lazy mode for icon bar</summary>
+        <summary>passive mode (need modifier to trriger)</summary>
     </key>
-    <key type="as" name="toggle-shortcut">
+    <key type="as" name="light-dict-toggle-shortcut">
         <default><![CDATA[['<Control><Shift>z']]]></default>
         <summary>short-cuts to toggle style or show panel</summary>
     </key>
@@ -47,7 +47,7 @@
     </key>
     <key type="u" name="trigger-style">
         <default>0</default>
-        <summary>trigger style of popup panel</summary>
+        <summary>trigger style of popup</summary>
     </key>
     <key type="u" name="log-level">
         <default>0</default>
@@ -80,10 +80,6 @@
     <key type="s" name="click-command">
         <default>""</default>
         <summary>command when clicking popup panel</summary>
-    </key>
-    <key type="s" name="user-stylesheet">
-        <default>"{}"</default>
-        <summary>user stylesheet</summary>
     </key>
     <key type="as" name="iconbar-commands">
         <default>[]</default>

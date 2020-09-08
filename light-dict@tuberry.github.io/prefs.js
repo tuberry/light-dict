@@ -11,10 +11,9 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 var Fields = {
     OPENURL:    'open-url',
     XOFFSET:    'x-offset',
-    YOFFSET:    'y-offset',
-    LAZYMODE:   'lazy-mode',
     LOGSLEVEL:  'log-level',
     DCOMMAND:   'dict-command',
+    PASSIVE:    'passive-mode',
     TEXTSTRIP:  'enable-strip',
     CCOMMAND:   'click-command',
     DEFAULT:    'default-theme',
@@ -23,14 +22,13 @@ var Fields = {
     BLACKWHITE: 'black-or-white',
     SENSITIVE:  'sensitive-mode',
     SHORTCUT:   'enable-shortcut',
-    STYLESHEET: 'user-stylesheet',
-    TOGGLE:     'toggle-shortcut',
     TOOLTIPS:   'enable-tooltips',
     APPSLIST:   'application-list',
     AUTOHIDE:   'autohide-timeout',
     BCOMMANDS:  'iconbar-commands',
     FILTER:     'selection-filter',
     HIDETITLE:  'hide-panel-title',
+    TOGGLE:     'light-dict-toggle-shortcut',
 };
 
 function init() {
@@ -94,12 +92,11 @@ class LightDictAbout extends Gtk.Box {
         pop.set_relative_to(tips);
 
         let msgs = [
-            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
-            _('Use relative position when both X and Y offset are <b>0</b>'),
             _('Substitute <b>LDWORD</b> for the selection in commands'),
+            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
             _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
             _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
-            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Keyboard</b> or <b>Lazy mode</b>')
+            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Passive mode</b>')
         ];
 
         const vbox = new Gtk.VBox();
@@ -194,15 +191,14 @@ class LightDictBasic extends Gtk.Box {
         this._field_enable_strip     = new Gtk.Switch();
         this._field_enable_tooltips  = new Gtk.Switch();
         this._field_hide_panel_title = new Gtk.Switch();
-        this._field_lazy_mode        = new Gtk.Switch();
+        this._field_passive_mode     = new Gtk.Switch();
         this._field_sensitive_mode   = new Gtk.Switch();
 
-        this._field_auto_hide        = this._spinMaker(500, 10000, 250);
-        this._field_icon_pagesize    = this._spinMaker(0, 10, 1);
-        this._field_icon_xoffset     = this._spinMaker(-400,400,5);
-        this._field_icon_yoffset     = this._spinMaker(-400,400,5);
+        this._field_auto_hide     = this._spinMaker(500, 10000, 250);
+        this._field_icon_pagesize = this._spinMaker(0, 10, 1);
+        this._field_icon_xoffset  = this._spinMaker(-400,400,5);
 
-        this._field_trigger_style    = this._comboMaker([_('Icon'), _('Keyboard'), _('Auto')]);
+        this._field_trigger_style    = this._comboMaker([_('Box'), _('Bar'), _('Nil')]);
         this._field_log_level        = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
         this._field_enable_toggle    = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.SHORTCUT) });
@@ -219,27 +215,26 @@ class LightDictBasic extends Gtk.Box {
         this._common = this._listFrameMaker(_('Common'));
         this._common._add(this._field_enable_strip,   _("Trim whitespaces"));
         this._common._add(this._field_black_or_white, _("Black/whitelist"));
+        this._common._add(this._field_passive_mode,   _("Passive mode"));
+        this._common._add(this._field_sensitive_mode, _("Seamless mode"));
         this._common._add(this._field_default_theme,  _("Default theme"));
         this._common._add(this._field_trigger_style,  _("Trigger style"));
         this._common._add(this._field_auto_hide,      _("Autohide interval"));
         this._common._add(this._field_toggle,         _("Toggle style"), this._field_enable_toggle);
         this._common._add(this._field_apps_list);
 
-        this._iconbar = this._listFrameMaker(_('Icon Bar'));
-        this._iconbar._add(this._field_enable_tooltips, _("Enable tooltips"));
-        this._iconbar._add(this._field_lazy_mode,       _("Lazy mode"));
-        this._iconbar._add(this._field_icon_pagesize,   _("Page size"));
-        this._iconbar._add(this._field_icon_xoffset,    _("Horizontal offset"));
-        this._iconbar._add(this._field_icon_yoffset,    _("Vertical offset"));
-
-        this._panel = this._listFrameMaker(_('Panel'));
+        this._panel = this._listFrameMaker(_('Box'));
         this._panel._add(this._field_hide_panel_title,  _("Hide title"));
-        this._panel._add(this._field_sensitive_mode,    _("Seamless mode"));
-        this._panel._add(this._field_log_level,         _("Logs level"));
+        this._panel._add(this._field_log_level,      _("Logs level"));
         this._panel._add(this._field_dict_command);
         this._panel._add(this._field_open_url);
         this._panel._add(this._field_click_command);
         this._panel._add(this._field_filter);
+
+        this._iconbar = this._listFrameMaker(_('Bar'));
+        this._iconbar._add(this._field_enable_tooltips, _("Enable tooltips"));
+        this._iconbar._add(this._field_icon_pagesize,   _("Page size"));
+        this._iconbar._add(this._field_icon_xoffset,    _("Horizontal offset"));
     }
 
     _syncStatus() {
@@ -258,7 +253,6 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.YOFFSET,    this._field_icon_yoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
@@ -267,7 +261,7 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,     'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LAZYMODE,   this._field_lazy_mode,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PASSIVE,    this._field_passive_mode,     'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.DEFAULT,    this._field_default_theme,    'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
