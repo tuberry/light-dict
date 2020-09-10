@@ -192,7 +192,6 @@ class LightDictBasic extends Gtk.Box {
         this._field_enable_tooltips  = new Gtk.Switch();
         this._field_hide_panel_title = new Gtk.Switch();
         this._field_passive_mode     = new Gtk.Switch();
-        this._field_sensitive_mode   = new Gtk.Switch();
 
         this._field_auto_hide     = this._spinMaker(500, 10000, 250);
         this._field_icon_pagesize = this._spinMaker(0, 10, 1);
@@ -216,7 +215,6 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._field_enable_strip,   _("Trim whitespaces"));
         this._common._add(this._field_black_or_white, _("Black/whitelist"));
         this._common._add(this._field_passive_mode,   _("Passive mode"));
-        this._common._add(this._field_sensitive_mode, _("Seamless mode"));
         this._common._add(this._field_default_theme,  _("Default theme"));
         this._common._add(this._field_trigger_style,  _("Trigger style"));
         this._common._add(this._field_auto_hide,      _("Autohide interval"));
@@ -253,7 +251,6 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SENSITIVE,  this._field_sensitive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SHORTCUT,   this._field_enable_toggle,    'active', Gio.SettingsBindFlags.DEFAULT);

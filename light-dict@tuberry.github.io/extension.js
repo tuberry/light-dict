@@ -36,7 +36,7 @@ const DictBar = GObject.registerClass({
     _init() {
         super._init(St.Side.BOTTOM, {});
         this.style_class = 'light-dict-bar-boxpointer';
-        Main.layoutManager.addChrome(this);
+        Main.layoutManager.addTopChrome(this);
 
         this._pages = 1;
         this._pageIndex = 1;
@@ -126,8 +126,8 @@ const DictBar = GObject.registerClass({
     }
 
     _onLeave() {
-        this._box.visible = false;
-        if(this._tooltips) this._iconTooltips.hide();
+        // let [px, py] = this.get_position(); //NOTE: get invalid position [0, 0]
+        this._hide();
     }
 
     _onEnter() {
@@ -178,9 +178,9 @@ const DictBar = GObject.registerClass({
         if(x.windows) btn.windows = x.windows;
         if(x.regexp) btn.regexp = x.regexp;
         btn.connect('clicked', (actor, event) => {
-            this._box.visible = false;
+            this._hide();
             this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
-            return Clutter.EVENT_PROPAGATE;
+            return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
             if(!this._tooltips) return;
@@ -207,7 +207,7 @@ const DictBar = GObject.registerClass({
         if(this._pages < 1) return;
         if(!this._box.visible) {
             this._box.visible = true;
-            this.open(BoxPointer.PopupAnimation.FADE);
+            this.open(BoxPointer.PopupAnimation.FULL);
             this.get_parent().set_child_above_sibling(this, null);
         }
 
@@ -215,7 +215,7 @@ const DictBar = GObject.registerClass({
             GLib.source_remove(this._delayID), this._delayID = 0;
 
         this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
-            this._box.visible = false;
+            this._hide();
             this._delayID = 0;
             return GLib.SOURCE_REMOVE;
         });
@@ -225,7 +225,6 @@ const DictBar = GObject.registerClass({
         if(!this._box.visible) return;
 
         this._box.visible = false;
-        this.close(BoxPointer.PopupAnimation.FADE);
         if(this._tooltips) this._iconTooltips.hide();
     }
 
@@ -255,7 +254,7 @@ class DictBox extends BoxPointer.BoxPointer {
         super._init(St.Side.TOP, {});
         this.style_class = 'light-dict-box-boxpointer';
         this.style = '-arrow-border-radius: 10px;';
-        Main.layoutManager.addChrome(this);
+        Main.layoutManager.addTopChrome(this);
 
         this._selection = '';
         this._notFound = false;
@@ -304,7 +303,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     _loadSettings() {
-        this._leaveID = this._box.connect('leave-event', this._hide.bind(this));
+        this._leaveID = this._box.connect('leave-event', this._onLeave.bind(this));
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
 
@@ -352,20 +351,30 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onClick(actor, event) {
         if(event.get_button() === 1 && this._ccommand)
-            this._ccommand.split('#').forEach(x => this._spawnWithGio(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
+            this._ccommand.split('#').forEach(x => this._spawn(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
         switch(event.get_button()*!this._boxClicked) {
         case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
         case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
-        case 3: this._spawnWithGio('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
+        case 3: this._spawn('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
         }
         if(event.get_button() === 3) {
             this._view.visible = false;
-            this.close(BoxPointer.PopupAnimation.FADE);
+            this.close(BoxPointer.PopupAnimation.FULL);
         }
         this._boxClicked = true;
     }
 
-    _spawnWithGio(rcmd) {
+    _onLeave() {
+        //NOTE: do not hide on scrolling
+        let [mx, my] = global.get_pointer();
+        let [wt, ht] = this.get_size();
+        let [px, py] = this.get_position();
+        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
+
+        this._hide();
+    }
+
+    _spawn(rcmd) {
         try {
             let proc = new Gio.Subprocess({
                 argv: ['/bin/bash', '-c', rcmd],
@@ -425,14 +434,9 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _hide() {
         if(!this._view.visible) return;
-        //NOTE: do not hide on scrolling
-        let [mx, my] = global.get_pointer();
-        let [wt, ht] = this.get_size();
-        let [px, py] = this.get_position();
-        if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
         this._view.visible = false;
-        this.close(BoxPointer.PopupAnimation.FADE);
+        this.close(BoxPointer.PopupAnimation.FULL);
         this._info.set_text(Me.metadata.name);
     }
 
@@ -457,12 +461,12 @@ class DictBox extends BoxPointer.BoxPointer {
 
         if(!this._view.visible) {
             this._view.visible = true;
-            this.open(BoxPointer.PopupAnimation.FADE);
+            this.open(BoxPointer.PopupAnimation.FULL);
             this.get_parent().set_child_above_sibling(this, null);
         }
 
         if(this._delayID)
-            GLib.source_remove(this._delayID);
+            GLib.source_remove(this._delayID), this._delayID = 0;
 
         this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
             this._hide();
@@ -563,7 +567,7 @@ class LightDict extends St.Widget {
             height: 40,
             opacity: 0,
         });
-        Main.layoutManager.addChrome(this);
+        Main.uiGroup.add_actor(this); // do not track
 
         this._wmclass = '';
         this._selection = '';
@@ -584,23 +588,21 @@ class LightDict extends St.Widget {
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-        this._spawnWithGio = x => this._box._spawnWithGio(x);
+        this._spawn = x => this._box._spawn(x);
     }
 
     _fetchSettings() {
         this._shortcut  = gsettings.get_boolean(Fields.SHORTCUT);
-        this._sensitive = gsettings.get_boolean(Fields.SENSITIVE);
     }
 
     _loadSettings() {
         this._scrollID = this.connect('scroll-event', this._hide.bind(this));
         this._clickID = this.connect('button-press-event', this._hide.bind(this));
         this._barEmitID = this._bar.connect('iconbar-signals', this._onBarEmit.bind(this));
+
         this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
-
-        this._shortcutId   = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
-        this._sensitiveId  = gsettings.connect(`changed::${Fields.SENSITIVE}`, () => { this._sensitive = gsettings.get_boolean(Fields.SENSITIVE); });
+        this._shortcutId = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
     }
 
     get _passive() {
@@ -625,10 +627,6 @@ class LightDict extends St.Widget {
 
     get _textstrip() {
         return gsettings.get_boolean(Fields.TEXTSTRIP);
-    }
-
-    set _sensitive(sen) {
-        this.set_reactive(!sen);
     }
 
     set _pointer(pointer) {
@@ -736,7 +734,7 @@ class LightDict extends St.Widget {
                 }
             });
         } else {
-            this._spawnWithGio(rcmd);
+            this._spawn(rcmd);
         }
     }
 
@@ -773,6 +771,7 @@ class LightDict extends St.Widget {
     _hide() {
         this._box._hide();
         this._bar._hide();
+        this._pointer = global.display.get_size();
     }
 
     LookUp(word) {
@@ -808,10 +807,6 @@ class LightDict extends St.Widget {
     destory() {
         if(this._mouseUpID)
             GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-        if(this._scrollID)
-            this.disconnect(this._scrollID), this._scrollID = 0;
-        if(this._clickID)
-            this.disconnect(this._clickID), this._clickID = 0;
         if(this._barEmitID)
             this._bar.disconnect(this._barEmitID), this._barEmitID = 0;
         if(this._onWindowChangedID)
@@ -821,7 +816,7 @@ class LightDict extends St.Widget {
         for(let x in this)
             if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
 
-        Main.layoutManager.removeChrome(this);
+        Main.uiGroup.remove_actor(this);
         this._shortcut = false;
         this._dbus.flush();
         this._dbus.unexport();
@@ -830,6 +825,7 @@ class LightDict extends St.Widget {
         this._dbus = null;
         this._bar = null;
         this._box = null;
+        this._act = null;
         super.destroy();
     }
 });
