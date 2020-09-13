@@ -3,8 +3,9 @@ Lightweight selection-popup extension of Gnome Shell with icon bar and tooltips-
 
 >L, you know what? The Death eats apples only. —— *Light Yagami*<br>
 [![license]](/LICENSE)
-
 <br>
+
+![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
 
 ## Installation
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
@@ -17,9 +18,7 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 
 ## Features
 
-The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict).
-
-![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
+The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict). If you have any questions about the usage, feel free to open an issue for discussion.
 
 [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. OCR to translate).
 ```shell
@@ -35,8 +34,7 @@ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Exten
 
 ## Note
 1. This extension doesn't offer any icons or dictionary resources though it's named Light Dict.
-2. If you have any questions about the usage, feel free to open an issue for discussion.
-3. If you need to customize the appearance of some widgets, please try this extension - [User Themes X].
+2. If you need to customize the appearance of some widgets, please try this extension - [User Themes X].
 
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
