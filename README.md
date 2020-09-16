@@ -20,10 +20,44 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 
 The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict). If you have any questions about the usage, feel free to open an issue for discussion.
 
-[DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. OCR to translate).
-```shell
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "word" # look up 'word'
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "" # look up primary selection
+[DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. [OCR](/ldocr.sh) to translate).
+```bash
+#!/bin/bash
+#by tuberry
+
+LDWORDOCR="/tmp/ldword_ocr"
+
+## Screenshot $LDWORDOCR.png
+area=$(gdbus call --session \
+	--dest org.gnome.Shell \
+	--object-path /org/gnome/Shell/Screenshot \
+	--method org.gnome.Shell.Screenshot.SelectArea) # "(x, y, w, h)"
+area=(${area//[!0-9 ]/}) # "(x, y, w, h)" => (x, y, w, h)
+gdbus call --session \
+	--dest org.gnome.Shell \
+	--object-path /org/gnome/Shell/Screenshot \
+	--method org.gnome.Shell.Screenshot.ScreenshotArea ${area[0]} ${area[1]} ${area[2]} ${area[3]} false "'$LDWORDOCR.png'" \
+	&> /dev/null # "(success, filename_used)" > /dev/null
+
+## OCR $LDWORDOCR.png to $word
+# mogrify -modulate 100,0 -resize 400% $LDWORDOCR.png # should increase detection rate (refer to: https://zhuanlan.zhihu.com/p/114917496)
+tesseract $LDWORDOCR.png $LDWORDOCR &> /dev/null -l eng # need tesseract and its eng database
+truncate -s -2 $LDWORDOCR.txt # delete \n and ^L at the end of $LDWORDOCR.txt
+word=$(cat $LDWORDOCR.txt | tr '\n' ' ')
+# rm $LDWORDOCR.png $LDWORDOCR.txt # delete tmp files
+
+## LookUp $word
+gdbus call --session \
+	--dest org.gnome.Shell \
+	--object-path /org/gnome/Shell/Extensions/LightDict \
+	--method org.gnome.Shell.Extensions.LightDict.LookUp "$word" \
+	&> /dev/null # "()" > /dev/null
+
+### LookUp the primary selection
+## gdbus call --session \
+## 	--dest org.gnome.Shell \
+## 	--object-path /org/gnome/Shell/Extensions/LightDict \
+## 	--method org.gnome.Shell.Extensions.LightDict.LookUp
 ```
 
 ## Acknowledgements
