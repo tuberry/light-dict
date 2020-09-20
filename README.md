@@ -21,6 +21,19 @@ cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/exten
 The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict). If you have any questions about the usage, feel free to open an issue for discussion.
 
 [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. [OCR](/ldocr.sh) to translate).
+```
+# LookUp
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "" # primary selection
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "'word'" # 'word'
+
+# ShowBar
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "" # primary selection
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "'word'" # 'word'
+```
+
+<details>
+<summary>ldocr.sh</summary>
+
 ```bash
 #!/bin/bash
 #by tuberry
@@ -52,13 +65,8 @@ gdbus call --session \
 	--object-path /org/gnome/Shell/Extensions/LightDict \
 	--method org.gnome.Shell.Extensions.LightDict.LookUp "$word" \
 	&> /dev/null # "()" > /dev/null
-
-### LookUp the primary selection
-## gdbus call --session \
-## 	--dest org.gnome.Shell \
-## 	--object-path /org/gnome/Shell/Extensions/LightDict \
-## 	--method org.gnome.Shell.Extensions.LightDict.LookUp
 ```
+</details>
 
 ## Acknowledgements
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup panel

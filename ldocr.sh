@@ -28,9 +28,3 @@ gdbus call --session \
 	--object-path /org/gnome/Shell/Extensions/LightDict \
 	--method org.gnome.Shell.Extensions.LightDict.LookUp "$word" \
 	&> /dev/null # "()" > /dev/null
-
-### LookUp the primary selection
-## gdbus call --session \
-## 	--dest org.gnome.Shell \
-## 	--object-path /org/gnome/Shell/Extensions/LightDict \
-## 	--method org.gnome.Shell.Extensions.LightDict.LookUp

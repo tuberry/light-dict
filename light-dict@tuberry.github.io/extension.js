@@ -272,6 +272,7 @@ class DictBox extends BoxPointer.BoxPointer {
             y_expand: true,
             overlay_scrollbars: true,
             style_class: 'light-dict-scroll',
+            hscrollbar_policy: St.PolicyType.NEVER,
             style: 'max-height: %dpx'.format(global.display.get_size()[1] * 7 / 16),
         });
 
