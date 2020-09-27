@@ -12,8 +12,8 @@ Lightweight selection-popup extension of Gnome Shell with icon bar and tooltips-
 
 Or manually:
 ```
-git clone git@github.com:tuberry/light-dict.git
-cp -r ./light-dict/light-dict@tuberry.github.io ~/.local/share/gnome-shell/extensions/
+git clone https://github.com/tuberry/light-dict.git
+cd light-dict && make install
 ```
 
 ## Features
