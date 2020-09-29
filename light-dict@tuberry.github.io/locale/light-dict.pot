@@ -1,14 +1,14 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the Light Dict package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
+"Project-Id-Version: Light Dict\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-07 12:57+0800\n"
+"POT-Creation-Date: 2020-09-28 15:27+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -16,6 +16,11 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:648
+#, javascript-format
+msgid "Switch to %s mode"
+msgstr ""
 
 #: prefs.js:51
 msgid "Basic"
@@ -52,7 +57,7 @@ msgstr ""
 
 #: prefs.js:99
 msgid ""
-"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Passive mode</b>"
+"Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
 msgstr ""
 
 #: prefs.js:155
@@ -77,150 +82,146 @@ msgid ""
 "See the <a href=\"%s\">%s</a> for details."
 msgstr ""
 
-#: prefs.js:201 prefs.js:226
+#: prefs.js:199 prefs.js:223
 msgid "Box"
 msgstr ""
 
-#: prefs.js:201 prefs.js:234
+#: prefs.js:199 prefs.js:231
 msgid "Bar"
 msgstr ""
 
-#: prefs.js:201
+#: prefs.js:199
 msgid "Nil"
 msgstr ""
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Never"
 msgstr ""
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Click"
 msgstr ""
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Hover"
 msgstr ""
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Always"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:205
 msgid "Command to run in auto mode"
 msgstr ""
 
-#: prefs.js:208
+#: prefs.js:206
 msgid "App white/black list (asterisk for all)"
 msgstr ""
 
-#: prefs.js:209
+#: prefs.js:207
 msgid "Text RegExp filter for auto mode"
 msgstr ""
 
-#: prefs.js:210
-msgid "Left click: command to run when clicking panel"
+#: prefs.js:208
+msgid "Left click to run"
 msgstr ""
 
-#: prefs.js:211
-msgid "Right click: search in default browser"
+#: prefs.js:209
+msgid "Right click to run and hide box"
 msgstr ""
 
-#: prefs.js:215
+#: prefs.js:213
 msgid "Common"
 msgstr ""
 
-#: prefs.js:216
+#: prefs.js:214
 msgid "Trim whitespaces"
 msgstr ""
 
-#: prefs.js:217
+#: prefs.js:215
 msgid "Black/whitelist"
 msgstr ""
 
-#: prefs.js:218
+#: prefs.js:216
 msgid "Passive mode"
 msgstr ""
 
-#: prefs.js:219
-msgid "Seamless mode"
-msgstr ""
-
-#: prefs.js:220
+#: prefs.js:217
 msgid "Default theme"
 msgstr ""
 
-#: prefs.js:221
+#: prefs.js:218
 msgid "Trigger style"
 msgstr ""
 
-#: prefs.js:222
+#: prefs.js:219
 msgid "Autohide interval"
 msgstr ""
 
-#: prefs.js:223
+#: prefs.js:220
 msgid "Toggle style"
 msgstr ""
 
-#: prefs.js:227
+#: prefs.js:224
 msgid "Hide title"
 msgstr ""
 
-#: prefs.js:228
+#: prefs.js:225
 msgid "Logs level"
 msgstr ""
 
-#: prefs.js:235
+#: prefs.js:232
 msgid "Enable tooltips"
 msgstr ""
 
-#: prefs.js:236
+#: prefs.js:233
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:237
+#: prefs.js:234
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:436
+#: prefs.js:432
 msgid "Name showing on left side"
 msgstr ""
 
-#: prefs.js:437
+#: prefs.js:433
 msgid "Icon showing in the bar"
 msgstr ""
 
-#: prefs.js:438
+#: prefs.js:434
 msgid "Regexp to filter selected text"
 msgstr ""
 
-#: prefs.js:439
+#: prefs.js:435
 msgid "Command to run when clicking"
 msgstr ""
 
-#: prefs.js:440
+#: prefs.js:436
 msgid "Windows allowed to function"
 msgstr ""
 
-#: prefs.js:441
+#: prefs.js:437
 msgid "Tooltip showing when hovering"
 msgstr ""
 
-#: prefs.js:457
+#: prefs.js:453
 msgid "Enable"
 msgstr ""
 
-#: prefs.js:461
+#: prefs.js:457
 msgid "Command type"
 msgstr ""
 
-#: prefs.js:462
+#: prefs.js:458
 msgid "Show result"
 msgstr ""
 
-#: prefs.js:463
+#: prefs.js:459
 msgid "Copy result"
 msgstr ""
 
-#: prefs.js:464
+#: prefs.js:460
 msgid "Commit result"
 msgstr ""

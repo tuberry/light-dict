@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-09-06 21:23+0800\n"
+"POT-Creation-Date: 2020-09-28 15:27+0800\n"
 "PO-Revision-Date: 2020-09-06 21:24+0800\n"
 "Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -16,7 +16,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:712
+#: extension.js:648
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr "切换至 %s 模式"
@@ -56,8 +56,8 @@ msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
 
 #: prefs.js:99
 msgid ""
-"Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Passive mode</b>"
-msgstr "<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift|Ctrl</b> 以触发"
+"Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
+msgstr "<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift</b> 以触发"
 
 #: prefs.js:155
 msgid "GNU General Public License, version 3 or later"
@@ -79,152 +79,156 @@ msgstr "带图标栏和提示气泡的轻量级选择弹出式扩展，特别针
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
-msgstr "本程序不含任何担保。\n详情见<a href=\"%s\">%s</a>"
+msgstr ""
+"本程序不含任何担保。\n"
+"详情见<a href=\"%s\">%s</a>"
 
-#: prefs.js:201 prefs.js:226
+#: prefs.js:199 prefs.js:223
 msgid "Box"
 msgstr "气泡"
 
-#: prefs.js:201 prefs.js:234
+#: prefs.js:199 prefs.js:231
 msgid "Bar"
 msgstr "图标"
 
-#: prefs.js:201
+#: prefs.js:199
 msgid "Nil"
 msgstr "禁用"
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Never"
 msgstr "禁用"
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Click"
 msgstr "单击"
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Hover"
 msgstr "悬停"
 
-#: prefs.js:202
+#: prefs.js:200
 msgid "Always"
 msgstr "总是"
 
-#: prefs.js:207
+#: prefs.js:205
 msgid "Command to run in auto mode"
 msgstr "自动模式执行该命令"
 
-#: prefs.js:208
+#: prefs.js:206
 msgid "App white/black list (asterisk for all)"
 msgstr "应用黑白名单（星号代表所有）"
 
-#: prefs.js:209
+#: prefs.js:207
 msgid "Text RegExp filter for auto mode"
 msgstr "自动模式文本正则过滤"
 
-#: prefs.js:210
-msgid "Left click: command to run when clicking panel"
-msgstr "左键：点击气泡执行此命令"
+#: prefs.js:208
+msgid "Left click to run"
+msgstr "左键运行命令"
 
-#: prefs.js:211
-msgid "Right click: search in default browser"
-msgstr "右键：在默认浏览器中搜索"
+#: prefs.js:209
+msgid "Right click to run and hide box"
+msgstr "右键运行命令并关闭气泡"
 
-#: prefs.js:215
+#: prefs.js:213
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:216
+#: prefs.js:214
 msgid "Trim whitespaces"
 msgstr "去除空白"
 
-#: prefs.js:217
+#: prefs.js:215
 msgid "Black/whitelist"
 msgstr "黑白名单"
 
-#: prefs.js:218
+#: prefs.js:216
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: prefs.js:219
-msgid "Seamless mode"
-msgstr "无缝模式"
-
-#: prefs.js:220
+#: prefs.js:217
 msgid "Default theme"
 msgstr "默认主题"
 
-#: prefs.js:221
+#: prefs.js:218
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: prefs.js:222
+#: prefs.js:219
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:223
+#: prefs.js:220
 msgid "Toggle style"
 msgstr "快速切换"
 
-#: prefs.js:227
+#: prefs.js:224
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: prefs.js:228
+#: prefs.js:225
 msgid "Logs level"
 msgstr "日志级别"
 
-#: prefs.js:235
+#: prefs.js:232
 msgid "Enable tooltips"
 msgstr "启用提示"
 
-#: prefs.js:236
+#: prefs.js:233
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:237
+#: prefs.js:234
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:436
+#: prefs.js:432
 msgid "Name showing on left side"
 msgstr "显示在左侧的名字"
 
-#: prefs.js:437
+#: prefs.js:433
 msgid "Icon showing in the bar"
 msgstr "图标名"
 
-#: prefs.js:438
+#: prefs.js:434
 msgid "Regexp to filter selected text"
 msgstr "过滤文本正则表达式"
 
-#: prefs.js:439
+#: prefs.js:435
 msgid "Command to run when clicking"
 msgstr "点击执行此命令"
 
-#: prefs.js:440
+#: prefs.js:436
 msgid "Windows allowed to function"
 msgstr "应用白名单"
 
-#: prefs.js:441
+#: prefs.js:437
 msgid "Tooltip showing when hovering"
 msgstr "悬停时显示提示"
 
-#: prefs.js:457
+#: prefs.js:453
 msgid "Enable"
 msgstr "启用"
 
-#: prefs.js:461
+#: prefs.js:457
 msgid "Command type"
 msgstr "命令类型"
 
-#: prefs.js:462
+#: prefs.js:458
 msgid "Show result"
 msgstr "显示结果"
 
-#: prefs.js:463
+#: prefs.js:459
 msgid "Copy result"
 msgstr "复制结果"
 
-#: prefs.js:464
+#: prefs.js:460
 msgid "Commit result"
 msgstr "提交结果"
+
+#~ msgid "Left click: command to run when clicking panel"
+#~ msgstr "左键：点击气泡执行此命令"
+
+#~ msgid "Seamless mode"
+#~ msgstr "无缝模式"

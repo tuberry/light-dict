@@ -9,13 +9,11 @@ const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 var Fields = {
-    OPENURL:    'open-url',
     XOFFSET:    'x-offset',
     LOGSLEVEL:  'log-level',
     DCOMMAND:   'dict-command',
     PASSIVE:    'passive-mode',
     TEXTSTRIP:  'enable-strip',
-    CCOMMAND:   'click-command',
     DEFAULT:    'default-theme',
     PAGESIZE:   'icon-pagesize',
     TRIGGER:    'trigger-style',
@@ -28,6 +26,8 @@ var Fields = {
     BCOMMANDS:  'iconbar-commands',
     FILTER:     'selection-filter',
     HIDETITLE:  'hide-panel-title',
+    LCOMMAND:   'left-click-command',
+    RCOMMAND:   'right-click-command',
     TOGGLE:     'light-dict-toggle-shortcut',
 };
 
@@ -96,7 +96,7 @@ class LightDictAbout extends Gtk.Box {
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
             _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
             _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
-            _('Hold <b>Alt|Shift|Ctrl</b> to invoke when highlighting in <b>Passive mode</b>')
+            _('Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>')
         ];
 
         const vbox = new Gtk.VBox();
@@ -154,7 +154,7 @@ class LightDictAbout extends Gtk.Box {
         let gpl = "https://www.gnu.org/licenses/gpl-3.0.html";
         let license  = _("GNU General Public License, version 3 or later");
         let info = [
-            `<b><big>${Me.metadata.name}</big></b>`,
+            '<b><big>%s</big></b>'.format(Me.metadata.name),
             _("Version %d").format(Me.metadata.version),
             _("Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary."),
             "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
@@ -174,8 +174,7 @@ const LightDictBasic = GObject.registerClass(
 class LightDictBasic extends Gtk.Box {
     _init() {
         super._init({
-            margin_left: 30,
-            margin_right: 30,
+            margin: 30,
             orientation: Gtk.Orientation.VERTICAL,
         });
 
@@ -197,17 +196,17 @@ class LightDictBasic extends Gtk.Box {
         this._field_icon_pagesize = this._spinMaker(0, 10, 1);
         this._field_icon_xoffset  = this._spinMaker(-400,400,5);
 
-        this._field_trigger_style    = this._comboMaker([_('Box'), _('Bar'), _('Nil')]);
-        this._field_log_level        = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
+        this._field_trigger_style = this._comboMaker([_('Box'), _('Bar'), _('Nil')]);
+        this._field_log_level     = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
-        this._field_enable_toggle    = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.SHORTCUT) });
-        this._field_toggle           = this._shortCutMaker(Fields.TOGGLE);
+        this._field_enable_toggle = new Gtk.CheckButton({ active: gsettings.get_boolean(Fields.SHORTCUT) });
+        this._field_toggle        = this._shortCutMaker(Fields.TOGGLE);
 
-        this._field_dict_command     = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
-        this._field_apps_list        = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
-        this._field_filter           = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
-        this._field_click_command    = this._entryMaker('notify-send LDWORD', _('Left click: command to run when clicking panel'));
-        this._field_open_url         = this._entryMaker('https://zh.wikipedia.org/w/?search=LDWORD', _('Right click: search in default browser'));
+        this._field_dict_command  = this._entryMaker("dict -- LDWORD", _('Command to run in auto mode'));
+        this._field_apps_list     = this._entryMaker('Yelp#Evince', _('App white/black list (asterisk for all)'));
+        this._field_filter        = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter for auto mode'));
+        this._field_left_command  = this._entryMaker('notify-send LDWORD', _('Left click to run'));
+        this._field_right_command = this._entryMaker('gio open https://zh.wikipedia.org/w/?search=LDWORD', _('Right click to run and hide box'));
     }
 
     _bulidUI() {
@@ -225,8 +224,8 @@ class LightDictBasic extends Gtk.Box {
         this._panel._add(this._field_hide_panel_title,  _("Hide title"));
         this._panel._add(this._field_log_level,      _("Logs level"));
         this._panel._add(this._field_dict_command);
-        this._panel._add(this._field_open_url);
-        this._panel._add(this._field_click_command);
+        this._panel._add(this._field_right_command);
+        this._panel._add(this._field_left_command);
         this._panel._add(this._field_filter);
 
         this._iconbar = this._listFrameMaker(_('Bar'));
@@ -245,8 +244,8 @@ class LightDictBasic extends Gtk.Box {
     _bindValues() {
         gsettings.bind(Fields.FILTER,     this._field_filter,           'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.DCOMMAND,   this._field_dict_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.OPENURL,    this._field_open_url,         'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.CCOMMAND,   this._field_click_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.RCOMMAND,   this._field_right_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LCOMMAND,   this._field_left_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.APPSLIST,   this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);

@@ -57,9 +57,9 @@
         <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
         <summary>selection filter in auto mode</summary>
     </key>
-    <key type="s" name="open-url">
-        <default>"https://www.google.com/search?q=LDWORD"</default>
-        <summary>open-url when right click on panel</summary>
+    <key type="s" name="right-click-command">
+        <default>""</default>
+        <summary>command when right-clicking popup box</summary>
     </key>
     <key type="s" name="application-list">
         <default>"*"</default>
@@ -69,9 +69,9 @@
         <default>"dict -- LDWORD"</default>
         <summary>command in auto mode</summary>
     </key>
-    <key type="s" name="click-command">
+    <key type="s" name="left-click-command">
         <default>""</default>
-        <summary>command when clicking popup panel</summary>
+        <summary>command when left-clicking popup box</summary>
     </key>
     <key type="as" name="iconbar-commands">
         <default>[]</default>

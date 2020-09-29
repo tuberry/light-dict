@@ -15,7 +15,7 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 }
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
-const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.CONTROL_MASK | Clutter.ModifierType.SHIFT_MASK;
+const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
@@ -51,7 +51,6 @@ const DictBar = GObject.registerClass({
             visible: false,
             reactive: true,
             vertical: false,
-            track_hover: true,
             style_class: 'light-dict-iconbox',
         });
         this.bin.add_actor(this._box);
@@ -68,9 +67,9 @@ const DictBar = GObject.registerClass({
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._scrollID = this._box.connect('scroll-event', this._onScroll.bind(this));
 
-        this._xoffsetId   = gsettings.connect(`changed::${Fields.XOFFSET}`, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
-        this._bcommandsId = gsettings.connect(`changed::${Fields.BCOMMANDS}`, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
-        this._tooltipsId  = gsettings.connect(`changed::${Fields.TOOLTIPS}`, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
+        this._xoffsetId   = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
+        this._bcommandsId = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
+        this._tooltipsId  = gsettings.connect('changed::' + Fields.TOOLTIPS, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
     }
 
     set _bcommands(commands) {
@@ -93,7 +92,6 @@ const DictBar = GObject.registerClass({
             Main.layoutManager.addTopChrome(this._iconTooltips);
         } else {
             if(!this._iconTooltips) return;
-            Main.layoutManager.removeChrome(this._iconTooltips);
             this._iconTooltips.destroy();
             this._iconTooltips = null;
         }
@@ -125,7 +123,7 @@ const DictBar = GObject.registerClass({
         this._updatePages();
     }
 
-    _onLeave() {
+    _onLeave(actor, event) {
         // let [px, py] = this.get_position(); //NOTE: get invalid position [0, 0]
         this._hide();
     }
@@ -167,13 +165,12 @@ const DictBar = GObject.registerClass({
         if(!x.enable) return;
         let btn = new St.Button({
             reactive: true,
-            track_hover: true,
-            style_class: `light-dict-button-${x.icon || 'help'} light-dict-button`,
+            style_class: 'light-dict-button-%s light-dict-button'.format(x.icon || 'help'),
         });
         btn.child = new St.Icon({
             icon_name: x.icon || 'help',
             fallback_icon_name: 'help',
-            style_class: `light-dict-button-icon-${x.icon || 'help'} light-dict-button-icon`,
+            style_class: 'light-dict-button-icon-%s light-dict-button-icon'.format(x.icon || 'help'),
         });
         if(x.windows) btn.windows = x.windows;
         if(x.regexp) btn.regexp = x.regexp;
@@ -238,8 +235,7 @@ const DictBar = GObject.registerClass({
         if(this._scrollID)
             this._box.disconnect(this._scrollID), this._scrollID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
-        Main.layoutManager.removeChrome(this);
+            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
         this._bcommands = [];
         this._tooltips = false;
         this._box.destroy();
@@ -258,7 +254,6 @@ class DictBox extends BoxPointer.BoxPointer {
 
         this._selection = '';
         this._notFound = false;
-        this._boxClicked = false;
 
         this._buildWidget();
         this._fetchSettings();
@@ -279,7 +274,6 @@ class DictBox extends BoxPointer.BoxPointer {
         this._box = new St.BoxLayout({
             reactive: true,
             vertical: true,
-            track_hover: true,
             style_class: 'light-dict-content',
         });
 
@@ -308,7 +302,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
 
-        this._hidetitleId = gsettings.connect(`changed::${Fields.HIDETITLE}`, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
+        this._hidetitleId = gsettings.connect('changed::' + Fields.HIDETITLE, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
     }
 
     set _hidetitle(hide) {
@@ -323,12 +317,12 @@ class DictBox extends BoxPointer.BoxPointer {
         return gsettings.get_uint(Fields.LOGSLEVEL);
     }
 
-    get _openurl() {
-        return gsettings.get_string(Fields.OPENURL);
+    get _rcommand() {
+        return gsettings.get_string(Fields.RCOMMAND);
     }
 
-    get _ccommand() {
-        return gsettings.get_string(Fields.CCOMMAND);
+    get _lcommand() {
+        return gsettings.get_string(Fields.LCOMMAND);
     }
 
     get _dcommand() {
@@ -345,24 +339,29 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onEnter() {
         this._view.visible = true;
-        this._boxClicked = false;
         if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
         if(this._delayID) GLib.source_remove(this._delayID), this._delayID = 0;
     }
 
     _onClick(actor, event) {
-        if(event.get_button() === 1 && this._ccommand)
-            this._ccommand.split('#').forEach(x => this._spawn(x.replace(/LDWORD/g, GLib.shell_quote(this._selection))));
-        switch(event.get_button()*!this._boxClicked) {
-        case 1: if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog(); break;
-        case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
-        case 3: this._spawn('gio open ' + this._openurl.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
+        switch(event.get_button()) {
+        case 1:
+            if(this._logslevel === LOGSLEVEL.CLICK)
+                this._recordLog();
+            if(this._lcommand)
+                this._spawn(this._lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
+            break;
+        case 2:
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text());
+            break;
+        case 3:
+            if(this._rcommand)
+                this._spawn(this._rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
+            this._hide();
+            break;
+        default:
+            break;
         }
-        if(event.get_button() === 3) {
-            this._view.visible = false;
-            this.close(BoxPointer.PopupAnimation.FULL);
-        }
-        this._boxClicked = true;
     }
 
     _onLeave() {
@@ -388,6 +387,8 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     _recordLog() {
+        if(this._prevLog && this._selection == this._prevLog)
+            return;
         let dateFormat = (fmt, date) => {
             const opt = {
                 "Y+": date.getFullYear().toString(),
@@ -412,6 +413,7 @@ class DictBox extends BoxPointer.BoxPointer {
         } catch(e) {
             Main.notifyError(Me.metadata.name, e.message);
         }
+        this._prevLog = this._selection;
     }
 
     _lookUp(text) {
@@ -486,9 +488,8 @@ class DictBox extends BoxPointer.BoxPointer {
         if(this._clickID)
             this._box.disconnect(this._clickID), this._clickID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
+            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
-        Main.layoutManager.removeChrome(this);
         this._word.destroy();
         this._info.destroy();
         this._box.destroy();
@@ -603,7 +604,7 @@ class LightDict extends St.Widget {
 
         this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
-        this._shortcutId = gsettings.connect(`changed::${Fields.SHORTCUT}`, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
+        this._shortcutId = gsettings.connect('changed::' + Fields.SHORTCUT, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
     }
 
     get _passive() {
@@ -643,7 +644,7 @@ class LightDict extends St.Widget {
     }
 
     _changeMode() {
-        let next = (this._trigger + 1) % 3;
+        let next = (this._trigger + 1) % 2;
         Main.notify(Me.metadata.name, _('Switch to %s mode').format(Object.keys(TRIGGER)[next]));
         gsettings.set_uint(Fields.TRIGGER, next);
     }
@@ -689,25 +690,12 @@ class LightDict extends St.Widget {
     }
 
     _fetchSelection(check) {
-        if(check) {
-            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-                if(!text) return;
-                this._pointer = global.get_pointer();
-                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-                St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (clip, text) =>  {
-                    if(text && this._selection == (this._textstrip ? text.trim().replace(/\n/g, ' ') : text)) return;
-                    this._show();
-                    // NOTE: Ctrl + C in Chromium will trigger primary selection
-                });
-            });
-        } else {
-            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-                if(!text) return;
-                this._pointer = global.get_pointer();
-                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-                this._show();
-            });
-        }
+        St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+            if(!text) return;
+            this._pointer = global.get_pointer();
+            this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+            this._show();
+        });
     }
 
     _runWithBash(popup, clip, commit, cmd) {
@@ -745,6 +733,7 @@ class LightDict extends St.Widget {
             let LDTITLE = global.display.get_focus_window().title;
             let key = x => this._act.stroke(x);
             let copy = x => this._act.copy(x);
+            let commit = x => this._act.commit(x);
             if(popup|clip|commit) {
                 let result = eval(cmd).toString();
                 if(clip) this._act.copy(result);
@@ -815,7 +804,7 @@ class LightDict extends St.Widget {
         if(this._selectionChangedID)
             global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval(`if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;`.format(x, x, x));
+            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
         Main.uiGroup.remove_actor(this);
         this._shortcut = false;
@@ -839,12 +828,6 @@ class Extension extends GObject.Object {
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
-    enable() {
-        this._dict = new LightDict();
-        this._default = gsettings.get_boolean(Fields.DEFAULT);
-        this._defaultId = gsettings.connect(`changed::${Fields.DEFAULT}`, () => { this._default = gsettings.get_boolean(Fields.DEFAULT); });
-    }
-
     set _default(def) {
         if(def) {
             this._dict._box.add_style_class_name('default');
@@ -853,6 +836,12 @@ class Extension extends GObject.Object {
             this._dict._box.remove_style_class_name('default');
             this._dict._bar.remove_style_class_name('default');
         }
+    }
+
+    enable() {
+        this._dict = new LightDict();
+        this._default = gsettings.get_boolean(Fields.DEFAULT);
+        this._defaultId = gsettings.connect('changed::' + Fields.DEFAULT, () => { this._default = gsettings.get_boolean(Fields.DEFAULT); });
     }
 
     disable() {
