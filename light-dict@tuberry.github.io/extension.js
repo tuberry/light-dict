@@ -3,6 +3,8 @@
 'use strict';
 
 const Main = imports.ui.main;
+const PanelMenu = imports.ui.panelMenu;
+const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
 const Keyboard = imports.ui.status.keyboard;
 const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
@@ -12,6 +14,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
+const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 }
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
@@ -34,7 +37,7 @@ const DictBar = GObject.registerClass({
     },
 }, class DictBar extends BoxPointer.BoxPointer {
     _init() {
-        super._init(St.Side.BOTTOM, {});
+        super._init(St.Side.BOTTOM);
         this.style_class = 'light-dict-bar-boxpointer';
         Main.layoutManager.addTopChrome(this);
 
@@ -53,7 +56,7 @@ const DictBar = GObject.registerClass({
             vertical: false,
             style_class: 'light-dict-iconbox',
         });
-        this.bin.add_actor(this._box);
+        this.bin.set_child(this._box);
     }
 
     _fetchSettings() {
@@ -67,9 +70,9 @@ const DictBar = GObject.registerClass({
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._scrollID = this._box.connect('scroll-event', this._onScroll.bind(this));
 
-        this._xoffsetId   = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
-        this._bcommandsId = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
-        this._tooltipsId  = gsettings.connect('changed::' + Fields.TOOLTIPS, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
+        this._xoffsetGId_  = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
+        this._bcommandsId_ = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
+        this._tooltipsId_  = gsettings.connect('changed::' + Fields.TOOLTIPS, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
     }
 
     set _bcommands(commands) {
@@ -235,7 +238,7 @@ const DictBar = GObject.registerClass({
         if(this._scrollID)
             this._box.disconnect(this._scrollID), this._scrollID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
         this._bcommands = [];
         this._tooltips = false;
         this._box.destroy();
@@ -247,7 +250,7 @@ const DictBar = GObject.registerClass({
 const DictBox = GObject.registerClass(
 class DictBox extends BoxPointer.BoxPointer {
     _init() {
-        super._init(St.Side.TOP, {});
+        super._init(St.Side.TOP);
         this.style_class = 'light-dict-box-boxpointer';
         this.style = '-arrow-border-radius: 10px;';
         Main.layoutManager.addTopChrome(this);
@@ -265,6 +268,7 @@ class DictBox extends BoxPointer.BoxPointer {
             visible: false,
             x_expand: true,
             y_expand: true,
+            clip_to_allocation: true,
             overlay_scrollbars: true,
             style_class: 'light-dict-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
@@ -277,12 +281,12 @@ class DictBox extends BoxPointer.BoxPointer {
             style_class: 'light-dict-content',
         });
 
-        this._word = new St.Label({style_class: 'light-dict-word' });
+        this._word = new St.Label({ style_class: 'light-dict-word' });
         this._word.clutter_text.line_wrap = true;
         this._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
-        this._info = new St.Label({style_class: 'light-dict-info'});
+        this._info = new St.Label({ style_class: 'light-dict-info' });
         this._info.clutter_text.line_wrap = true;
         this._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
@@ -290,7 +294,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this._box.add_child(this._word);
         this._box.add_child(this._info);
         this._view.add_actor(this._box);
-        this.bin.add_actor(this._view);
+        this.bin.set_child(this._view);
     }
 
     _fetchSettings() {
@@ -302,7 +306,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
 
-        this._hidetitleId = gsettings.connect('changed::' + Fields.HIDETITLE, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
+        this._hidetitleId_ = gsettings.connect('changed::' + Fields.HIDETITLE, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
     }
 
     set _hidetitle(hide) {
@@ -488,7 +492,7 @@ class DictBox extends BoxPointer.BoxPointer {
         if(this._clickID)
             this._box.disconnect(this._clickID), this._clickID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
         this._word.destroy();
         this._info.destroy();
@@ -604,7 +608,7 @@ class LightDict extends St.Widget {
 
         this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
-        this._shortcutId = gsettings.connect('changed::' + Fields.SHORTCUT, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
+        this._shortcutId_ = gsettings.connect('changed::' + Fields.SHORTCUT, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
     }
 
     get _passive() {
@@ -677,7 +681,7 @@ class LightDict extends St.Widget {
             this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                    this._fetchSelection(false);
+                    this._fetchSelection();
                     this._mouseUpID = 0;
                     return GLib.SOURCE_REMOVE;
                 } else {
@@ -685,11 +689,11 @@ class LightDict extends St.Widget {
                 }
             });
         } else {
-            this._fetchSelection(true);
+            this._fetchSelection();
         }
     }
 
-    _fetchSelection(check) {
+    _fetchSelection() {
         St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
             if(!text) return;
             this._pointer = global.get_pointer();
@@ -804,7 +808,7 @@ class LightDict extends St.Widget {
         if(this._selectionChangedID)
             global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
         for(let x in this)
-            if(RegExp(/^_.+Id$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
         Main.uiGroup.remove_actor(this);
         this._shortcut = false;
@@ -828,8 +832,8 @@ class Extension extends GObject.Object {
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
-    set _default(def) {
-        if(def) {
+    _setDefault() {
+        if(this._default) {
             this._dict._box.add_style_class_name('default');
             this._dict._bar.add_style_class_name('default');
         } else {
@@ -838,15 +842,109 @@ class Extension extends GObject.Object {
         }
     }
 
+    get _default() {
+        return gsettings.get_boolean(Fields.DEFAULT);
+    }
+
+    get _systray() {
+        return gsettings.get_boolean(Fields.SYSTRAY);
+    }
+
+    get _passive() {
+        return gsettings.get_boolean(Fields.PASSIVE);
+    }
+
+    get _trigger() {
+        return gsettings.get_uint(Fields.TRIGGER);
+    }
+
+    get _iconname() {
+        switch(this._trigger) {
+        case TRIGGER.NIL: return this._passive ? 'nil-passive' : 'nil-active';
+        case TRIGGER.BOX: return this._passive ? 'box-passive' : 'box-active';
+        case TRIGGER.BAR: return this._passive ? 'bar-passive' : 'bar-active';
+        }
+    }
+
+    _setIcon() {
+        this._icon.set_gicon(new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }));
+        this._updateMenu();
+    }
+
+    _setSystray() {
+        if(this._systray) {
+            if(this._button) return;
+            this._addButton();
+        } else {
+            if(!this._button) return;
+            this._button.destroy();
+            this._button = null;
+        }
+    }
+
+    _addButton() {
+        this._button = new PanelMenu.Button(null);
+        this._icon = new St.Icon({
+            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }),
+            style_class: 'system-status-icon',
+        });
+        this._updateMenu();
+        this._passiveId_ = gsettings.connect('changed::' + Fields.PASSIVE, this._setIcon.bind(this));
+        this._triggerId_ = gsettings.connect('changed::' + Fields.TRIGGER, this._setIcon.bind(this));
+
+        this._button.add_actor(this._icon);
+        Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
+    }
+
+    _updateMenu() {
+        this._button.menu.removeAll();
+        ['Bar', 'Box', 'Nil'].forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this._button.menu.addMenuItem(this._passiveItem());
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this._button.menu.addMenuItem(this._settingItem());
+    }
+
+    _menuItemMaker(text) {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.setOrnament(this._trigger == TRIGGER[text.toUpperCase()] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TRIGGER[text.toUpperCase()]); });
+        item.add_child(new St.Label({ x_expand: true, text: _(text), }));
+
+        return item;
+    }
+
+    _passiveItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.setOrnament(this._passive ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_boolean(Fields.PASSIVE, !this._passive); });
+        item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
+
+        return item;
+    }
+
+    _settingItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.connect('activate', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
+        item.add_child(new St.Label({ x_expand: true, text: _('Settings'), }));
+
+       return item;
+    }
+
     enable() {
         this._dict = new LightDict();
-        this._default = gsettings.get_boolean(Fields.DEFAULT);
-        this._defaultId = gsettings.connect('changed::' + Fields.DEFAULT, () => { this._default = gsettings.get_boolean(Fields.DEFAULT); });
+        if(this._default) this._setDefault();
+        if(this._systray) this._addButton();
+
+        this._defaultId_ = gsettings.connect('changed::' + Fields.DEFAULT, this._setDefault.bind(this));
+        this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, this._setSystray.bind(this));
     }
 
     disable() {
-        if(this._defaultId)
-            gsettings.disconnect(this._defaultId), this._defaultId = 0;
+        for(let x in this)
+            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+
+        this._setSystray(false);
         this._dict.destory();
         this._dict = null;
     }

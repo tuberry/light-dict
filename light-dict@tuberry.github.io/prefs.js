@@ -19,6 +19,7 @@ var Fields = {
     TRIGGER:    'trigger-style',
     BLACKWHITE: 'black-or-white',
     SENSITIVE:  'sensitive-mode',
+    SYSTRAY:    'enable-systray',
     SHORTCUT:   'enable-shortcut',
     TOOLTIPS:   'enable-tooltips',
     APPSLIST:   'application-list',
@@ -187,6 +188,7 @@ class LightDictBasic extends Gtk.Box {
     _buildWidgets() {
         this._field_black_or_white   = new Gtk.Switch();
         this._field_default_theme    = new Gtk.Switch();
+        this._field_enable_systray   = new Gtk.Switch();
         this._field_enable_strip     = new Gtk.Switch();
         this._field_enable_tooltips  = new Gtk.Switch();
         this._field_hide_panel_title = new Gtk.Switch();
@@ -211,6 +213,7 @@ class LightDictBasic extends Gtk.Box {
 
     _bulidUI() {
         this._common = this._listFrameMaker(_('Common'));
+        this._common._add(this._field_enable_systray, _("Enable systray"));
         this._common._add(this._field_enable_strip,   _("Trim whitespaces"));
         this._common._add(this._field_black_or_white, _("Black/whitelist"));
         this._common._add(this._field_passive_mode,   _("Passive mode"));
@@ -253,6 +256,7 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SHORTCUT,   this._field_enable_toggle,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SYSTRAY,    this._field_enable_systray,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.HIDETITLE,  this._field_hide_panel_title, 'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,     'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.BLACKWHITE, this._field_black_or_white,   'active', Gio.SettingsBindFlags.DEFAULT);

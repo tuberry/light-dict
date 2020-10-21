@@ -8,12 +8,16 @@
     -arrow-background-color: transparent;
 }
 
+.default .light-dict-bar-boxpointer {
+    -arrow-background-color: transparent;
+}
+
 .default .light-dict-scroll {
 }
 
 .default .light-dict-content {
     color: rgba(255, 255, 255, 1);
-    background-color: rgba(98, 98, 98, 0.95);
+    background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;
     max-width: 700px;
     text-align: left;
@@ -32,7 +36,7 @@
 }
 
 .default .light-dict-iconbox {
-    background-color: rgba(255, 255, 255, 0.95);
+    background-color: rgba(255, 255, 255, 0.99);
     border-radius: 2px;
     box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.34);
 }
@@ -51,14 +55,14 @@
 }
 
 .default .light-dict-button-icon {
-    color: rgba(0, 0, 0, 0.95);
+    color: rgba(0, 0, 0, 0.99);
     padding: 0 3px;
     icon-size: 28px;
 }
 
 .default .light-dict-tooltips {
     color: rgba(255, 255, 255, 1);
-    background-color: rgba(98, 98, 98, 0.95);
+    background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;
     text-align: left;
     padding: 4px 8px;
