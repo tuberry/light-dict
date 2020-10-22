@@ -944,7 +944,10 @@ class Extension extends GObject.Object {
         for(let x in this)
             if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
-        this._setSystray(false);
+        if(this._systray) {
+            this._button.destroy();
+            this._button = null;
+        }
         this._dict.destory();
         this._dict = null;
     }
