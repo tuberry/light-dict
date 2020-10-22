@@ -873,10 +873,10 @@ class Extension extends GObject.Object {
 
     _setSystray() {
         if(this._systray) {
-            if(this._button) return;
+            if(Main.panel.statusArea[Me.metadata.uuid]) return;
             this._addButton();
         } else {
-            if(!this._button) return;
+            if(!Main.panel.statuaArea[Me.metadata.uuid]) return;
             this._button.destroy();
             this._button = null;
         }
@@ -886,13 +886,13 @@ class Extension extends GObject.Object {
         this._button = new PanelMenu.Button(null);
         this._icon = new St.Icon({
             gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }),
-            style_class: 'system-status-icon',
+            style_class: 'light-dict-systray system-status-icon',
         });
-        this._updateMenu();
+        this._button.add_actor(this._icon);
         this._passiveId_ = gsettings.connect('changed::' + Fields.PASSIVE, this._setIcon.bind(this));
         this._triggerId_ = gsettings.connect('changed::' + Fields.TRIGGER, this._setIcon.bind(this));
 
-        this._button.add_actor(this._icon);
+        this._updateMenu();
         Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
     }
 

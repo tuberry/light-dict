@@ -20,7 +20,7 @@ gdbus call --session \
 tesseract $LDWORDOCR.png $LDWORDOCR &> /dev/null -l eng # need tesseract and its eng database
 truncate -s -2 $LDWORDOCR.txt # delete \n and ^L at the end of $LDWORDOCR.txt
 word=$(cat $LDWORDOCR.txt | tr '\n' ' ')
-# rm $LDWORDOCR.png $LDWORDOCR.txt # delete tmp files
+rm $LDWORDOCR.png $LDWORDOCR.txt # delete tmp files
 
 ## LookUp $word
 gdbus call --session \
