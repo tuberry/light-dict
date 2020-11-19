@@ -4,18 +4,18 @@
  * Add your custom extension styling here
  */
 
-.default .light-dict-box-boxpointer {
+.light-dict-box-boxpointer {
     -arrow-background-color: transparent;
 }
 
-.default .light-dict-bar-boxpointer {
+.light-dict-bar-boxpointer {
     -arrow-background-color: transparent;
 }
 
-.default .light-dict-scroll {
+.light-dict-scroll {
 }
 
-.default .light-dict-content {
+.light-dict-content {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;
@@ -24,28 +24,28 @@
     padding: 4px 8px;
 }
 
-.default .light-dict-word {
+.light-dict-word {
     border-width: 0;
     border-color: rgba(0, 0, 0, 0.38);
     border-style: dashed;
     border-bottom-width: 2px;
 }
 
-.default .light-dict-info {
+.light-dict-info {
 
 }
 
-.default .light-dict-iconbox {
+.light-dict-iconbox {
     background-color: rgba(255, 255, 255, 0.99);
     border-radius: 2px;
     box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.34);
 }
 
-.default .light-dict-button {
+.light-dict-button {
     padding: 5px 2px;
 }
 
-.default .light-dict-button:hover {
+.light-dict-button:hover {
     background-color: #ddd;
     border-width: 0;
     border-color: #3385ef;
@@ -54,13 +54,13 @@
     padding: 2px 2px 5px 2px;
 }
 
-.default .light-dict-button-icon {
+.light-dict-button-icon {
     color: rgba(0, 0, 0, 0.99);
     padding: 0 3px;
     icon-size: 28px;
 }
 
-.default .light-dict-tooltips {
+.light-dict-tooltips {
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;

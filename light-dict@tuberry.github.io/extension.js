@@ -16,7 +16,7 @@ const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
-const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 }
+const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 };
 const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
@@ -577,7 +577,7 @@ class LightDict extends St.Widget {
 
         this._wmclass = '';
         this._selection = '';
-        this._disable = false;
+        this._allow = true;
 
         this._buildWidget();
         this._fetchSettings();
@@ -627,8 +627,8 @@ class LightDict extends St.Widget {
         return gsettings.get_string(Fields.APPSLIST);
     }
 
-    get _blackwhite() {
-        return gsettings.get_boolean(Fields.BLACKWHITE);
+    get _listtype() {
+        return gsettings.get_uint(Fields.LISTTYPE) == 0;
     }
 
     get _textstrip() {
@@ -657,8 +657,8 @@ class LightDict extends St.Widget {
         this._hide();
         let FW = global.display.get_focus_window();
         this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
-        let wlist = this._appslist === '*' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
-        this._disable = this._blackwhite ? !wlist : wlist;
+        let wlist = this._appslist === '' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
+        this._allow = this._listtype^wlist;
     }
 
     _onBarEmit(actor, tag, cmd) {
@@ -674,7 +674,7 @@ class LightDict extends St.Widget {
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseUpID)
             GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-        if(this._disable || this._trigger == TRIGGER.NIL) return;
+        if(!this._allow || this._trigger == TRIGGER.NIL) return;
         let [, , initModifier] = global.get_pointer();
         if(this._passive && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
@@ -687,7 +687,7 @@ class LightDict extends St.Widget {
                 } else {
                     return GLib.SOURCE_CONTINUE;
                 }
-            });
+            }); // NOTE: `owner-changed` is emitted every single char in Gtk+ apps
         } else {
             this._fetchSelection();
         }
@@ -832,16 +832,6 @@ class Extension extends GObject.Object {
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
-    _setDefault() {
-        if(this._default) {
-            this._dict._box.add_style_class_name('default');
-            this._dict._bar.add_style_class_name('default');
-        } else {
-            this._dict._box.remove_style_class_name('default');
-            this._dict._bar.remove_style_class_name('default');
-        }
-    }
-
     get _default() {
         return gsettings.get_boolean(Fields.DEFAULT);
     }
@@ -873,12 +863,24 @@ class Extension extends GObject.Object {
 
     _setSystray() {
         if(this._systray) {
-            if(Main.panel.statusArea[Me.metadata.uuid]) return;
             this._addButton();
         } else {
-            if(!Main.panel.statuaArea[Me.metadata.uuid]) return;
             this._button.destroy();
             this._button = null;
+        }
+    }
+
+    _setDefault() {
+        let theme = St.ThemeContext.get_for_stage(global.stage).get_theme();
+        if(this._default) {
+            if(Me.stylesheet) return;
+            let stylesheet = Me.dir.get_child('stylesheet.csss');
+            theme.load_stylesheet(stylesheet);
+            Me.stylesheet = stylesheet;
+        } else {
+            if(!Me.stylesheet) return;
+            theme.unload_stylesheet(Me.stylesheet);
+            delete Me.stylesheet;
         }
     }
 
@@ -898,9 +900,9 @@ class Extension extends GObject.Object {
 
     _updateMenu() {
         this._button.menu.removeAll();
-        ['Bar', 'Box', 'Nil'].forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
         this._button.menu.addMenuItem(this._passiveItem());
+        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        ['Bar', 'Box', 'Nil'].forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
         this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
         this._button.menu.addMenuItem(this._settingItem());
     }
@@ -933,8 +935,8 @@ class Extension extends GObject.Object {
 
     enable() {
         this._dict = new LightDict();
-        if(this._default) this._setDefault();
         if(this._systray) this._addButton();
+        this._setDefault();
 
         this._defaultId_ = gsettings.connect('changed::' + Fields.DEFAULT, this._setDefault.bind(this));
         this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, this._setSystray.bind(this));
