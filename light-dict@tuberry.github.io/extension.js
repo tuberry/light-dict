@@ -28,6 +28,8 @@ const DBUSINTERFACE = `
         <method name="ShowBar">
             <arg type="s" direction="in" name="word"/>
         </method>
+        <method name="ChangeMode">
+        </method>
     </interface>
 </node>`;
 
@@ -580,7 +582,6 @@ class LightDict extends St.Widget {
         this._allow = true;
 
         this._buildWidget();
-        this._fetchSettings();
         this._loadSettings();
     }
 
@@ -597,10 +598,6 @@ class LightDict extends St.Widget {
         this._spawn = x => this._box._spawn(x);
     }
 
-    _fetchSettings() {
-        this._shortcut  = gsettings.get_boolean(Fields.SHORTCUT);
-    }
-
     _loadSettings() {
         this._scrollID = this.connect('scroll-event', this._hide.bind(this));
         this._clickID = this.connect('button-press-event', this._hide.bind(this));
@@ -608,11 +605,10 @@ class LightDict extends St.Widget {
 
         this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
-        this._shortcutId_ = gsettings.connect('changed::' + Fields.SHORTCUT, () => { this._shortcut = gsettings.get_boolean(Fields.SHORTCUT); });
     }
 
     get _passive() {
-        return gsettings.get_boolean(Fields.PASSIVE);
+        return gsettings.get_uint(Fields.PASSIVE) == 1;
     }
 
     get _filter() {
@@ -637,20 +633,6 @@ class LightDict extends St.Widget {
 
     set _pointer(pointer) {
         this.set_position(pointer[0] - 20, pointer[1] - 20);
-    }
-
-    set _shortcut(shortcut) {
-        if(shortcut) {
-            Main.wm.addKeybinding(Fields.TOGGLE, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._changeMode.bind(this));
-        } else {
-            Main.wm.removeKeybinding(Fields.TOGGLE);
-        }
-    }
-
-    _changeMode() {
-        let next = (this._trigger + 1) % 2;
-        Main.notify(Me.metadata.name, _('Switch to %s mode').format(Object.keys(TRIGGER)[next]));
-        gsettings.set_uint(Fields.TRIGGER, next);
     }
 
     _onWindowChanged() {
@@ -798,6 +780,12 @@ class LightDict extends St.Widget {
         }
     }
 
+    ChangeMode() {
+        let next = (this._trigger + 1) % 2;
+        Main.notify(Me.metadata.name, _('Switch to %s mode').format(Object.keys(TRIGGER)[next]));
+        gsettings.set_uint(Fields.TRIGGER, next);
+    }
+
     destory() {
         if(this._mouseUpID)
             GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
@@ -811,7 +799,6 @@ class LightDict extends St.Widget {
             if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
         Main.uiGroup.remove_actor(this);
-        this._shortcut = false;
         this._dbus.flush();
         this._dbus.unexport();
         this._bar.destory();
@@ -841,7 +828,7 @@ class Extension extends GObject.Object {
     }
 
     get _passive() {
-        return gsettings.get_boolean(Fields.PASSIVE);
+        return gsettings.get_uint(Fields.PASSIVE) == 1;
     }
 
     get _trigger() {
@@ -919,7 +906,7 @@ class Extension extends GObject.Object {
     _passiveItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
         item.setOrnament(this._passive ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_boolean(Fields.PASSIVE, !this._passive); });
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); });
         item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
 
         return item;
