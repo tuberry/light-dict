@@ -59,7 +59,7 @@ class LightDictPrefsWidget extends Gtk.Stack {
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
             let window = this.get_toplevel();
-            window.resize(650,550);
+            window.resize(600,575);
             let headerBar = window.get_titlebar();
             headerBar.custom_title = new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, visible: true, stack: this });
             return GLib.SOURCE_REMOVE;
@@ -155,7 +155,7 @@ class LightDictAbout extends Gtk.Box {
         let info = [
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _("Version %d").format(Me.metadata.version),
-            _("Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary."),
+            _("Lightweight extension for instant action to primary selection, especially optimized for Dictionary look-up."),
             "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
             "<small>" + _("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(gpl, license) + "</small>"
         ];

@@ -1,5 +1,5 @@
 # Light Dict
-Lightweight selection-popup extension of gnome-shell with icon bar and tooltips-style panel, especially optimized for Dictionary.
+Lightweight extension for instant action to primary selection, especially optimized for Dictionary look-up.
 
 >L, you know what? The Shinigami only eat apples. —— *Light Yagami*<br>
 [![license]](/LICENSE)

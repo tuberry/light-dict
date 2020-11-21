@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-20 21:41+0800\n"
+"POT-Creation-Date: 2020-11-21 13:31+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -79,8 +79,8 @@ msgstr ""
 
 #: prefs.js:158
 msgid ""
-"Lightweight selection-popup extension with icon bar and tooltips-style "
-"panel, especially optimized for Dictionary."
+"Lightweight extension for instant action to primary selection, especially "
+"optimized for Dictionary look-up."
 msgstr ""
 
 #: prefs.js:160

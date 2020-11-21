@@ -1,10 +1,10 @@
 {
-  "description": "Lightweight selection-popup extension with icon bar and tooltips-style panel, especially optimized for Dictionary.",
+  "description": "Lightweight extension for instant action to primary selection, especially optimized for Dictionary look-up",
   "gettext-domain": "light-dict",
   "name": "Light Dict",
   "settings-schema": "org.gnome.shell.extensions.light-dict",
   "shell-version": [
-    "3.36"
+    "3.38"
   ],
   "url": "https://github.com/tuberry/light-dict",
   "uuid": "light-dict@tuberry.github.io",

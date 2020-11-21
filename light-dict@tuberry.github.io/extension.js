@@ -861,7 +861,7 @@ class Extension extends GObject.Object {
         let theme = St.ThemeContext.get_for_stage(global.stage).get_theme();
         if(this._default) {
             if(Me.stylesheet) return;
-            let stylesheet = Me.dir.get_child('stylesheet.csss');
+            let stylesheet = Me.dir.get_child('stylesheet.css');
             theme.load_stylesheet(stylesheet);
             Me.stylesheet = stylesheet;
         } else {
