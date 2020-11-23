@@ -30,6 +30,9 @@ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Exten
 # ShowBar
 gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "" # primary selection
 gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "'word'" # 'word'
+
+#ChangeMode
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ChangeMode
 ```
 
 ## Acknowledgements

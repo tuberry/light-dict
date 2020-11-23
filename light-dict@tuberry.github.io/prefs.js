@@ -14,7 +14,6 @@ var Fields = {
     DCOMMAND:  'dict-command',
     PASSIVE:   'passive-mode',
     TEXTSTRIP: 'enable-strip',
-    DEFAULT:   'default-theme',
     LISTTYPE:  'app-list-type',
     PAGESIZE:  'icon-pagesize',
     TRIGGER:   'trigger-style',
@@ -186,7 +185,6 @@ class LightDictBasic extends Gtk.Box {
     }
 
     _buildWidgets() {
-        this._field_default_theme    = new Gtk.Switch();
         this._field_enable_systray   = new Gtk.Switch();
         this._field_enable_strip     = new Gtk.Switch();
         this._field_enable_tooltips  = new Gtk.Switch();
@@ -212,7 +210,6 @@ class LightDictBasic extends Gtk.Box {
         this._common = this._listFrameMaker(_('Common'));
         this._common._add(this._labelMaker(_("Enable systray")),    this._field_enable_systray);
         this._common._add(this._labelMaker(_("Trim whitespaces")),  this._field_enable_strip);
-        this._common._add(this._labelMaker(_("Default theme")),     this._field_default_theme);
         this._common._add(this._labelMaker(_("Autohide interval")), this._field_auto_hide);
         this._common._add(this._labelMaker(_("Trigger style")),     this._field_passive_mode, this._field_trigger_style);
         this._common._att(this._labelMaker(_("Window list"), true), this._field_list_type, this._field_apps_list);
@@ -245,23 +242,22 @@ class LightDictBasic extends Gtk.Box {
     }
 
     _bindValues() {
-        gsettings.bind(Fields.FILTER,     this._field_filter,           'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.DCOMMAND,   this._field_dict_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.RCOMMAND,   this._field_right_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LCOMMAND,   this._field_left_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.APPSLIST,   this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.AUTOHIDE,   this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PAGESIZE,   this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.XOFFSET,    this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LOGSLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TRIGGER,    this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LISTTYPE,   this._field_list_type,        'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SYSTRAY,    this._field_enable_systray,   'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.HIDETITLE,  this._field_hide_panel_title, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TEXTSTRIP,  this._field_enable_strip,     'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TOOLTIPS,   this._field_enable_tooltips,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PASSIVE,    this._field_passive_mode,     'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.DEFAULT,    this._field_default_theme,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.FILTER,    this._field_filter,           'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.DCOMMAND,  this._field_dict_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.RCOMMAND,  this._field_right_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LCOMMAND,  this._field_left_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPSLIST,  this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PAGESIZE,  this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LOGSLEVEL, this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LISTTYPE,  this._field_list_type,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray,   'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.HIDETITLE, this._field_hide_panel_title, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,     'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TOOLTIPS,  this._field_enable_tooltips,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,     'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _listFrameMaker(lbl) {
@@ -288,7 +284,7 @@ class LightDictBasic extends Gtk.Box {
         frame.add(frame.grid);
         frame._add = (x, y, z) => {
             let hbox = new Gtk.Box();
-            hbox.pack_start(x, true, true, 4)
+            hbox.pack_start(x, true, true, 0);
             hbox.pack_start(y, false, false, 4);
             if(z) hbox.pack_start(z, false, false, 4);
             frame.grid.attach(hbox, 0, frame.grid._row++, 2, 1);
@@ -316,14 +312,6 @@ class LightDictBasic extends Gtk.Box {
                 upper: u,
                 step_increment: s,
             }),
-        });
-    }
-
-    _checkMaker(active, label) {
-        return new Gtk.CheckButton({
-            expand: true,
-            label: label,
-            active: active,
         });
     }
 

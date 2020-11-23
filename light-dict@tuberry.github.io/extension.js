@@ -84,7 +84,7 @@ const DictBar = GObject.registerClass({
     }
 
     set _xoffset(offset) {
-        this.set_style('-arrow-border-radius: %dpx;'.format(-offset));
+        this.set_style('-arrow-border-radius: %dpx;'.format(-offset + 20));
     }
 
     set _tooltips(tooltips) {
@@ -205,6 +205,7 @@ const DictBar = GObject.registerClass({
     }
 
     _show(fw, text) {
+        this._hide();
         this._updateVisible(fw, text);
         if(this._pages < 1) return;
         if(!this._box.visible) {
@@ -747,7 +748,7 @@ class LightDict extends St.Widget {
     _hide() {
         this._box._hide();
         this._bar._hide();
-        this._pointer = global.display.get_size();
+        // this._pointer = global.display.get_size();
     }
 
     LookUp(word) {
@@ -819,10 +820,6 @@ class Extension extends GObject.Object {
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
-    get _default() {
-        return gsettings.get_boolean(Fields.DEFAULT);
-    }
-
     get _systray() {
         return gsettings.get_boolean(Fields.SYSTRAY);
     }
@@ -854,20 +851,6 @@ class Extension extends GObject.Object {
         } else {
             this._button.destroy();
             this._button = null;
-        }
-    }
-
-    _setDefault() {
-        let theme = St.ThemeContext.get_for_stage(global.stage).get_theme();
-        if(this._default) {
-            if(Me.stylesheet) return;
-            let stylesheet = Me.dir.get_child('stylesheet.css');
-            theme.load_stylesheet(stylesheet);
-            Me.stylesheet = stylesheet;
-        } else {
-            if(!Me.stylesheet) return;
-            theme.unload_stylesheet(Me.stylesheet);
-            delete Me.stylesheet;
         }
     }
 
@@ -922,10 +905,8 @@ class Extension extends GObject.Object {
 
     enable() {
         this._dict = new LightDict();
-        if(this._systray) this._addButton();
-        this._setDefault();
 
-        this._defaultId_ = gsettings.connect('changed::' + Fields.DEFAULT, this._setDefault.bind(this));
+        if(this._systray) this._addButton();
         this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, this._setSystray.bind(this));
     }
 

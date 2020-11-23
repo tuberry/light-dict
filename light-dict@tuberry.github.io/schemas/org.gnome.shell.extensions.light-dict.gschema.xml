@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.light-dict" path="/org/gnome/shell/extensions/light-dict/">
-    <key type="b" name="default-theme">
-        <default>true</default>
-        <summary>use default theme</summary>
-    </key>
     <key type="b" name="hide-panel-title">
         <default>true</default>
         <summary>hide panel title</summary>
