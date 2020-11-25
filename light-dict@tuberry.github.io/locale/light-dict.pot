@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-23 17:35+0800\n"
+"POT-Creation-Date: 2020-11-25 21:24+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,16 +17,16 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:786
+#: extension.js:763
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr ""
 
-#: extension.js:893
+#: extension.js:870
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:901
+#: extension.js:878
 msgid "Settings"
 msgstr ""
 
@@ -143,7 +143,7 @@ msgid "Always"
 msgstr ""
 
 #: prefs.js:202
-msgid "run with Bash"
+msgid "run with /bin/sh"
 msgstr ""
 
 #: prefs.js:203

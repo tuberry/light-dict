@@ -3,6 +3,7 @@
 'use strict';
 
 const Main = imports.ui.main;
+const Util = imports.misc.util;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
@@ -72,7 +73,7 @@ const DictBar = GObject.registerClass({
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._scrollID = this._box.connect('scroll-event', this._onScroll.bind(this));
 
-        this._xoffsetGId_  = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
+        this._xoffsetId_  = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
         this._bcommandsId_ = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
         this._tooltipsId_  = gsettings.connect('changed::' + Fields.TOOLTIPS, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
     }
@@ -258,11 +259,11 @@ class DictBox extends BoxPointer.BoxPointer {
         this.style = '-arrow-border-radius: 10px;';
         Main.layoutManager.addTopChrome(this);
 
+        this._log = false;
         this._selection = '';
         this._notFound = false;
 
         this._buildWidget();
-        this._fetchSettings();
         this._loadSettings();
     }
 
@@ -288,6 +289,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this._word.clutter_text.line_wrap = true;
         this._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+        this._word.visible = !gsettings.get_boolean(Fields.HIDETITLE);
 
         this._info = new St.Label({ style_class: 'light-dict-info' });
         this._info.clutter_text.line_wrap = true;
@@ -300,20 +302,14 @@ class DictBox extends BoxPointer.BoxPointer {
         this.bin.set_child(this._view);
     }
 
-    _fetchSettings() {
-        this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE);
-    }
-
     _loadSettings() {
         this._leaveID = this._box.connect('leave-event', this._onLeave.bind(this));
         this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
         this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
 
-        this._hidetitleId_ = gsettings.connect('changed::' + Fields.HIDETITLE, () => { this._hidetitle = gsettings.get_boolean(Fields.HIDETITLE); });
-    }
-
-    set _hidetitle(hide) {
-        this._word.visible = !hide;
+        this._hidetitleId_ = gsettings.connect('changed::' + Fields.HIDETITLE, () => {
+            this._word.visible = !gsettings.get_boolean(Fields.HIDETITLE);
+        });
     }
 
     get _autohide() {
@@ -321,19 +317,17 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     get _logslevel() {
-        return gsettings.get_uint(Fields.LOGSLEVEL);
+        return this._log ? gsettings.get_uint(Fields.LOGSLEVEL) : LOGSLEVEL.NEVER;
     }
 
     get _rcommand() {
-        return gsettings.get_string(Fields.RCOMMAND);
+        let command = gsettings.get_string(Fields.RCOMMAND);
+        return command ? command.replace(/LDWORD/g, GLib.shell_quote(this._selection)) : null;
     }
 
     get _lcommand() {
-        return gsettings.get_string(Fields.LCOMMAND);
-    }
-
-    get _dcommand() {
-        return gsettings.get_string(Fields.DCOMMAND);
+        let command = gsettings.get_string(Fields.LCOMMAND);
+        return command ? command.replace(/LDWORD/g, GLib.shell_quote(this._selection)) : null;
     }
 
     get _scrollable() {
@@ -353,17 +347,14 @@ class DictBox extends BoxPointer.BoxPointer {
     _onClick(actor, event) {
         switch(event.get_button()) {
         case 1:
-            if(this._logslevel === LOGSLEVEL.CLICK)
-                this._recordLog();
-            if(this._lcommand)
-                this._spawn(this._lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
+            if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog();
+            if(this._lcommand) Util.spawnCommandLine(this._lcommand);
             break;
         case 2:
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text());
             break;
         case 3:
-            if(this._rcommand)
-                this._spawn(this._rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
+            if(this._rcommand) Util.spawnCommandLine(this._rcommand);
             this._hide();
             break;
         default:
@@ -379,18 +370,6 @@ class DictBox extends BoxPointer.BoxPointer {
         if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
         this._hide();
-    }
-
-    _spawn(rcmd) {
-        try {
-            let proc = new Gio.Subprocess({
-                argv: ['/bin/bash', '-c', rcmd],
-                flags: Gio.SubprocessFlags.STDOUT_SILENCE | Gio.SubprocessFlags.STDERR_SILENCE
-            });
-            proc.init(null);
-        } catch(e) {
-            Main.notifyError(Me.metadata.name, e.message);
-        }
     }
 
     _recordLog() {
@@ -414,32 +393,13 @@ class DictBox extends BoxPointer.BoxPointer {
             return fmt;
         }
         let logfile = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/light-dict.log');
-        let log = [dateFormat("YYYY-mm-dd HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
+        let log = [dateFormat("YYYY-mm-dd-HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
         try {
             logfile.append_to(Gio.FileCreateFlags.NONE, null).write(log, null);
         } catch(e) {
             Main.notifyError(Me.metadata.name, e.message);
         }
         this._prevLog = this._selection;
-    }
-
-    _lookUp(text) {
-        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(text));
-        let proc = new Gio.Subprocess({
-            argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-        });
-        proc.init(null);
-        proc.communicate_utf8_async(null, null, (proc, res) => {
-            try {
-                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                this._notFound = proc.get_exit_status() !== 0;
-                this._show(this._notFound ? stderr.trim() : stdout.trim(), text);
-                if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
-            } catch(e) {
-                Main.notifyError(Me.metadata.name, e.message);
-            }
-        });
     }
 
     _hide() {
@@ -450,14 +410,22 @@ class DictBox extends BoxPointer.BoxPointer {
         this._info.set_text(Me.metadata.name);
     }
 
-    _show(info, word) {
+    _look(info, word, notFound) {
+        this._log = true;
+        this._notFound = notFound;
+        if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
+        this._show(info, word);
+    }
+
+    _show(info, word, notLog) {
         this._selection = word;
+        if(notLog) this._log = false;
 
         try {
             Pango.parse_markup(info, -1, '');
             this._info.clutter_text.set_markup(info);
         } catch(e) {
-            this._info.set_text(info);
+            this._info.set_text(info || '눈_눈');
         }
         if(this._word.visible)
             this._word.set_text(word);
@@ -535,18 +503,14 @@ class DictAct extends GObject.Object {
     }
 
     stroke(keystring) {
-        try {
-            keystring.split(/\s+/).forEach((keys, i) => {
-                GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
-                    let keyarray = keys.split('+');
-                    keyarray.forEach(key => this._press(key));
-                    keyarray.slice().reverse().forEach(key => this._release(key));
-                    return GLib.SOURCE_REMOVE;
-                });
+        keystring.split(/\s+/).forEach((keys, i) => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
+                let keyarray = keys.split('+');
+                keyarray.forEach(key => this._press(key));
+                keyarray.slice().reverse().forEach(key => this._release(key));
+                return GLib.SOURCE_REMOVE;
             });
-        } catch(e) {
-            Main.notifyError(Me.metadata.name, e.message);
-        }
+        });
         // TODO: Modifier keys aren't working on Wayland (input area)
     }
 
@@ -596,7 +560,6 @@ class LightDict extends St.Widget {
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-        this._spawn = x => this._box._spawn(x);
     }
 
     _loadSettings() {
@@ -632,6 +595,10 @@ class LightDict extends St.Widget {
         return gsettings.get_boolean(Fields.TEXTSTRIP);
     }
 
+    get _dcommand() {
+        return gsettings.get_string(Fields.DCOMMAND);
+    }
+
     set _pointer(pointer) {
         this.set_position(pointer[0] - 20, pointer[1] - 20);
     }
@@ -642,15 +609,6 @@ class LightDict extends St.Widget {
         this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
         let wlist = this._appslist === '' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
         this._allow = this._listtype^wlist;
-    }
-
-    _onBarEmit(actor, tag, cmd) {
-        let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
-        if(type) {
-            this._runWithEval(popup, clip, commit, cmd);
-        } else {
-            this._runWithBash(popup, clip, commit, cmd);
-        }
     }
 
     _selectionChanged(sel, type, src) {
@@ -664,60 +622,80 @@ class LightDict extends St.Widget {
             this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                    this._fetchSelection();
                     this._mouseUpID = 0;
+                    this._fetchSelection().then(this._show.bind(this));
                     return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
                 }
             }); // NOTE: `owner-changed` is emitted every single char in Gtk+ apps
         } else {
-            this._fetchSelection();
+            this._fetchSelection().then(this._show.bind(this));
+        }
+    }
+
+    _onBarEmit(actor, tag, cmd) {
+        let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
+        if(type) {
+            this._runWithJS(popup, clip, commit, cmd);
+        } else {
+            this._runWithSh(popup, clip, commit, cmd);
         }
     }
 
     _fetchSelection() {
-        St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-            if(!text) return;
-            this._pointer = global.get_pointer();
-            this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-            this._show();
+        return new Promise((resolve, reject) => {
+            try {
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
+                    if(!text) reject('None');
+                    this._pointer = global.get_pointer();
+                    this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
+                    resolve();
+                });
+            } catch(e) {
+                reject(e.message)
+            }
         });
     }
 
-    _runWithBash(popup, clip, commit, cmd) {
-        let title = global.display.get_focus_window().title.toString();
-        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/LDTITLE/g, GLib.shell_quote(title));
-        if(popup|clip|commit) {
-            let proc = new Gio.Subprocess({
-                argv: ['/bin/bash', '-c', 'set -o pipefail;' + rcmd],
-                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-            });
-            proc.init(null);
-            proc.communicate_utf8_async(null, null, (proc, res) => {
-                try {
+    _execute(cmd) {
+        return new Promise((resolve, reject) => {
+            try {
+                let [, command] = GLib.shell_parse_argv(cmd);
+                let proc = new Gio.Subprocess({
+                    argv: command,
+                    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
+                });
+                proc.init(null);
+                proc.communicate_utf8_async(null, null, (proc, res) => {
                     let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                    if(proc.get_exit_status() === 0) {
-                        let result = stdout.trim();
-                        if(clip) this._act.copy(result);
-                        if(commit) this._act.commit(result);
-                        if(popup) this._box._show(result, this._selection);
-                    } else {
-                        this._box._show(stderr.trim(), this._selection);
-                    }
-                } catch(e) {
-                    Main.notifyError(Me.metadata.name, e.message);
-                }
+                    proc.get_exit_status() ? reject(stderr.trim()) : resolve(stdout.trim());
+                });
+            } catch(e) {
+                reject(e.message);
+            }
+        });
+    }
+
+    _runWithSh(popup, clip, commit, cmd) {
+        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/WMCLASS/g, GLib.shell_quote(this._wmclass));
+        if(popup|clip|commit) {
+            this._execute(rcmd).then(scc => {
+                if(clip) this._act.copy(scc);
+                if(commit) this._act.commit(scc);
+                if(popup) this._box._show(scc, this._selection, true);
+            }).catch(err => {
+                this._box._show(err, this._selection, true);
             });
         } else {
-            this._spawn(rcmd);
+            Util.spawnCommandLine(rcmd);
         }
     }
 
-    _runWithEval(popup, clip, commit, cmd) {
+    _runWithJS(popup, clip, commit, cmd) {
         try {
+            let WMCLASS = this._wmclass;
             let LDWORD = this._selection;
-            let LDTITLE = global.display.get_focus_window().title;
             let key = x => this._act.stroke(x);
             let copy = x => this._act.copy(x);
             let commit = x => this._act.commit(x);
@@ -725,44 +703,47 @@ class LightDict extends St.Widget {
                 let result = eval(cmd).toString();
                 if(clip) this._act.copy(result);
                 if(commit) this._act.commit(result);
-                if(popup) this._box._show(result, this._selection);
+                if(popup) this._box._show(result, this._selection, true);
             } else {
                 eval(cmd);
             }
         } catch(e) {
-            Main.notifyError(Me.metadata.name, e.message);
+            this._box._show(e.message, this._selection, true);
         }
     }
 
+    _lookUp() {
+        if(!this._passive && this._filter && !RegExp(this._filter).test(this._selection)) return;
+        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection));
+        this._execute(rcmd).then(scc => {
+            this._box._look(scc, this._selection, false);
+        }, err => {
+            this._box._look(err, this._selection, true);
+        });
+    }
+
+    _showBar() {
+        this._box._hide();
+        this._bar._show(this._wmclass, this._selection);
+    }
+
     _show() {
-        if(this._trigger == TRIGGER.BAR) {
-            this._box._hide();
-            this._bar._show(this._wmclass, this._selection);
-        } else {
-            if(!this._passive && this._filter && !RegExp(this._filter).test(this._selection)) return;
-            this._bar._hide();
-            this._box._lookUp(this._selection);
-        }
+        this._trigger == TRIGGER.BAR ? this._showBar() : this._lookUp();
     }
 
     _hide() {
         this._box._hide();
         this._bar._hide();
-        // this._pointer = global.display.get_size();
     }
 
     LookUp(word) {
+        this._bar._hide();
         if(word) {
             this._selection = word;
             this._pointer = global.get_pointer();
-            this._box._lookUp(this._selection);
+            this._lookUp();
         } else {
-            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-                if(!text) return;
-                this._pointer = global.get_pointer();
-                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-                this._box._lookUp(this._selection);
-            });
+            this._fetchSelection().then(this._lookUp.bind(this));
         }
     }
 
@@ -772,18 +753,14 @@ class LightDict extends St.Widget {
             this._pointer = global.get_pointer();
             this._bar._show(this._wmclass, this._selection);
         } else {
-            St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-                if(!text) return;
-                this._pointer = global.get_pointer();
-                this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-                this._bar._show(this._wmclass, this._selection);
-            });
+            this._fetchSelection().then(this._showBar.bind(this));
         }
     }
 
     ChangeMode() {
         let next = (this._trigger + 1) % 2;
-        Main.notify(Me.metadata.name, _('Switch to %s mode').format(Object.keys(TRIGGER)[next]));
+        let modes = ['Bar', 'Box', 'Nil'];
+        Main.notify(Me.metadata.name, _('Switch to %s mode').format(_(modes[next])));
         gsettings.set_uint(Fields.TRIGGER, next);
     }
 

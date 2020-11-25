@@ -127,7 +127,7 @@ class LightDictAbout extends Gtk.Box {
                 let y = JSON.parse(x)
                 icons.push(new Gtk.Image({
                     icon_size: icon_size,
-                    icon_name: y.icon,
+                    icon_name: y.icon || 'help',
                 }));
             });
         } else {
@@ -199,7 +199,7 @@ class LightDictBasic extends Gtk.Box {
         this._field_trigger_style = this._comboMaker([_('Box'), _('Bar'), _('Nil')], _('What to popup when trigger'));
         this._field_log_level     = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
-        this._field_dict_command  = this._entryMaker("dict -- LDWORD", _('run with Bash'));
+        this._field_dict_command  = this._entryMaker("dict -- LDWORD", _('run with /bin/sh'));
         this._field_apps_list     = this._entryMaker('Yelp,Evince', _('allow/block list (empty for all)'));
         this._field_filter        = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter'));
         this._field_left_command  = this._entryMaker('notify-send LDWORD', _('Left click to run'));
@@ -414,7 +414,7 @@ class LightDictAdvanced extends Gtk.HBox {
         this._popup = new Gtk.Switch();
         this._commit = new Gtk.Switch();
         this._clip = new Gtk.Switch();
-        this._type = this._comboMaker(['Bash', 'JS'], _('Command type'));
+        this._type = this._comboMaker(['sh', 'JS'], _('Command type'));
         this._name = this._entryMaker('Link', _('Show on left side'), true);
         this._icon = this._entryMaker('face-cool-symbolic', _('Show in the bar'), true);
         this._cmd = this._entryMaker('gio open LDWORD', _('Run when clicking'));
