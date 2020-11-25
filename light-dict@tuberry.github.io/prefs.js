@@ -212,19 +212,19 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._labelMaker(_("Trim whitespaces")),  this._field_enable_strip);
         this._common._add(this._labelMaker(_("Autohide interval")), this._field_auto_hide);
         this._common._add(this._labelMaker(_("Trigger style")),     this._field_passive_mode, this._field_trigger_style);
-        this._common._att(this._labelMaker(_("Window list"), true), this._field_list_type, this._field_apps_list);
+        this._common._att(this._labelMaker(_("Window list"), true), this._field_apps_list, this._field_list_type);
 
         this._panel = this._listFrameMaker(_('Box'));
         this._panel._add(this._labelMaker(_("Hide title")), this._field_hide_panel_title);
         this._panel._add(this._labelMaker(_("Logs level")), this._field_log_level);
-        this._panel._att(this._labelMaker(_("Run cmd"), true), this._field_dict_command);
+        this._panel._att(this._labelMaker(_("Run cmd"), true),     this._field_dict_command);
         this._panel._att(this._labelMaker(_("Right click"), true), this._field_right_command);
-        this._panel._att(this._labelMaker(_("Left click"), true), this._field_left_command);
+        this._panel._att(this._labelMaker(_("Left click"), true),  this._field_left_command);
         this._panel._att(this._labelMaker(_("Text filter"), true), this._field_filter);
 
         this._iconbar = this._listFrameMaker(_('Bar'));
         this._iconbar._add(this._labelMaker(_("Enable tooltips")),   this._field_enable_tooltips);
-        this._iconbar._add(this._labelMaker(_("Page size")),      this._field_icon_pagesize);
+        this._iconbar._add(this._labelMaker(_("Page size")),         this._field_icon_pagesize);
         this._iconbar._add(this._labelMaker(_("Horizontal offset")), this._field_icon_xoffset);
     }
 
@@ -293,8 +293,8 @@ class LightDictBasic extends Gtk.Box {
             let r = frame.grid._row++;
             if(z) {
                 let hbox = new Gtk.Box();
-                hbox.pack_start(y, false, false, 4);
-                hbox.pack_start(z, true, true, 4);
+                hbox.pack_start(y, true, true, 4);
+                hbox.pack_start(z, false, false, 4);
                 frame.grid.attach(x, 0, r, 1, 1);
                 frame.grid.attach(hbox, 1, r, 1, 1);
             } else {
