@@ -563,8 +563,6 @@ class LightDict extends St.Widget {
     }
 
     _loadSettings() {
-        this._scrollID = this.connect('scroll-event', this._hide.bind(this));
-        this._clickID = this.connect('button-press-event', this._hide.bind(this));
         this._barEmitID = this._bar.connect('iconbar-signals', this._onBarEmit.bind(this));
 
         this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
@@ -604,7 +602,8 @@ class LightDict extends St.Widget {
     }
 
     _onWindowChanged() {
-        this._hide();
+        this._box._hide();
+        this._bar._hide();
         let FW = global.display.get_focus_window();
         this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
         let wlist = this._appslist === '' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
@@ -622,15 +621,16 @@ class LightDict extends St.Widget {
             this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                    // set _selection in _fetch() callback get 'JS TypeError: text is null' logs in some Gtk+ apps
+                    this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
                     this._mouseUpID = 0;
-                    this._fetchSelection().then(this._show.bind(this));
                     return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
                 }
-            }); // NOTE: `owner-changed` is emitted every single char in Gtk+ apps
+            }); // NOTE: `owner-changed` is emitted every char in Gtk+ apps
         } else {
-            this._fetchSelection().then(this._show.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
         }
     }
 
@@ -643,18 +643,21 @@ class LightDict extends St.Widget {
         }
     }
 
-    _fetchSelection() {
+    _fetch() {
         return new Promise((resolve, reject) => {
             try {
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  {
-                    if(!text) reject('None');
-                    this._pointer = global.get_pointer();
-                    this._selection = this._textstrip ? text.trim().replace(/\n/g, ' ') : text;
-                    resolve();
-                });
+                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  { text ? resolve(text) : reject(); });
             } catch(e) {
                 reject(e.message)
             }
+        });
+    }
+
+    _store(text) {
+        return new Promise((resolve, reject) => {
+            this._selection = text;
+            this._pointer = global.get_pointer();
+            resolve();
         });
     }
 
@@ -731,29 +734,19 @@ class LightDict extends St.Widget {
         this._trigger == TRIGGER.BAR ? this._showBar() : this._lookUp();
     }
 
-    _hide() {
-        this._box._hide();
-        this._bar._hide();
-    }
-
     LookUp(word) {
-        this._bar._hide();
         if(word) {
-            this._selection = word;
-            this._pointer = global.get_pointer();
-            this._lookUp();
+            this._store(word).then(this._lookUp.bind(this));
         } else {
-            this._fetchSelection().then(this._lookUp.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._lookUp.bind(this));
         }
     }
 
     ShowBar(word) {
         if(word) {
-            this._selection = word;
-            this._pointer = global.get_pointer();
-            this._bar._show(this._wmclass, this._selection);
+            this._store(word).then(this._showBar.bind(this));
         } else {
-            this._fetchSelection().then(this._showBar.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._showBar.bind(this));
         }
     }
 
@@ -773,8 +766,6 @@ class LightDict extends St.Widget {
             global.display.disconnect(this._onWindowChangedID), this._onWindowChangedID = 0;
         if(this._selectionChangedID)
             global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
-        for(let x in this)
-            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
         Main.uiGroup.remove_actor(this);
         this._dbus.flush();
