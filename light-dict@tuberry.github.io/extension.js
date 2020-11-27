@@ -406,8 +406,8 @@ class DictBox extends BoxPointer.BoxPointer {
         if(!this._view.visible) return;
 
         this._view.visible = false;
-        this.close(BoxPointer.PopupAnimation.FULL);
         this._info.set_text(Me.metadata.name);
+        this.close(BoxPointer.PopupAnimation.FULL);
     }
 
     _look(info, word, notFound) {
@@ -780,17 +780,29 @@ class LightDict extends St.Widget {
     }
 });
 
-const Extension = GObject.registerClass(
-class Extension extends GObject.Object {
-    _init() {
-        super._init();
-        let logfilePath = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/');
-        if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
+const DictBtn = GObject.registerClass(
+class DictBtn extends PanelMenu.Button {
+    _init(params) {
+        super._init(params);
+        this._icon = new St.Icon({
+            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }),
+            style_class: 'light-dict-systray system-status-icon',
+        });
+        this.add_actor(this._icon);
+        this._passiveId_ = gsettings.connect('changed::' + Fields.PASSIVE, this._setIcon.bind(this));
+        this._triggerId_ = gsettings.connect('changed::' + Fields.TRIGGER, this._setIcon.bind(this));
+
+        this._updateMenu();
     }
 
-    get _systray() {
-        return gsettings.get_boolean(Fields.SYSTRAY);
-    }
+    vfunc_scroll_event(event) {
+        switch(event.direction) {
+        case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
+        case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, !this._passive); break;
+        default: break;
+        }
+        return Clutter.EVENT_STOP;
+    };
 
     get _passive() {
         return gsettings.get_uint(Fields.PASSIVE) == 1;
@@ -813,36 +825,13 @@ class Extension extends GObject.Object {
         this._updateMenu();
     }
 
-    _setSystray() {
-        if(this._systray) {
-            this._addButton();
-        } else {
-            this._button.destroy();
-            this._button = null;
-        }
-    }
-
-    _addButton() {
-        this._button = new PanelMenu.Button(null);
-        this._icon = new St.Icon({
-            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }),
-            style_class: 'light-dict-systray system-status-icon',
-        });
-        this._button.add_actor(this._icon);
-        this._passiveId_ = gsettings.connect('changed::' + Fields.PASSIVE, this._setIcon.bind(this));
-        this._triggerId_ = gsettings.connect('changed::' + Fields.TRIGGER, this._setIcon.bind(this));
-
-        this._updateMenu();
-        Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
-    }
-
     _updateMenu() {
-        this._button.menu.removeAll();
-        this._button.menu.addMenuItem(this._passiveItem());
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        ['Bar', 'Box', 'Nil'].forEach(x => this._button.menu.addMenuItem(this._menuItemMaker(x)));
-        this._button.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        this._button.menu.addMenuItem(this._settingItem());
+        this.menu.removeAll();
+        this.menu.addMenuItem(this._passiveItem());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        ['Bar', 'Box', 'Nil'].forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this.menu.addMenuItem(this._settingItem());
     }
 
     _menuItemMaker(text) {
@@ -871,21 +860,49 @@ class Extension extends GObject.Object {
        return item;
     }
 
+    destroy() {
+        for(let x in this)
+            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+        super.destroy();
+    }
+});
+
+const Extension = GObject.registerClass(
+class Extension extends GObject.Object {
+    _init() {
+        super._init();
+        let logfilePath = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/');
+        if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
+    }
+
+    get _systray() {
+        return gsettings.get_boolean(Fields.SYSTRAY);
+    }
+
+    set _systray(tray) {
+        if(tray) {
+            if(this._button) return;
+            this._button = new DictBtn(null);
+            Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
+        } else {
+            if(!this._button) return;
+            this._button.destroy();
+            this._button = null;
+        }
+    }
+
     enable() {
         this._dict = new LightDict();
 
-        if(this._systray) this._addButton();
-        this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, this._setSystray.bind(this));
+        this._systray = this._systray;
+        this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, () => { this._systray = this._systray; });
     }
 
     disable() {
         for(let x in this)
             if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
 
-        if(this._systray) {
-            this._button.destroy();
-            this._button = null;
-        }
+        if(this._systray) this._systray = false;
         this._dict.destory();
         this._dict = null;
     }

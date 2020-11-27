@@ -1,5 +1,5 @@
 # Light Dict
-Lightweight extension for instant action to primary selection, especially optimized for Dictionary look-up.
+Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup.
 
 >L, you know what? The Shinigami only eat apples. —— *Light Yagami*<br>
 [![license]](/LICENSE)

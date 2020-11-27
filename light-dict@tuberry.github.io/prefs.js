@@ -58,7 +58,7 @@ class LightDictPrefsWidget extends Gtk.Stack {
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
             let window = this.get_toplevel();
-            window.resize(600,575);
+            window.resize(700,576);
             let headerBar = window.get_titlebar();
             headerBar.custom_title = new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, visible: true, stack: this });
             return GLib.SOURCE_REMOVE;
@@ -82,9 +82,9 @@ class LightDictAbout extends Gtk.Box {
 
     _buildTips() {
         const tips = new Gtk.Button({
+            hexpand: false,
             label: _('Tips'),
-            margin_left: 550,
-            margin_right: 30,
+            halign: Gtk.Align.END,
         });
         let pop = new Gtk.Popover(tips);
         pop.set_relative_to(tips);
@@ -116,6 +116,7 @@ class LightDictAbout extends Gtk.Box {
 
     _bulidIcons() {
         let hbox = new Gtk.Box({
+            margin_bottom: 30,
             halign: Gtk.Align.CENTER,
         });
         let active = gsettings.get_strv(Fields.BCOMMANDS);
@@ -138,14 +139,7 @@ class LightDictAbout extends Gtk.Box {
         }
         count = count ? count : icons.length;
         icons.slice(0, count).forEach(x => hbox.pack_start(x, false, false, 0));
-        let frame = new Gtk.Frame({
-            margin_bottom: 30,
-            margin_left: 350 - (icon_size * 4 + 2) * count,
-            margin_right: 350 - (icon_size * 4 + 2) * count,
-            shadow_type: Gtk.ShadowType.ETCHED_IN,
-        });
-        frame.add(hbox)
-        this.add(frame);
+        this.add(hbox);
     }
 
     _buildInfo() {
@@ -154,7 +148,7 @@ class LightDictAbout extends Gtk.Box {
         let info = [
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _("Version %d").format(Me.metadata.version),
-            _("Lightweight extension for instant action to primary selection, especially optimized for Dictionary look-up."),
+            _("Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup."),
             "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
             "<small>" + _("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(gpl, license) + "</small>"
         ];
@@ -212,12 +206,12 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._labelMaker(_("Trim whitespaces")),  this._field_enable_strip);
         this._common._add(this._labelMaker(_("Autohide interval")), this._field_auto_hide);
         this._common._add(this._labelMaker(_("Trigger style")),     this._field_passive_mode, this._field_trigger_style);
-        this._common._att(this._labelMaker(_("Window list"), true), this._field_apps_list, this._field_list_type);
+        this._common._att(this._labelMaker(_("Wmclass list"), true), this._field_apps_list, this._field_list_type);
 
         this._panel = this._listFrameMaker(_('Box'));
         this._panel._add(this._labelMaker(_("Hide title")), this._field_hide_panel_title);
         this._panel._add(this._labelMaker(_("Logs level")), this._field_log_level);
-        this._panel._att(this._labelMaker(_("Run cmd"), true),     this._field_dict_command);
+        this._panel._att(this._labelMaker(_("Run command"), true), this._field_dict_command);
         this._panel._att(this._labelMaker(_("Right click"), true), this._field_right_command);
         this._panel._att(this._labelMaker(_("Left click"), true),  this._field_left_command);
         this._panel._att(this._labelMaker(_("Text filter"), true), this._field_filter);
@@ -263,6 +257,7 @@ class LightDictBasic extends Gtk.Box {
     _listFrameMaker(lbl) {
         let frame = new Gtk.Frame({
             label_yalign: 1,
+            shadow_type: Gtk.ShadowType.IN,
         });
         frame.set_label_widget(new Gtk.Label({
             use_markup: true,
@@ -424,16 +419,14 @@ class LightDictAdvanced extends Gtk.HBox {
     }
 
     _buildUI() {
-        let leftBox = new Gtk.VBox({ margin_right: 30 });
-
+        let leftBox = new Gtk.VBox({});
         let toolBar = new Gtk.HBox({});
         toolBar.pack_start(this._add, false, false, 2);
         toolBar.pack_start(this._del, false, false, 2);
         toolBar.pack_start(this._nxt, false, false, 2);
         toolBar.pack_start(this._prv, false, false, 2);
-
-        leftBox.pack_start(this._treeView, true, true, 2);
-        leftBox.pack_end(toolBar, false, false, 2);
+        leftBox.pack_start(this._frameWrapper(this._treeView), true, true, 0);
+        leftBox.pack_end(this._frameWrapper(toolBar), false, false, 0);
 
         let rightBox = new Gtk.VBox({});
         let basic = this._listFrameMaker();
@@ -450,7 +443,7 @@ class LightDictAdvanced extends Gtk.HBox {
         rightBox.pack_start(details, true, true, 0);
         let addition = this._listFrameMaker();
         addition._att(this._labelMaker(_('Regexp'), true), this._regx);
-        addition._att(this._labelMaker(_('Windows'), true), this._win);
+        addition._att(this._labelMaker(_('Wmclass'), true), this._win);
         addition._att(this._labelMaker(_('Tooltips'), true), this._tip);
         rightBox.pack_start(addition, true, true, 0);
 
@@ -600,8 +593,17 @@ class LightDictAdvanced extends Gtk.HBox {
         this._saveConf();
     }
 
-    _listFrameMaker() {
+    _frameWrapper(widget) {
         let frame = new Gtk.Frame();
+        frame.add(widget);
+        return frame;
+    }
+
+    _listFrameMaker() {
+        let frame = new Gtk.Frame({
+            label_xalign: 0,
+            shadow_type: Gtk.ShadowType.IN,
+        });
 
         frame.grid = new Gtk.Grid({
             margin: 10,

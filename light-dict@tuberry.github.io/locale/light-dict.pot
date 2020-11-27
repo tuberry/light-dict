@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-25 21:24+0800\n"
+"POT-Creation-Date: 2020-11-27 16:33+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,16 +17,16 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:763
+#: extension.js:756
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr ""
 
-#: extension.js:870
+#: extension.js:850
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:878
+#: extension.js:858
 msgid "Settings"
 msgstr ""
 
@@ -42,7 +42,7 @@ msgstr ""
 msgid "About"
 msgstr ""
 
-#: prefs.js:85
+#: prefs.js:86
 msgid "Tips"
 msgstr ""
 
@@ -68,224 +68,224 @@ msgid ""
 "Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
 msgstr ""
 
-#: prefs.js:153
+#: prefs.js:147
 msgid "GNU General Public License, version 3 or later"
 msgstr ""
 
-#: prefs.js:156
+#: prefs.js:150
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:157
+#: prefs.js:151
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
-"optimized for Dictionary look-up."
+"optimized for Dictionary lookup."
 msgstr ""
 
-#: prefs.js:159
+#: prefs.js:153
 #, javascript-format
 msgid ""
 "This program comes with absolutely no warranty.\n"
 "See the <a href=\"%s\">%s</a> for details."
 msgstr ""
 
-#: prefs.js:197
+#: prefs.js:191
 msgid "Blocklist"
 msgstr ""
 
-#: prefs.js:197
+#: prefs.js:191
 msgid "Allowlist"
 msgstr ""
 
-#: prefs.js:198
+#: prefs.js:192
 msgid "Active"
 msgstr ""
 
-#: prefs.js:198
+#: prefs.js:192
 msgid "Passive"
 msgstr ""
 
-#: prefs.js:198
+#: prefs.js:192
 msgid "Hold modifier to trigger or not"
 msgstr ""
 
-#: prefs.js:199 prefs.js:217
+#: prefs.js:193 prefs.js:211
 msgid "Box"
 msgstr ""
 
-#: prefs.js:199 prefs.js:225
+#: prefs.js:193 prefs.js:219
 msgid "Bar"
 msgstr ""
 
-#: prefs.js:199
+#: prefs.js:193
 msgid "Nil"
 msgstr ""
 
-#: prefs.js:199
+#: prefs.js:193
 msgid "What to popup when trigger"
 msgstr ""
 
-#: prefs.js:200
+#: prefs.js:194
 msgid "Never"
 msgstr ""
 
-#: prefs.js:200
+#: prefs.js:194
 msgid "Click"
 msgstr ""
 
-#: prefs.js:200
+#: prefs.js:194
 msgid "Hover"
 msgstr ""
 
-#: prefs.js:200
+#: prefs.js:194
 msgid "Always"
 msgstr ""
 
-#: prefs.js:202
+#: prefs.js:196
 msgid "run with /bin/sh"
 msgstr ""
 
-#: prefs.js:203
+#: prefs.js:197
 msgid "allow/block list (empty for all)"
 msgstr ""
 
-#: prefs.js:204
+#: prefs.js:198
 msgid "Text RegExp filter"
 msgstr ""
 
-#: prefs.js:205
+#: prefs.js:199
 msgid "Left click to run"
 msgstr ""
 
-#: prefs.js:206
+#: prefs.js:200
 msgid "Right click to run and hide box"
 msgstr ""
 
-#: prefs.js:210
+#: prefs.js:204
 msgid "Common"
 msgstr ""
 
-#: prefs.js:211
+#: prefs.js:205
 msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:212
+#: prefs.js:206
 msgid "Trim whitespaces"
 msgstr ""
 
-#: prefs.js:213
+#: prefs.js:207
 msgid "Autohide interval"
 msgstr ""
 
-#: prefs.js:214
+#: prefs.js:208
 msgid "Trigger style"
 msgstr ""
 
-#: prefs.js:215
-msgid "Window list"
+#: prefs.js:209
+msgid "Wmclass list"
 msgstr ""
 
-#: prefs.js:218
+#: prefs.js:212
 msgid "Hide title"
 msgstr ""
 
-#: prefs.js:219
+#: prefs.js:213
 msgid "Logs level"
 msgstr ""
 
-#: prefs.js:220
-msgid "Run cmd"
+#: prefs.js:214
+msgid "Run command"
 msgstr ""
 
-#: prefs.js:221
+#: prefs.js:215
 msgid "Right click"
 msgstr ""
 
-#: prefs.js:222
+#: prefs.js:216
 msgid "Left click"
 msgstr ""
 
-#: prefs.js:223
+#: prefs.js:217
 msgid "Text filter"
 msgstr ""
 
-#: prefs.js:226
+#: prefs.js:220
 msgid "Enable tooltips"
 msgstr ""
 
-#: prefs.js:227
+#: prefs.js:221
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:228
+#: prefs.js:222
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:417 prefs.js:446
+#: prefs.js:414 prefs.js:441
 msgid "Command type"
 msgstr ""
 
-#: prefs.js:418
+#: prefs.js:415
 msgid "Show on left side"
 msgstr ""
 
-#: prefs.js:419
+#: prefs.js:416
 msgid "Show in the bar"
 msgstr ""
 
-#: prefs.js:420
+#: prefs.js:417
 msgid "Run when clicking"
 msgstr ""
 
-#: prefs.js:421
+#: prefs.js:418
 msgid "Allowed to function"
 msgstr ""
 
-#: prefs.js:422
+#: prefs.js:419
 msgid "Show when hovering"
 msgstr ""
 
-#: prefs.js:423
+#: prefs.js:420
 msgid "Match selected text"
 msgstr ""
 
-#: prefs.js:440
+#: prefs.js:435
 msgid "Enable"
 msgstr ""
 
-#: prefs.js:441
+#: prefs.js:436
 msgid "Name"
 msgstr ""
 
-#: prefs.js:444
+#: prefs.js:439
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:445
+#: prefs.js:440
 msgid "Command"
 msgstr ""
 
-#: prefs.js:447
+#: prefs.js:442
 msgid "Show result"
 msgstr ""
 
-#: prefs.js:448
+#: prefs.js:443
 msgid "Copy result"
 msgstr ""
 
-#: prefs.js:449
+#: prefs.js:444
 msgid "Commit result"
 msgstr ""
 
-#: prefs.js:452
+#: prefs.js:447
 msgid "Regexp"
 msgstr ""
 
-#: prefs.js:453
-msgid "Windows"
+#: prefs.js:448
+msgid "Wmclass"
 msgstr ""
 
-#: prefs.js:454
+#: prefs.js:449
 msgid "Tooltips"
 msgstr ""
