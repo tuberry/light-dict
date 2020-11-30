@@ -621,10 +621,10 @@ const LightDict = GObject.registerClass({
         'applist':   GObject.param_spec_string('applist', '', '', '', GObject.ParamFlags.READWRITE),
         'dcommand':  GObject.param_spec_string('dcommand', '', '', '', GObject.ParamFlags.READWRITE),
         'passive':   GObject.param_spec_uint('passive', '', '', 0, 1, 0, GObject.ParamFlags.READWRITE),
+        'systray':   GObject.param_spec_boolean('systray', '', '', true, GObject.ParamFlags.READWRITE),
         'trigger':   GObject.param_spec_uint('trigger', '', '', 0, 2, 1, GObject.ParamFlags.READWRITE),
         'listtype':  GObject.param_spec_uint('listtype', '', '', 0, 1, 1, GObject.ParamFlags.READWRITE),
         'textstrip': GObject.param_spec_boolean('textstrip', '', '', true, GObject.ParamFlags.READWRITE),
-        'systray':   GObject.param_spec_boolean('systray', '', '', true, GObject.ParamFlags.READWRITE),
     },
 }, class LightDict extends St.Widget {
     _init() {
@@ -684,7 +684,7 @@ const LightDict = GObject.registerClass({
     }
 
     get _allow() {
-        let wlist = !this.applist || this.applist.toLowerCase().includes(this._wmclass);
+        let wlist = !this.applist || this.applist.toLowerCase().includes(this._wmclass.toLowerCase());
         return (this.listtype == 0)^wlist;
     }
 
@@ -696,7 +696,7 @@ const LightDict = GObject.registerClass({
 
     _setWmclass() {
         let focused = global.display.get_focus_window();
-        this._wmclass = focused ? (focused.wm_class ? focused.wm_class.toLowerCase() : '') : '';
+        this._wmclass = focused ? (focused.wm_class ? focused.wm_class : '') : '';
     }
 
     _selectionChanged(sel, type, src) {
