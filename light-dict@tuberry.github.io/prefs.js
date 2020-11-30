@@ -10,7 +10,7 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 
 var Fields = {
     XOFFSET:   'x-offset',
-    LOGSLEVEL: 'log-level',
+    LOGLEVEL:  'log-level',
     DCOMMAND:  'dict-command',
     PASSIVE:   'passive-mode',
     TEXTSTRIP: 'enable-strip',
@@ -20,7 +20,7 @@ var Fields = {
     SENSITIVE: 'sensitive-mode',
     SYSTRAY:   'enable-systray',
     TOOLTIPS:  'enable-tooltips',
-    APPSLIST:  'application-list',
+    APPLIST:   'application-list',
     AUTOHIDE:  'autohide-timeout',
     BCOMMANDS: 'iconbar-commands',
     FILTER:    'selection-filter',
@@ -185,8 +185,8 @@ class LightDictBasic extends Gtk.Box {
         this._field_hide_panel_title = new Gtk.Switch();
 
         this._field_auto_hide     = this._spinMaker(500, 10000, 250);
-        this._field_icon_pagesize = this._spinMaker(0, 10, 1);
-        this._field_icon_xoffset  = this._spinMaker(-400,400,5);
+        this._field_icon_pagesize = this._spinMaker(1, 10, 1);
+        this._field_icon_xoffset  = this._spinMaker(-400, 400, 50);
 
         this._field_list_type     = this._comboMaker([_('Blocklist'), _('Allowlist')]);
         this._field_passive_mode  = this._comboMaker([_('Active'), _('Passive')], _('Hold modifier to trigger or not'));
@@ -194,7 +194,7 @@ class LightDictBasic extends Gtk.Box {
         this._field_log_level     = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
 
         this._field_dict_command  = this._entryMaker("dict -- LDWORD", _('run with /bin/sh'));
-        this._field_apps_list     = this._entryMaker('Yelp,Evince', _('allow/block list (empty for all)'));
+        this._field_app_list      = this._entryMaker('Yelp,Evince', _('allow/block list (empty for all)'));
         this._field_filter        = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter'));
         this._field_left_command  = this._entryMaker('notify-send LDWORD', _('Left click to run'));
         this._field_right_command = this._entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide box'));
@@ -206,7 +206,7 @@ class LightDictBasic extends Gtk.Box {
         this._common._add(this._labelMaker(_("Trim whitespaces")),  this._field_enable_strip);
         this._common._add(this._labelMaker(_("Autohide interval")), this._field_auto_hide);
         this._common._add(this._labelMaker(_("Trigger style")),     this._field_passive_mode, this._field_trigger_style);
-        this._common._att(this._labelMaker(_("Wmclass list"), true), this._field_apps_list, this._field_list_type);
+        this._common._att(this._labelMaker(_("Wmclass list"), true), this._field_app_list, this._field_list_type);
 
         this._panel = this._listFrameMaker(_('Box'));
         this._panel._add(this._labelMaker(_("Hide title")), this._field_hide_panel_title);
@@ -224,7 +224,7 @@ class LightDictBasic extends Gtk.Box {
 
     _syncStatus() {
         this._toggleEditable(this._field_filter, gsettings.get_string(Fields.FILTER));
-        this._toggleEditable(this._field_apps_list, gsettings.get_string(Fields.APPSLIST));
+        this._toggleEditable(this._field_app_list, gsettings.get_string(Fields.APPLIST));
         this._toggleEditable(this._field_dict_command, gsettings.get_string(Fields.DCOMMAND));
         this._toggleEditable(this._field_left_command, gsettings.get_string(Fields.LCOMMAND));
         this._toggleEditable(this._field_right_command, gsettings.get_string(Fields.RCOMMAND));
@@ -240,11 +240,11 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.DCOMMAND,  this._field_dict_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.RCOMMAND,  this._field_right_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LCOMMAND,  this._field_left_command,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.APPSLIST,  this._field_apps_list,        'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPLIST,   this._field_app_list,         'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,        'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,  this._field_icon_pagesize,    'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,     'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LOGSLEVEL, this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LOGLEVEL,  this._field_log_level,        'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,    'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LISTTYPE,  this._field_list_type,        'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray,   'active', Gio.SettingsBindFlags.DEFAULT);
@@ -354,7 +354,7 @@ class LightDictBasic extends Gtk.Box {
 });
 
 const LightDictAdvanced = GObject.registerClass(
-class LightDictAdvanced extends Gtk.HBox {
+class LightDictAdvanced extends Gtk.Box {
     _init() {
         super._init({
             margin: 30,
@@ -384,21 +384,7 @@ class LightDictAdvanced extends Gtk.HBox {
     }
 
     _buildWidgets() {
-        let listStore = new Gtk.ListStore();
-        listStore.set_column_types([GObject.TYPE_STRING]);
-        this._treeView = new Gtk.TreeView({ model: listStore });
-
-        let cell = new Gtk.CellRendererText({ editable: false });
-        let name = new Gtk.TreeViewColumn({ title: 'Name' });
-        name.pack_start(cell, true);
-        name.add_attribute(cell, 'text', 0);
-        this._treeView.append_column(name);
-        this._treeView.set_headers_visible(false);
-        this._commands.forEach(x => {
-            let conf = JSON.parse(x);
-            this._treeView.model.set(this._treeView.model.append(), [0], [conf.name]);
-        });
-        this._treeView.expand_all();
+        this._treeView = this._treeViewMaker(this._commands);
 
         this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: "list-add-symbolic" }) });
         this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: "list-remove-symbolic" }) });
@@ -425,15 +411,17 @@ class LightDictAdvanced extends Gtk.HBox {
         toolBar.pack_start(this._del, false, false, 2);
         toolBar.pack_start(this._nxt, false, false, 2);
         toolBar.pack_start(this._prv, false, false, 2);
-        leftBox.pack_start(this._frameWrapper(this._treeView), true, true, 0);
-        leftBox.pack_end(this._frameWrapper(toolBar), false, false, 0);
+        leftBox.pack_start(this._treeView, true, true, 0);
+        leftBox.pack_start(new Gtk.Separator(), false, false, 0);
+        leftBox.pack_end(toolBar, false, false, 0);
 
         let rightBox = new Gtk.VBox({});
-        let basic = this._listFrameMaker();
+        let basic = this._listGridMaker();
         basic._add(this._labelMaker(_('Enable')), this._enable);
         basic._add(this._labelMaker(_('Name'), true), this._name);
         rightBox.pack_start(basic, true, true, 0);
-        let details = this._listFrameMaker();
+        rightBox.pack_start(new Gtk.Separator(), false, false, 0);
+        let details = this._listGridMaker();
         details._add(this._labelMaker(_('Icon')), this._icon);
         details._att(this._labelMaker(_('Command'), true), this._cmd);
         details._add(this._labelMaker(_('Command type')), this._type);
@@ -441,14 +429,19 @@ class LightDictAdvanced extends Gtk.HBox {
         details._add(this._labelMaker(_('Copy result')), this._clip);
         details._add(this._labelMaker(_('Commit result')), this._commit);
         rightBox.pack_start(details, true, true, 0);
-        let addition = this._listFrameMaker();
+        rightBox.pack_start(new Gtk.Separator(), false, false, 0);
+        let addition = this._listGridMaker();
         addition._att(this._labelMaker(_('Regexp'), true), this._regx);
         addition._att(this._labelMaker(_('Wmclass'), true), this._win);
         addition._att(this._labelMaker(_('Tooltips'), true), this._tip);
         rightBox.pack_start(addition, true, true, 0);
 
-        this.pack_start(leftBox, false, false, 0);
-        this.pack_end(rightBox, true, true, 0);
+        let outBox = new Gtk.HBox();
+        outBox.pack_start(leftBox, false, false, 0);
+        outBox.pack_start(new Gtk.Separator(), false, false, 0);
+        outBox.pack_end(rightBox, true, true, 0);
+
+        this.add(this._frameWrapper(outBox));
     }
 
     _syncStatus() {
@@ -599,42 +592,56 @@ class LightDictAdvanced extends Gtk.HBox {
         return frame;
     }
 
-    _listFrameMaker() {
-        let frame = new Gtk.Frame({
-            label_xalign: 0,
-            shadow_type: Gtk.ShadowType.IN,
+    _treeViewMaker(commands) {
+        let listStore = new Gtk.ListStore();
+        listStore.set_column_types([GObject.TYPE_STRING]);
+        let treeView = new Gtk.TreeView({ model: listStore });
+
+        let cell = new Gtk.CellRendererText({ editable: false });
+        let name = new Gtk.TreeViewColumn({ title: 'Name' });
+        name.pack_start(cell, true);
+        name.add_attribute(cell, 'text', 0);
+        treeView.append_column(name);
+        treeView.set_headers_visible(false);
+        // treeView.set_grid_lines(Gtk.TreeViewGridLines.HORIZONTAL);
+        commands.forEach(x => {
+            let conf = JSON.parse(x);
+            treeView.model.set(treeView.model.append(), [0], [conf.name]);
         });
 
-        frame.grid = new Gtk.Grid({
+        return treeView;
+    }
+
+    _listGridMaker() {
+        let grid = new Gtk.Grid({
             margin: 10,
             hexpand: true,
             row_spacing: 12,
             column_spacing: 18,
         });
 
-        frame.grid._row = 0;
-        frame.add(frame.grid);
-        frame._add = (x, y) => {
+        grid._row = 0;
+        grid._add = (x, y) => {
             const hbox = new Gtk.Box();
             hbox.pack_start(x, true, true, 0);
             hbox.pack_start(y, false, false, 0)
-            frame.grid.attach(hbox, 0, frame.grid._row++, 2, 1);
+            grid.attach(hbox, 0, grid._row++, 2, 1);
         }
-        frame._att = (x, y, z) => {
-            let r = frame.grid._row++;
+        grid._att = (x, y, z) => {
+            let r = grid._row++;
             if(z) {
                 let hbox = new Gtk.Box();
                 hbox.pack_start(y, false, false, 4);
                 hbox.pack_start(z, true, true, 4);
-                frame.grid.attach(x, 0, r, 1, 1);
-                frame.grid.attach(hbox, 1, r, 1, 1);
+                grid.attach(x, 0, r, 1, 1);
+                grid.attach(hbox, 1, r, 1, 1);
             } else {
-                frame.grid.attach(x, 0, r, 1, 1);
-                frame.grid.attach(y, 1, r, 1, 1);
+                grid.attach(x, 0, r, 1, 1);
+                grid.attach(y, 1, r, 1, 1);
             }
         }
 
-        return frame;
+        return grid;
     }
 
     _labelMaker(x, y) {

@@ -18,7 +18,7 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const TRIGGER = { BOX: 0, BAR: 1, NIL: 2 };
-const LOGSLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
+const LOGLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
@@ -29,30 +29,39 @@ const DBUSINTERFACE = `
         <method name="ShowBar">
             <arg type="s" direction="in" name="word"/>
         </method>
-        <method name="ChangeMode">
+        <method name="Toggle">
+        </method>
+        <method name="Block">
         </method>
     </interface>
 </node>`;
 
 const DictBar = GObject.registerClass({
+    Properties: {
+        'tooltips':  GObject.param_spec_boolean('tooltips', '', '', false, GObject.ParamFlags.WRITABLE),
+        'pagesize':  GObject.param_spec_uint('pagesize', '', '', 1, 10, 5, GObject.ParamFlags.READWRITE),
+        'xoffset':   GObject.param_spec_int('xoffset', '', '', -400, 400, -5, GObject.ParamFlags.WRITABLE),
+        'autohide':  GObject.param_spec_uint('autohide', '', '', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
+       // 'bcommands': GObject.param_spec_variant('bcommands', '', '', new GLib.VariantType('as'), null, GObject.ParamFlags.WRITABLE),
+    },
     Signals: {
         'iconbar-signals': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
     },
 }, class DictBar extends BoxPointer.BoxPointer {
-    _init() {
+    _init(actor, align) {
         super._init(St.Side.BOTTOM);
         this.style_class = 'light-dict-bar-boxpointer';
         Main.layoutManager.addTopChrome(this);
+        this.setPosition(actor, align);
 
         this._pages = 1;
-        this._pageIndex = 1;
+        this._index = 1;
 
-        this._buildWidget();
-        this._fetchSettings();
-        this._loadSettings();
+        this._buildWidgets();
+        this._bindSettings();
     }
 
-    _buildWidget() {
+    _buildWidgets() {
         this._box = new St.BoxLayout({
             visible: false,
             reactive: true,
@@ -60,35 +69,23 @@ const DictBar = GObject.registerClass({
             style_class: 'light-dict-iconbox',
         });
         this.bin.set_child(this._box);
+
+        this._leaveId = this._box.connect('leave-event', this._hide.bind(this));
+        this._enterId = this._box.connect('enter-event', this._onEnter.bind(this));
+        this._scrollId = this._box.connect('scroll-event', this._onScroll.bind(this));
     }
 
-    _fetchSettings() {
-        this._xoffset   = gsettings.get_int(Fields.XOFFSET);
-        this._bcommands = gsettings.get_strv(Fields.BCOMMANDS);
-        this._tooltips  = gsettings.get_boolean(Fields.TOOLTIPS);
+    _bindSettings() {
+        gsettings.bind(Fields.XOFFSET, this, 'xoffset', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.TOOLTIPS, this, 'tooltips', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.PAGESIZE, this, 'pagesize', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
+        // gsettings.bind_with_mapping(Fields.BCOMMANDS, this, 'bcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
+        this.bcommands = gsettings.get_strv(Fields.BCOMMANDS);
+        this.bcommandsId = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this.bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
     }
 
-    _loadSettings() {
-        this._leaveID = this._box.connect('leave-event', this._onLeave.bind(this));
-        this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
-        this._scrollID = this._box.connect('scroll-event', this._onScroll.bind(this));
-
-        this._xoffsetId_  = gsettings.connect('changed::' + Fields.XOFFSET, () => { this._xoffset = gsettings.get_int(Fields.XOFFSET); });
-        this._bcommandsId_ = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this._bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
-        this._tooltipsId_  = gsettings.connect('changed::' + Fields.TOOLTIPS, () => { this._tooltips = gsettings.get_boolean(Fields.TOOLTIPS); });
-    }
-
-    set _bcommands(commands) {
-        this._pageIndex = 1;
-        this._box.remove_all_children();
-        commands.forEach(x => this._iconMaker(x));
-    }
-
-    set _xoffset(offset) {
-        this.set_style('-arrow-border-radius: %dpx;'.format(-offset + 20));
-    }
-
-    set _tooltips(tooltips) {
+    set tooltips(tooltips) {
         if(tooltips) {
             if(this._iconTooltips) return;
             this._iconTooltips = new St.Label({
@@ -103,16 +100,14 @@ const DictBar = GObject.registerClass({
         }
     }
 
-    get _tooltips() {
-        return gsettings.get_boolean(Fields.TOOLTIPS);
+    set xoffset(offset) {
+        this.set_style('-arrow-border-radius: %dpx;'.format(-offset + 20));
     }
 
-    get _autohide() {
-        return gsettings.get_uint(Fields.AUTOHIDE);
-    }
-
-    get _pagesize() {
-        return gsettings.get_uint(Fields.PAGESIZE);
+    set bcommands(commands) {
+        this._index = 1;
+        this._box.remove_all_children();
+        commands.forEach(x => this._iconMaker(x));
     }
 
     get _iconsBox() {
@@ -120,37 +115,32 @@ const DictBar = GObject.registerClass({
     }
 
     _onScroll(actor, event) {
-        if(this._tooltips) this._iconTooltips.hide();
+        if(this._iconTooltips) this._iconTooltips.hide();
         this._iconsBox.forEach(x => x.entered = false);
         switch (event.get_scroll_direction()) {
-        case Clutter.ScrollDirection.UP: this._pageIndex--; break;
-        case Clutter.ScrollDirection.DOWN: this._pageIndex++; break;
+        case Clutter.ScrollDirection.UP: this._index--; break;
+        case Clutter.ScrollDirection.DOWN: this._index++; break;
         }
         this._updatePages();
     }
 
-    _onLeave(actor, event) {
-        // let [px, py] = this.get_position(); //NOTE: get invalid position [0, 0]
-        this._hide();
-    }
-
     _onEnter() {
-        if(this._delayID)
-            GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
         this._box.visible = true;
     }
 
     _updatePages() {
         this._iconsBox.forEach(x => x.visible = x._visible);
-        if(this._pagesize === 0) return;
+        if(this.pagesize === 0) return;
         let visibleBox = this._iconsBox.filter(x => x._visible);
-        this._pages = Math.ceil(visibleBox.length / this._pagesize);
+        this._pages = Math.ceil(visibleBox.length / this.pagesize);
         if(this._pages === 1 || this._pages === 0) return;
-        this._pageIndex = this._pageIndex < 1 ? this._pages : (this._pageIndex > this._pages ? 1 : this._pageIndex);
-        if(this._pageIndex === this._pages && visibleBox.length % this._pagesize) {
-            visibleBox.forEach((x, i) => { x.visible = i >= visibleBox.length - this._pagesize && i < visibleBox.length; });
+        this._index = this._index < 1 ? this._pages : (this._index > this._pages ? 1 : this._index);
+        if(this._index === this._pages && visibleBox.length % this.pagesize) {
+            visibleBox.forEach((x, i) => { x.visible = i >= visibleBox.length - this.pagesize && i < visibleBox.length; });
         } else {
-            visibleBox.forEach((x, i) => { x.visible = i >= (this._pageIndex - 1)*this._pagesize && i < this._pageIndex*this._pagesize; });
+            visibleBox.forEach((x, i) => { x.visible = i >= (this._index - 1)*this.pagesize && i < this._index*this.pagesize; });
         }
     }
 
@@ -186,9 +176,9 @@ const DictBar = GObject.registerClass({
             return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
-            if(!this._tooltips) return;
+            if(!this._iconTooltips) return;
             btn.entered = true;
-            GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide / 2, () => {
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide / 2, () => {
                 if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
                 this._iconTooltips.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
                 this._iconTooltips.set_text(x.tooltip ? x.tooltip : x.icon || 'tooltips');
@@ -197,7 +187,7 @@ const DictBar = GObject.registerClass({
             });
         });
         btn.connect('leave-event', () => {
-            if(!this._tooltips) return;
+            if(!this._iconTooltips) return;
             btn.entered = false;
             this._iconTooltips.hide();
         });
@@ -215,12 +205,12 @@ const DictBar = GObject.registerClass({
             this.get_parent().set_child_above_sibling(this, null);
         }
 
-        if(this._delayID)
-            GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
 
-        this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
+        this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide, () => {
             this._hide();
-            this._delayID = 0;
+            this._delayId = 0;
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -229,45 +219,53 @@ const DictBar = GObject.registerClass({
         if(!this._box.visible) return;
 
         this._box.visible = false;
-        if(this._tooltips) this._iconTooltips.hide();
+        if(this._iconTooltips) this._iconTooltips.hide();
     }
 
     destory() {
-        if(this._delayID)
-            GLib.source_remove(this._delayID), this._delayID = 0;
-        if(this._leaveID)
-            this._box.disconnect(this._leaveID), this._leaveID = 0;
-        if(this._enterID)
-            this._box.disconnect(this._enterID), this._enterID = 0;
-        if(this._scrollID)
-            this._box.disconnect(this._scrollID), this._scrollID = 0;
-        for(let x in this)
-            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
-        this._bcommands = [];
-        this._tooltips = false;
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
+        if(this._leaveId)
+            this._box.disconnect(this._leaveId), this._leaveId = 0;
+        if(this._enterId)
+            this._box.disconnect(this._enterId), this._enterId = 0;
+        if(this._scrollId)
+            this._box.disconnect(this._scrollId), this._scrollId = 0;
+        if(this._bcommandsId)
+            gsettings.disconnect(this._bcommandsId), this._bcommandsId = 0;
+
+        this.bcommands = [];
+        this.tooltips = false;
         this._box.destroy();
         this._box = null;
         super.destroy();
     }
 });
 
-const DictBox = GObject.registerClass(
-class DictBox extends BoxPointer.BoxPointer {
-    _init() {
+const DictBox = GObject.registerClass({
+    Properties: {
+        'lcommand': GObject.param_spec_string('lcommand', '', '', '', GObject.ParamFlags.READWRITE),
+        'rcommand': GObject.param_spec_string('rcommand', '', '', '', GObject.ParamFlags.READWRITE),
+        'loglevel': GObject.param_spec_uint('loglevel', '', '', 0, 3, 0, GObject.ParamFlags.READWRITE),
+        'autohide': GObject.param_spec_uint('autohide', '', '', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
+    },
+}, class DictBox extends BoxPointer.BoxPointer {
+    _init(actor, align) {
         super._init(St.Side.TOP);
         this.style_class = 'light-dict-box-boxpointer';
         this.style = '-arrow-border-radius: 10px;';
         Main.layoutManager.addTopChrome(this);
+        this.setPosition(actor, align); // NOTE: disable => enable :: internal: assertion '!isnan (box->x1)...
 
         this._log = false;
         this._selection = '';
         this._notFound = false;
 
-        this._buildWidget();
-        this._loadSettings();
+        this._bindSettings();
+        this._buildWidgets();
     }
 
-    _buildWidget() {
+    _buildWidgets() {
         this._view = new St.ScrollView({
             visible: false,
             x_expand: true,
@@ -300,34 +298,18 @@ class DictBox extends BoxPointer.BoxPointer {
         this._box.add_child(this._info);
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
+
+        this._leaveId = this._box.connect('leave-event', this._onLeave.bind(this));
+        this._enterId = this._box.connect('enter-event', this._onEnter.bind(this));
+        this._clickId = this._box.connect('button-press-event', this._onClick.bind(this));
+        gsettings.bind(Fields.HIDETITLE, this._word, 'visible', Gio.SettingsBindFlags.INVERT_BOOLEAN);
     }
 
-    _loadSettings() {
-        this._leaveID = this._box.connect('leave-event', this._onLeave.bind(this));
-        this._enterID = this._box.connect('enter-event', this._onEnter.bind(this));
-        this._clickID = this._box.connect('button-press-event', this._onClick.bind(this));
-
-        this._hidetitleId_ = gsettings.connect('changed::' + Fields.HIDETITLE, () => {
-            this._word.visible = !gsettings.get_boolean(Fields.HIDETITLE);
-        });
-    }
-
-    get _autohide() {
-        return gsettings.get_uint(Fields.AUTOHIDE);
-    }
-
-    get _logslevel() {
-        return this._log ? gsettings.get_uint(Fields.LOGSLEVEL) : LOGSLEVEL.NEVER;
-    }
-
-    get _rcommand() {
-        let command = gsettings.get_string(Fields.RCOMMAND);
-        return command ? command.replace(/LDWORD/g, GLib.shell_quote(this._selection)) : null;
-    }
-
-    get _lcommand() {
-        let command = gsettings.get_string(Fields.LCOMMAND);
-        return command ? command.replace(/LDWORD/g, GLib.shell_quote(this._selection)) : null;
+    _bindSettings() {
+        gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.LOGLEVEL, this, 'loglevel', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.LCOMMAND, this, 'lcommand', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.RCOMMAND, this, 'rcommand', Gio.SettingsBindFlags.GET);
     }
 
     get _scrollable() {
@@ -340,21 +322,21 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onEnter() {
         this._view.visible = true;
-        if(this._logslevel === LOGSLEVEL.HOVER) this._recordLog();
-        if(this._delayID) GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this.loglevel === LOGLEVEL.HOVER) this._recordLog();
+        if(this._delayId) GLib.source_remove(this._delayId), this._delayId = 0;
     }
 
     _onClick(actor, event) {
         switch(event.get_button()) {
         case 1:
-            if(this._logslevel === LOGSLEVEL.CLICK) this._recordLog();
-            if(this._lcommand) Util.spawnCommandLine(this._lcommand);
+            if(this.loglevel === LOGLEVEL.CLICK) this._recordLog();
+            if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
             break;
         case 2:
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text());
             break;
         case 3:
-            if(this._rcommand) Util.spawnCommandLine(this._rcommand);
+            if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
             this._hide();
             break;
         default:
@@ -363,10 +345,10 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     _onLeave() {
-        //NOTE: do not hide on scrolling
+        // do not hide on scrolling
         let [mx, my] = global.get_pointer();
-        let [wt, ht] = this.get_size();
-        let [px, py] = this.get_position();
+        let [wt, ht] = this.get_transformed_size();
+        let [px, py] = this.get_transformed_position();
         if(mx > px + 1 && my > py + 1 && mx < px + wt - 1 && my < py + ht -1) return;
 
         this._hide();
@@ -376,7 +358,7 @@ class DictBox extends BoxPointer.BoxPointer {
         if(this._prevLog && this._selection == this._prevLog)
             return;
         let dateFormat = (fmt, date) => {
-            const opt = {
+            let opt = {
                 "Y+": date.getFullYear().toString(),
                 "m+": (date.getMonth() + 1).toString(),
                 "d+": date.getDate().toString(),
@@ -413,7 +395,7 @@ class DictBox extends BoxPointer.BoxPointer {
     _look(info, word, notFound) {
         this._log = true;
         this._notFound = notFound;
-        if(this._logslevel === LOGSLEVEL.ALWAYS) this._recordLog();
+        if(this.loglevel === LOGLEVEL.ALWAYS) this._recordLog();
         this._show(info, word);
     }
 
@@ -421,7 +403,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this._selection = word;
         if(notLog) this._log = false;
 
-        try {
+        try { // NOTE: seems St.Label doesn't show text more than the screen size even in St.ScrollView
             Pango.parse_markup(info, -1, '');
             this._info.clutter_text.set_markup(info);
         } catch(e) {
@@ -443,27 +425,25 @@ class DictBox extends BoxPointer.BoxPointer {
             this.get_parent().set_child_above_sibling(this, null);
         }
 
-        if(this._delayID)
-            GLib.source_remove(this._delayID), this._delayID = 0;
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
 
-        this._delayID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this._autohide, () => {
+        this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide, () => {
             this._hide();
-            this._delayID = 0;
+            this._delayId = 0;
             return GLib.SOURCE_REMOVE;
         });
     }
 
     destory() {
-        if(this._delayID)
-            GLib.source_remove(this._delayID), this._delayID = 0;
-        if(this._leaveID)
-            this._box.disconnect(this._leaveID), this._leaveID = 0;
-        if(this._enterID)
-            this._box.disconnect(this._enterID), this._enterID = 0;
-        if(this._clickID)
-            this._box.disconnect(this._clickID), this._clickID = 0;
-        for(let x in this)
-            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
+        if(this._leaveId)
+            this._box.disconnect(this._leaveId), this._leaveId = 0;
+        if(this._enterId)
+            this._box.disconnect(this._enterId), this._enterId = 0;
+        if(this._clickId)
+            this._box.disconnect(this._clickId), this._clickId = 0;
 
         this._word.destroy();
         this._info.destroy();
@@ -510,8 +490,7 @@ class DictAct extends GObject.Object {
                 keyarray.slice().reverse().forEach(key => this._release(key));
                 return GLib.SOURCE_REMOVE;
             });
-        });
-        // TODO: Modifier keys aren't working on Wayland (input area)
+        }); // NOTE: Modifier keys aren't working on Wayland (input area)
     }
 
     commit(string) {
@@ -532,98 +511,207 @@ class DictAct extends GObject.Object {
     }
 });
 
-const LightDict = GObject.registerClass(
-class LightDict extends St.Widget {
+const DictBtn = GObject.registerClass({
+    Properties: {
+        'passive':  GObject.param_spec_uint('passive', '', '', 0, 1, 0, GObject.ParamFlags.READWRITE),
+        'trigger':  GObject.param_spec_uint('trigger', '', '', 0, 2, 1, GObject.ParamFlags.READWRITE),
+    },
+    Signals: {
+        'append-wmclass': {},
+    },
+}, class DictBtn extends PanelMenu.Button {
+    _init(params) {
+        super._init(params);
+
+        this._buildWidgets();
+        this._bindSettings();
+    }
+
+    _buildWidgets() {
+        this._icon = new St.Icon({ style_class: 'light-dict-systray system-status-icon', });
+        this.add_actor(this._icon);
+    }
+
+    _bindSettings() {
+        gsettings.bind(Fields.PASSIVE,  this, 'passive',  Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.TRIGGER,  this, 'trigger',  Gio.SettingsBindFlags.GET);
+    }
+
+    set passive(passive) {
+        this._passive = passive;
+        this._setIcon();
+    }
+
+    set trigger(trigger) {
+        this._trigger = trigger;
+        this._setIcon();
+    }
+
+    get _iconname() {
+        switch(this._trigger) {
+        case TRIGGER.NIL: return this._passive == 1 ? 'nil-passive' : 'nil-active';
+        case TRIGGER.BOX: return this._passive == 1 ? 'box-passive' : 'box-active';
+        case TRIGGER.BAR: return this._passive == 1 ? 'bar-passive' : 'bar-active';
+        }
+    }
+
+    vfunc_scroll_event(event) {
+        switch(event.direction) {
+        case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
+        case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); break;
+        default: break;
+        }
+        return Clutter.EVENT_STOP;
+    };
+
+    _setIcon() {
+        this._icon.set_gicon(new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }));
+        this._updateMenu();
+    }
+
+    _updateMenu() {
+        this.menu.removeAll();
+        this.menu.addMenuItem(this._passiveItem());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        ['Bar', 'Box', 'Nil'].forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this.menu.addMenuItem(this._applistItem());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this.menu.addMenuItem(this._settingItem());
+    }
+
+    _menuItemMaker(text) {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.setOrnament(this._trigger == TRIGGER[text.toUpperCase()] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TRIGGER[text.toUpperCase()]); });
+        item.add_child(new St.Label({ x_expand: true, text: _(text), }));
+
+        return item;
+    }
+
+    _passiveItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.setOrnament(this._passive == 1 ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
+        item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
+
+        return item;
+    }
+
+    _applistItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.connect('activate', () => { item._getTopMenu().close(); this.emit('append-wmclass'); });
+        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove current window'), }));
+
+        return item;
+    }
+
+    _settingItem() {
+        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
+        item.connect('activate', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
+        item.add_child(new St.Label({ x_expand: true, text: _('Settings'), }));
+
+       return item;
+    }
+});
+
+const LightDict = GObject.registerClass({
+    Properties: {
+        'filter':    GObject.param_spec_string('filter', '', '', '', GObject.ParamFlags.READWRITE),
+        'applist':   GObject.param_spec_string('applist', '', '', '', GObject.ParamFlags.READWRITE),
+        'dcommand':  GObject.param_spec_string('dcommand', '', '', '', GObject.ParamFlags.READWRITE),
+        'passive':   GObject.param_spec_uint('passive', '', '', 0, 1, 0, GObject.ParamFlags.READWRITE),
+        'trigger':   GObject.param_spec_uint('trigger', '', '', 0, 2, 1, GObject.ParamFlags.READWRITE),
+        'listtype':  GObject.param_spec_uint('listtype', '', '', 0, 1, 1, GObject.ParamFlags.READWRITE),
+        'textstrip': GObject.param_spec_boolean('textstrip', '', '', true, GObject.ParamFlags.READWRITE),
+        'systray':   GObject.param_spec_boolean('systray', '', '', true, GObject.ParamFlags.READWRITE),
+    },
+}, class LightDict extends St.Widget {
     _init() {
         super._init({
             width: 40,
             height: 40,
             opacity: 0,
         });
-        Main.uiGroup.add_actor(this); // do not track
+        Main.uiGroup.add_actor(this);
 
-        this._wmclass = '';
         this._selection = '';
-        this._allow = true;
+        this._setWmclass();
 
-        this._buildWidget();
-        this._loadSettings();
+        this._bindSettings();
+        this._buildWidgets();
     }
 
-    _buildWidget() {
-        this._box = new DictBox();
-        this._act = new DictAct();
-        this._bar = new DictBar();
+    _bindSettings() {
+        gsettings.bind(Fields.APPLIST,   this, 'applist',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TRIGGER,   this, 'trigger',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SYSTRAY,   this, 'systray',   Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.DCOMMAND,  this, 'dcommand',  Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.FILTER,    this, 'filter',    Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.LISTTYPE,  this, 'listtype',  Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.PASSIVE,   this, 'passive',   Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.TEXTSTRIP, this, 'textstrip', Gio.SettingsBindFlags.GET);
+    }
 
-        this._box.setPosition(this, 0);
-        this._bar.setPosition(this, 0);
+    _buildWidgets() {
+        this._act = new DictAct();
+        this._box = new DictBox(this, 0);
+        this._bar = new DictBar(this, 0);
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
+
+        this._barEmitId = this._bar.connect('iconbar-signals', this._onBarEmit.bind(this));
+        this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
+        this._selectionChangedId = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
     }
 
-    _loadSettings() {
-        this._barEmitID = this._bar.connect('iconbar-signals', this._onBarEmit.bind(this));
-
-        this._onWindowChangedID = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
-        this._selectionChangedID = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
-    }
-
-    get _passive() {
-        return gsettings.get_uint(Fields.PASSIVE) == 1;
-    }
-
-    get _filter() {
-        return gsettings.get_string(Fields.FILTER);
-    }
-
-    get _trigger() {
-        return gsettings.get_uint(Fields.TRIGGER);
-    }
-
-    get _appslist() {
-        return gsettings.get_string(Fields.APPSLIST);
-    }
-
-    get _listtype() {
-        return gsettings.get_uint(Fields.LISTTYPE) == 0;
-    }
-
-    get _textstrip() {
-        return gsettings.get_boolean(Fields.TEXTSTRIP);
-    }
-
-    get _dcommand() {
-        return gsettings.get_string(Fields.DCOMMAND);
+    set systray(systray) {
+        if(systray) {
+            if(this._button) return;
+            this._button = new DictBtn(null);
+            this._button.connect('append-wmclass', this.Block.bind(this));
+            Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
+        } else {
+            if(!this._button) return;
+            this._button.destroy();
+            this._button = null;
+        }
     }
 
     set _pointer(pointer) {
         this.set_position(pointer[0] - 20, pointer[1] - 20);
     }
 
+    get _allow() {
+        let wlist = !this.applist || this.applist.toLowerCase().includes(this._wmclass);
+        return (this.listtype == 0)^wlist;
+    }
+
     _onWindowChanged() {
         this._box._hide();
         this._bar._hide();
-        let FW = global.display.get_focus_window();
-        this._wmclass = FW ? (FW.wm_class ? FW.wm_class : '') : '';
-        let wlist = this._appslist === '' || this._appslist.toLowerCase().includes(this._wmclass.toLowerCase());
-        this._allow = this._listtype^wlist;
+        this._setWmclass();
+    }
+
+    _setWmclass() {
+        let focused = global.display.get_focus_window();
+        this._wmclass = focused ? (focused.wm_class ? focused.wm_class.toLowerCase() : '') : '';
     }
 
     _selectionChanged(sel, type, src) {
         if(type != St.ClipboardType.PRIMARY) return;
-        if(this._mouseUpID)
-            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-        if(!this._allow || this._trigger == TRIGGER.NIL) return;
+        if(this._mouseUpId)
+            GLib.source_remove(this._mouseUpId), this._mouseUpId = 0;
+        if(!this._allow || this.trigger == TRIGGER.NIL) return;
         let [, , initModifier] = global.get_pointer();
-        if(this._passive && (initModifier & MODIFIERS) == 0) return;
+        if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
-            this._mouseUpID = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+            this._mouseUpId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                    // set _selection in _fetch() callback get 'JS TypeError: text is null' logs in some Gtk+ apps
                     this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
-                    this._mouseUpID = 0;
+                    this._mouseUpId = 0;
                     return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
@@ -655,7 +743,7 @@ class LightDict extends St.Widget {
 
     _store(text) {
         return new Promise((resolve, reject) => {
-            this._selection = text;
+            this._selection = this.textstrip ? text.replace(/[\n\t]/g, ' ').trim() : text;
             this._pointer = global.get_pointer();
             resolve();
         });
@@ -716,8 +804,8 @@ class LightDict extends St.Widget {
     }
 
     _lookUp() {
-        if(!this._passive && this._filter && !RegExp(this._filter).test(this._selection)) return;
-        let rcmd = this._dcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection));
+        if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
+        let rcmd = this.dcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection));
         this._execute(rcmd).then(scc => {
             this._box._look(scc, this._selection, false);
         }, err => {
@@ -731,7 +819,7 @@ class LightDict extends St.Widget {
     }
 
     _show() {
-        this._trigger == TRIGGER.BAR ? this._showBar() : this._lookUp();
+        this.trigger == TRIGGER.BAR ? this._showBar() : this._lookUp();
     }
 
     LookUp(word) {
@@ -750,24 +838,35 @@ class LightDict extends St.Widget {
         }
     }
 
-    ChangeMode() {
-        let next = (this._trigger + 1) % 2;
+    Toggle() {
+        let next = (this.trigger + 1) % 2;
         let modes = ['Bar', 'Box', 'Nil'];
         Main.notify(Me.metadata.name, _('Switch to %s mode').format(_(modes[next])));
-        gsettings.set_uint(Fields.TRIGGER, next);
+        this.trigger = next;
+    }
+
+    Block() {
+        if(!this._wmclass) return;
+        let applist = this.applist.split(',');
+        if(this.applist.includes(this._wmclass)) {
+            applist.splice(applist.indexOf(this._wmclass), 1);
+        } else {
+            applist.push(this._wmclass);
+        }
+        this.applist = applist.join(',');
     }
 
     destory() {
-        if(this._mouseUpID)
-            GLib.source_remove(this._mouseUpID), this._mouseUpID = 0;
-        if(this._barEmitID)
-            this._bar.disconnect(this._barEmitID), this._barEmitID = 0;
-        if(this._onWindowChangedID)
-            global.display.disconnect(this._onWindowChangedID), this._onWindowChangedID = 0;
-        if(this._selectionChangedID)
-            global.display.get_selection().disconnect(this._selectionChangedID), this._selectionChangedID = 0;
+        if(this._mouseUpId)
+            GLib.source_remove(this._mouseUpId), this._mouseUpId = 0;
+        if(this._barEmitId)
+            this._bar.disconnect(this._barEmitId), this._barEmitId = 0;
+        if(this._onWindowChangedId)
+            global.display.disconnect(this._onWindowChangedId), this._onWindowChangedId = 0;
+        if(this._selectionChangedId)
+            global.display.get_selection().disconnect(this._selectionChangedId), this._selectionChangedId = 0;
 
-        Main.uiGroup.remove_actor(this);
+        this.systray = false;
         this._dbus.flush();
         this._dbus.unexport();
         this._bar.destory();
@@ -780,93 +879,6 @@ class LightDict extends St.Widget {
     }
 });
 
-const DictBtn = GObject.registerClass(
-class DictBtn extends PanelMenu.Button {
-    _init(params) {
-        super._init(params);
-        this._icon = new St.Icon({
-            gicon: new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }),
-            style_class: 'light-dict-systray system-status-icon',
-        });
-        this.add_actor(this._icon);
-        this._passiveId_ = gsettings.connect('changed::' + Fields.PASSIVE, this._setIcon.bind(this));
-        this._triggerId_ = gsettings.connect('changed::' + Fields.TRIGGER, this._setIcon.bind(this));
-
-        this._updateMenu();
-    }
-
-    vfunc_scroll_event(event) {
-        switch(event.direction) {
-        case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
-        case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, !this._passive); break;
-        default: break;
-        }
-        return Clutter.EVENT_STOP;
-    };
-
-    get _passive() {
-        return gsettings.get_uint(Fields.PASSIVE) == 1;
-    }
-
-    get _trigger() {
-        return gsettings.get_uint(Fields.TRIGGER);
-    }
-
-    get _iconname() {
-        switch(this._trigger) {
-        case TRIGGER.NIL: return this._passive ? 'nil-passive' : 'nil-active';
-        case TRIGGER.BOX: return this._passive ? 'box-passive' : 'box-active';
-        case TRIGGER.BAR: return this._passive ? 'bar-passive' : 'bar-active';
-        }
-    }
-
-    _setIcon() {
-        this._icon.set_gicon(new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }));
-        this._updateMenu();
-    }
-
-    _updateMenu() {
-        this.menu.removeAll();
-        this.menu.addMenuItem(this._passiveItem());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        ['Bar', 'Box', 'Nil'].forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        this.menu.addMenuItem(this._settingItem());
-    }
-
-    _menuItemMaker(text) {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.setOrnament(this._trigger == TRIGGER[text.toUpperCase()] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TRIGGER[text.toUpperCase()]); });
-        item.add_child(new St.Label({ x_expand: true, text: _(text), }));
-
-        return item;
-    }
-
-    _passiveItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.setOrnament(this._passive ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
-
-        return item;
-    }
-
-    _settingItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.connect('activate', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Settings'), }));
-
-       return item;
-    }
-
-    destroy() {
-        for(let x in this)
-            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
-        super.destroy();
-    }
-});
-
 const Extension = GObject.registerClass(
 class Extension extends GObject.Object {
     _init() {
@@ -875,34 +887,11 @@ class Extension extends GObject.Object {
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
-    get _systray() {
-        return gsettings.get_boolean(Fields.SYSTRAY);
-    }
-
-    set _systray(tray) {
-        if(tray) {
-            if(this._button) return;
-            this._button = new DictBtn(null);
-            Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
-        } else {
-            if(!this._button) return;
-            this._button.destroy();
-            this._button = null;
-        }
-    }
-
     enable() {
         this._dict = new LightDict();
-
-        this._systray = this._systray;
-        this._systrayId_ = gsettings.connect('changed::' + Fields.SYSTRAY, () => { this._systray = this._systray; });
     }
 
     disable() {
-        for(let x in this)
-            if(RegExp(/^_.+Id_$/).test(x)) eval('if(this.%s) gsettings.disconnect(this.%s), this.%s = 0;'.format(x, x, x));
-
-        if(this._systray) this._systray = false;
         this._dict.destory();
         this._dict = null;
     }

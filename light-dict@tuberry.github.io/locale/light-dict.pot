@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-27 16:33+0800\n"
+"POT-Creation-Date: 2020-11-30 22:52+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,17 +17,21 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:756
-#, javascript-format
-msgid "Switch to %s mode"
-msgstr ""
-
-#: extension.js:850
+#: extension.js:596
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:858
+#: extension.js:604
+msgid "Add/remove current window"
+msgstr ""
+
+#: extension.js:612
 msgid "Settings"
+msgstr ""
+
+#: extension.js:844
+#, javascript-format
+msgid "Switch to %s mode"
 msgstr ""
 
 #: prefs.js:49
@@ -222,70 +226,70 @@ msgstr ""
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:414 prefs.js:441
+#: prefs.js:398 prefs.js:427
 msgid "Command type"
 msgstr ""
 
-#: prefs.js:415
+#: prefs.js:399
 msgid "Show on left side"
 msgstr ""
 
-#: prefs.js:416
+#: prefs.js:400
 msgid "Show in the bar"
 msgstr ""
 
-#: prefs.js:417
+#: prefs.js:401
 msgid "Run when clicking"
 msgstr ""
 
-#: prefs.js:418
+#: prefs.js:402
 msgid "Allowed to function"
 msgstr ""
 
-#: prefs.js:419
+#: prefs.js:403
 msgid "Show when hovering"
 msgstr ""
 
-#: prefs.js:420
+#: prefs.js:404
 msgid "Match selected text"
 msgstr ""
 
-#: prefs.js:435
+#: prefs.js:420
 msgid "Enable"
 msgstr ""
 
-#: prefs.js:436
+#: prefs.js:421
 msgid "Name"
 msgstr ""
 
-#: prefs.js:439
+#: prefs.js:425
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:440
+#: prefs.js:426
 msgid "Command"
 msgstr ""
 
-#: prefs.js:442
+#: prefs.js:428
 msgid "Show result"
 msgstr ""
 
-#: prefs.js:443
+#: prefs.js:429
 msgid "Copy result"
 msgstr ""
 
-#: prefs.js:444
+#: prefs.js:430
 msgid "Commit result"
 msgstr ""
 
-#: prefs.js:447
+#: prefs.js:434
 msgid "Regexp"
 msgstr ""
 
-#: prefs.js:448
+#: prefs.js:435
 msgid "Wmclass"
 msgstr ""
 
-#: prefs.js:449
+#: prefs.js:436
 msgid "Tooltips"
 msgstr ""

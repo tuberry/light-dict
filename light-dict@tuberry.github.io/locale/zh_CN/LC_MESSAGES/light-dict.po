@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-27 16:33+0800\n"
+"POT-Creation-Date: 2020-11-30 22:52+0800\n"
 "PO-Revision-Date: 2020-09-06 21:24+0800\n"
 "Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -16,18 +16,22 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:756
-#, javascript-format
-msgid "Switch to %s mode"
-msgstr "切换至%s模式"
-
-#: extension.js:850
+#: extension.js:596
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:858
+#: extension.js:604
+msgid "Add/remove current window"
+msgstr "添加/移除当前窗口"
+
+#: extension.js:612
 msgid "Settings"
 msgstr "更多设置"
+
+#: extension.js:844
+#, javascript-format
+msgid "Switch to %s mode"
+msgstr "切换至%s模式"
 
 #: prefs.js:49
 msgid "Basic"
@@ -223,70 +227,70 @@ msgstr "页面容量"
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:414 prefs.js:441
+#: prefs.js:398 prefs.js:427
 msgid "Command type"
 msgstr "命令类型"
 
-#: prefs.js:415
+#: prefs.js:399
 msgid "Show on left side"
 msgstr "显示在左侧"
 
-#: prefs.js:416
+#: prefs.js:400
 msgid "Show in the bar"
 msgstr "显示在图标栏"
 
-#: prefs.js:417
+#: prefs.js:401
 msgid "Run when clicking"
 msgstr "点击后执行"
 
-#: prefs.js:418
+#: prefs.js:402
 msgid "Allowed to function"
 msgstr "白名单"
 
-#: prefs.js:419
+#: prefs.js:403
 msgid "Show when hovering"
 msgstr "悬停时显示"
 
-#: prefs.js:420
+#: prefs.js:404
 msgid "Match selected text"
 msgstr "匹配选取文本的正则表达式"
 
-#: prefs.js:435
+#: prefs.js:420
 msgid "Enable"
 msgstr "启用"
 
-#: prefs.js:436
+#: prefs.js:421
 msgid "Name"
 msgstr "备注"
 
-#: prefs.js:439
+#: prefs.js:425
 msgid "Icon"
 msgstr "图标名"
 
-#: prefs.js:440
+#: prefs.js:426
 msgid "Command"
 msgstr "运行命令"
 
-#: prefs.js:442
+#: prefs.js:428
 msgid "Show result"
 msgstr "显示结果"
 
-#: prefs.js:443
+#: prefs.js:429
 msgid "Copy result"
 msgstr "复制结果"
 
-#: prefs.js:444
+#: prefs.js:430
 msgid "Commit result"
 msgstr "提交结果"
 
-#: prefs.js:447
+#: prefs.js:434
 msgid "Regexp"
 msgstr "文本匹配"
 
-#: prefs.js:448
+#: prefs.js:435
 msgid "Wmclass"
 msgstr "窗口名单"
 
-#: prefs.js:449
+#: prefs.js:436
 msgid "Tooltips"
 msgstr "工具提示"
