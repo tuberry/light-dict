@@ -419,7 +419,7 @@ class LightDictAdvanced extends Gtk.Box {
         let basic = this._listGridMaker();
         basic._add(this._labelMaker(_('Enable')), this._enable);
         basic._add(this._labelMaker(_('Name'), true), this._name);
-        rightBox.pack_start(basic, true, true, 0);
+        rightBox.pack_start(basic, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
         let details = this._listGridMaker();
         details._add(this._labelMaker(_('Icon')), this._icon);
@@ -428,13 +428,13 @@ class LightDictAdvanced extends Gtk.Box {
         details._add(this._labelMaker(_('Show result')), this._popup);
         details._add(this._labelMaker(_('Copy result')), this._clip);
         details._add(this._labelMaker(_('Commit result')), this._commit);
-        rightBox.pack_start(details, true, true, 0);
+        rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
         let addition = this._listGridMaker();
         addition._att(this._labelMaker(_('Regexp'), true), this._regx);
         addition._att(this._labelMaker(_('Wmclass'), true), this._win);
         addition._att(this._labelMaker(_('Tooltips'), true), this._tip);
-        rightBox.pack_start(addition, true, true, 0);
+        rightBox.pack_start(addition, false, false, 0);
 
         let outBox = new Gtk.HBox();
         outBox.pack_start(leftBox, false, false, 0);
