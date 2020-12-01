@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-30 22:52+0800\n"
+"POT-Creation-Date: 2020-12-01 15:46+0800\n"
 "PO-Revision-Date: 2020-09-06 21:24+0800\n"
 "Last-Translator: tuberry <tuberry@example.com>\n"
 "Language-Team: Chinese (simplified) <i18n-zh@googlegroups.com>\n"
@@ -16,281 +16,268 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:596
+#: extension.js:594
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:604
+#: extension.js:602
 msgid "Add/remove current window"
 msgstr "添加/移除当前窗口"
 
-#: extension.js:612
+#: extension.js:610
 msgid "Settings"
 msgstr "更多设置"
 
-#: extension.js:844
+#: extension.js:841
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr "切换至%s模式"
 
-#: prefs.js:49
+#: prefs.js:50
 msgid "Basic"
 msgstr "基本"
 
-#: prefs.js:53
+#: prefs.js:54
 msgid "Advanced"
 msgstr "进阶"
 
-#: prefs.js:57
+#: prefs.js:58
 msgid "About"
 msgstr "关于"
 
-#: prefs.js:86
-msgid "Tips"
-msgstr "提示"
-
-#: prefs.js:93
-msgid "Substitute <b>LDWORD</b> for the selection in commands"
-msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
-
-#: prefs.js:94
-msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
-msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
-
-#: prefs.js:95
-msgid ""
-"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
-msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
-
-#: prefs.js:96
-msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-
-#: prefs.js:97
-msgid ""
-"Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
-msgstr "<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift</b> 以触发"
-
-#: prefs.js:147
-msgid "GNU General Public License, version 3 or later"
-msgstr "GNU 通用公共许可证，第3版以上"
-
-#: prefs.js:150
+#: prefs.js:118
 #, javascript-format
 msgid "Version %d"
 msgstr "版本 %d"
 
-#: prefs.js:151
+#: prefs.js:119
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
 msgstr "即时操作高亮文本的轻量级扩展，特别对查词进行了优化。"
 
-#: prefs.js:153
-#, javascript-format
-msgid ""
-"This program comes with absolutely no warranty.\n"
-"See the <a href=\"%s\">%s</a> for details."
-msgstr ""
-"本程序不含任何担保。\n"
-"详情见<a href=\"%s\">%s</a>"
+#: prefs.js:135
+msgid "Tips"
+msgstr "提示"
 
-#: prefs.js:191
+#: prefs.js:142
+msgid "Substitute <b>LDWORD</b> for the selection in commands"
+msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
+
+#: prefs.js:143
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+
+#: prefs.js:144
+msgid ""
+"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
+msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
+
+#: prefs.js:145
+msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
+
+#: prefs.js:146
+msgid ""
+"Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
+msgstr "<b>被动模式</b>下选取文本时需按住 <b>Alt|Shift</b> 以触发"
+
+#: prefs.js:192
 msgid "Blocklist"
 msgstr "黑名单"
 
-#: prefs.js:191
+#: prefs.js:192
 msgid "Allowlist"
 msgstr "白名单"
 
-#: prefs.js:192
+#: prefs.js:193
 msgid "Active"
 msgstr "主动"
 
-#: prefs.js:192
+#: prefs.js:193
 msgid "Passive"
 msgstr "被动"
 
-#: prefs.js:192
+#: prefs.js:193
 msgid "Hold modifier to trigger or not"
 msgstr "是否按修饰键触发"
 
-#: prefs.js:193 prefs.js:211
+#: prefs.js:194 prefs.js:212
 msgid "Box"
 msgstr "气泡"
 
-#: prefs.js:193 prefs.js:219
+#: prefs.js:194 prefs.js:220
 msgid "Bar"
 msgstr "图标"
 
-#: prefs.js:193
+#: prefs.js:194
 msgid "Nil"
 msgstr "禁用"
 
-#: prefs.js:193
+#: prefs.js:194
 msgid "What to popup when trigger"
 msgstr "触发后弹出"
 
-#: prefs.js:194
+#: prefs.js:195
 msgid "Never"
 msgstr "禁用"
 
-#: prefs.js:194
+#: prefs.js:195
 msgid "Click"
 msgstr "单击"
 
-#: prefs.js:194
+#: prefs.js:195
 msgid "Hover"
 msgstr "悬停"
 
-#: prefs.js:194
+#: prefs.js:195
 msgid "Always"
 msgstr "总是"
 
-#: prefs.js:196
+#: prefs.js:197
 msgid "run with /bin/sh"
 msgstr "以 /bin/sh 运行"
 
-#: prefs.js:197
+#: prefs.js:198
 msgid "allow/block list (empty for all)"
 msgstr "应用黑白名单（留空代表所有）"
 
-#: prefs.js:198
+#: prefs.js:199
 msgid "Text RegExp filter"
 msgstr "过滤选取文本的正则表达式"
 
-#: prefs.js:199
+#: prefs.js:200
 msgid "Left click to run"
 msgstr "左键运行命令"
 
-#: prefs.js:200
+#: prefs.js:201
 msgid "Right click to run and hide box"
 msgstr "右键运行命令并关闭气泡"
 
-#: prefs.js:204
+#: prefs.js:205
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:205
+#: prefs.js:206
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: prefs.js:206
+#: prefs.js:207
 msgid "Trim whitespaces"
 msgstr "去除空白"
 
-#: prefs.js:207
+#: prefs.js:208
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:208
+#: prefs.js:209
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: prefs.js:209
+#: prefs.js:210
 msgid "Wmclass list"
 msgstr "窗口名单"
 
-#: prefs.js:212
+#: prefs.js:213
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: prefs.js:213
+#: prefs.js:214
 msgid "Logs level"
 msgstr "日志级别"
 
-#: prefs.js:214
+#: prefs.js:215
 msgid "Run command"
 msgstr "运行命令"
 
-#: prefs.js:215
+#: prefs.js:216
 msgid "Right click"
 msgstr "右键运行"
 
-#: prefs.js:216
+#: prefs.js:217
 msgid "Left click"
 msgstr "左键运行"
 
-#: prefs.js:217
+#: prefs.js:218
 msgid "Text filter"
 msgstr "文本过滤"
 
-#: prefs.js:220
+#: prefs.js:221
 msgid "Enable tooltips"
 msgstr "启用提示"
 
-#: prefs.js:221
+#: prefs.js:222
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:222
+#: prefs.js:223
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:398 prefs.js:427
+#: prefs.js:399 prefs.js:428
 msgid "Command type"
 msgstr "命令类型"
 
-#: prefs.js:399
+#: prefs.js:400
 msgid "Show on left side"
 msgstr "显示在左侧"
 
-#: prefs.js:400
+#: prefs.js:401
 msgid "Show in the bar"
 msgstr "显示在图标栏"
 
-#: prefs.js:401
+#: prefs.js:402
 msgid "Run when clicking"
 msgstr "点击后执行"
 
-#: prefs.js:402
+#: prefs.js:403
 msgid "Allowed to function"
 msgstr "白名单"
 
-#: prefs.js:403
+#: prefs.js:404
 msgid "Show when hovering"
 msgstr "悬停时显示"
 
-#: prefs.js:404
+#: prefs.js:405
 msgid "Match selected text"
 msgstr "匹配选取文本的正则表达式"
 
-#: prefs.js:420
+#: prefs.js:421
 msgid "Enable"
 msgstr "启用"
 
-#: prefs.js:421
+#: prefs.js:422
 msgid "Name"
 msgstr "备注"
 
-#: prefs.js:425
+#: prefs.js:426
 msgid "Icon"
 msgstr "图标名"
 
-#: prefs.js:426
+#: prefs.js:427
 msgid "Command"
 msgstr "运行命令"
 
-#: prefs.js:428
+#: prefs.js:429
 msgid "Show result"
 msgstr "显示结果"
 
-#: prefs.js:429
+#: prefs.js:430
 msgid "Copy result"
 msgstr "复制结果"
 
-#: prefs.js:430
+#: prefs.js:431
 msgid "Commit result"
 msgstr "提交结果"
 
-#: prefs.js:434
+#: prefs.js:435
 msgid "Regexp"
 msgstr "文本匹配"
 
-#: prefs.js:435
+#: prefs.js:436
 msgid "Wmclass"
 msgstr "窗口名单"
 
-#: prefs.js:436
+#: prefs.js:437
 msgid "Tooltips"
 msgstr "工具提示"

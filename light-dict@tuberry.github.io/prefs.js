@@ -7,6 +7,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
+const _GTK = imports.gettext.domain('gtk30').gettext;
 
 var Fields = {
     XOFFSET:   'x-offset',
@@ -75,53 +76,19 @@ class LightDictAbout extends Gtk.Box {
             orientation: Gtk.Orientation.VERTICAL,
         });
 
-        this._bulidIcons();
+        this._buildIcon();
         this._buildInfo();
         this._buildTips();
     }
 
-    _buildTips() {
-        const tips = new Gtk.Button({
-            hexpand: false,
-            label: _('Tips'),
-            halign: Gtk.Align.END,
-        });
-        let pop = new Gtk.Popover(tips);
-        pop.set_relative_to(tips);
-
-        let msgs = [
-            _('Substitute <b>LDWORD</b> for the selection in commands'),
-            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>'),
-            _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
-            _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
-            _('Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>')
-        ];
-
-        const vbox = new Gtk.VBox();
-        msgs.map((msg, i) => {
-            const label = new Gtk.Label();
-            label.set_margin_top(5);
-            label.set_line_wrap(true);
-            label.set_alignment(0, 0.5);
-            label.set_max_width_chars(60);
-            label.set_markup((i + 1) + '. ' + msg);
-            return label;
-        }).forEach(l => vbox.add(l));
-        pop.add(vbox);
-
-        tips.connect('clicked', () => { pop.show_all(); });
-
-        this.pack_end(tips, false, false, 0);
-    }
-
-    _bulidIcons() {
+    _buildIcon() {
         let hbox = new Gtk.Box({
             margin_bottom: 30,
             halign: Gtk.Align.CENTER,
         });
         let active = gsettings.get_strv(Fields.BCOMMANDS);
-        let count = gsettings.get_uint(Fields.PAGESIZE);
-        let icons = [];
+        let count  = gsettings.get_uint(Fields.PAGESIZE);
+        let icons  = [];
         let icon_size = 5;
         if(active.length) {
             active.forEach(x => {
@@ -139,18 +106,19 @@ class LightDictAbout extends Gtk.Box {
         }
         count = count ? count : icons.length;
         icons.slice(0, count).forEach(x => hbox.pack_start(x, false, false, 0));
+        let frame = new Gtk.Frame();
         this.add(hbox);
     }
 
     _buildInfo() {
         let gpl = "https://www.gnu.org/licenses/gpl-3.0.html";
-        let license  = _("GNU General Public License, version 3 or later");
+        let license  = _GTK("GNU General Public License, version 3 or later");
         let info = [
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _("Version %d").format(Me.metadata.version),
             _("Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup."),
-            "<span><a href=\"" + Me.metadata.url + "\">" + Me.metadata.url + "</a></span>",
-            "<small>" + _("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(gpl, license) + "</small>"
+            "<span><a href=\"" + Me.metadata.url + "\">" + _GTK("Website") + "</a></span>",
+            "<small>" + _GTK("This program comes with absolutely no warranty.\nSee the <a href=\"%s\">%s</a> for details.").format(gpl, license) + "</small>"
         ];
         let about = new Gtk.Label({
             wrap: true,
@@ -159,6 +127,39 @@ class LightDictAbout extends Gtk.Box {
             label: info.join('\n\n'),
         });
         this.add(about);
+    }
+
+    _buildTips() {
+        const tips = new Gtk.Button({
+            hexpand: false,
+            label: _('Tips'),
+            halign: Gtk.Align.END,
+        });
+        let pop = new Gtk.Popover(tips);
+        pop.set_relative_to(tips);
+
+        let msgs = [
+            _('Substitute <b>LDWORD</b> for the selection in commands'),
+            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
+            _("Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"),
+            _('Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
+            _('Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>')
+        ];
+
+        const vbox = new Gtk.VBox({ margin: 10 });
+        msgs.map((msg, i) => {
+            const label = new Gtk.Label();
+            label.set_margin_top(5);
+            label.set_line_wrap(true);
+            label.set_alignment(0, 0.5);
+            label.set_max_width_chars(60);
+            label.set_markup((i + 1) + '. ' + msg);
+            return label;
+        }).forEach(l => vbox.add(l));
+        pop.add(vbox);
+        tips.connect('clicked', () => { pop.show_all(); });
+
+        this.pack_end(tips, false, false, 0);
     }
 });
 
@@ -392,15 +393,15 @@ class LightDictAdvanced extends Gtk.Box {
         this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: "go-up-symbolic" }) });
 
         this._enable = new Gtk.Switch();
-        this._popup = new Gtk.Switch();
+        this._popup  = new Gtk.Switch();
         this._commit = new Gtk.Switch();
-        this._clip = new Gtk.Switch();
+        this._clip   = new Gtk.Switch();
         this._type = this._comboMaker(['sh', 'JS'], _('Command type'));
         this._name = this._entryMaker('Link', _('Show on left side'), true);
         this._icon = this._entryMaker('face-cool-symbolic', _('Show in the bar'), true);
-        this._cmd = this._entryMaker('gio open LDWORD', _('Run when clicking'));
-        this._win = this._entryMaker('Yelp,Evince,Gedit', _('Allowed to function'));
-        this._tip = this._entryMaker('Open URL with gio open', _('Show when hovering'));
+        this._cmd  = this._entryMaker('gio open LDWORD', _('Run when clicking'));
+        this._win  = this._entryMaker('Yelp,Evince,Gedit', _('Allowed to function'));
+        this._tip  = this._entryMaker('Open URL with gio open', _('Show when hovering'));
         this._regx = this._entryMaker('(https?|ftp|file)://.*', _('Match selected text'));
     }
 
