@@ -580,7 +580,7 @@ const DictBtn = GObject.registerClass({
 
     _menuItemMaker(text) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.setOrnament(this._trigger == TRIGGER[text.toUpperCase()] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.setOrnament(this._trigger == TRIGGER[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
         item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TRIGGER[text.toUpperCase()]); });
         item.add_child(new St.Label({ x_expand: true, text: _(text), }));
 

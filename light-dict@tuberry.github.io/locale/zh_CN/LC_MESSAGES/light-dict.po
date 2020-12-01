@@ -54,7 +54,7 @@ msgstr "版本 %d"
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
-msgstr "即时操作高亮文本的轻量级扩展，特别对查词进行了优化。"
+msgstr "即时操作选取文本的轻量扩展，特别对查词进行了优化。"
 
 #: prefs.js:135
 msgid "Tips"
