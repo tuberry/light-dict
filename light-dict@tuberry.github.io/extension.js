@@ -39,14 +39,14 @@ const DBUSINTERFACE = `
 
 const DictBar = GObject.registerClass({
     Properties: {
-        'tooltips': GObject.param_spec_boolean('tooltips', '', '', false, GObject.ParamFlags.WRITABLE),
-        'pagesize': GObject.param_spec_uint('pagesize', '', '', 1, 10, 5, GObject.ParamFlags.READWRITE),
-        'xoffset':  GObject.param_spec_int('xoffset', '', '', -400, 400, -5, GObject.ParamFlags.WRITABLE),
-        'autohide': GObject.param_spec_uint('autohide', '', '', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
+        'tooltips': GObject.param_spec_boolean('tooltips', 'tooltips', 'tooltips', false, GObject.ParamFlags.WRITABLE),
+        'pagesize': GObject.param_spec_uint('pagesize', 'pagesize', 'page zise', 1, 10, 5, GObject.ParamFlags.READWRITE),
+        'xoffset':  GObject.param_spec_int('xoffset', 'xoffset', 'x offset', -400, 400, -5, GObject.ParamFlags.WRITABLE),
+        'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
        // 'bcommands': GObject.param_spec_variant('bcommands', '', '', new GLib.VariantType('as'), null, GObject.ParamFlags.WRITABLE),
     },
     Signals: {
-        'iconbar-signals': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
+        'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
     },
 }, class DictBar extends BoxPointer.BoxPointer {
     _init(actor, align) {
@@ -173,7 +173,7 @@ const DictBar = GObject.registerClass({
         if(x.regexp) btn.regexp = x.regexp;
         btn.connect('clicked', (actor, event) => {
             this._hide();
-            this.emit('iconbar-signals', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
+            this.emit('dict-bar-clicked', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
             return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
@@ -244,10 +244,10 @@ const DictBar = GObject.registerClass({
 
 const DictBox = GObject.registerClass({
     Properties: {
-        'lcommand': GObject.param_spec_string('lcommand', '', '', '', GObject.ParamFlags.READWRITE),
-        'rcommand': GObject.param_spec_string('rcommand', '', '', '', GObject.ParamFlags.READWRITE),
-        'loglevel': GObject.param_spec_uint('loglevel', '', '', 0, 3, 0, GObject.ParamFlags.READWRITE),
-        'autohide': GObject.param_spec_uint('autohide', '', '', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
+        'lcommand': GObject.param_spec_string('lcommand', 'lcommand', 'l command', '', GObject.ParamFlags.READWRITE),
+        'rcommand': GObject.param_spec_string('rcommand', 'rcommand', 'r command', '', GObject.ParamFlags.READWRITE),
+        'loglevel': GObject.param_spec_uint('loglevel', 'loglevel', 'log level', 0, 3, 0, GObject.ParamFlags.READWRITE),
+        'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
     },
 }, class DictBox extends BoxPointer.BoxPointer {
     _init(actor, align) {
@@ -506,16 +506,17 @@ class DictAct extends GObject.Object {
 
     destroy() {
         this._keyboard.run_dispose();
+        this.run_dispose();
     }
 });
 
 const DictBtn = GObject.registerClass({
     Properties: {
-        'passive': GObject.param_spec_uint('passive', '', '', 0, 1, 0, GObject.ParamFlags.READWRITE),
-        'trigger': GObject.param_spec_uint('trigger', '', '', 0, 2, 1, GObject.ParamFlags.READWRITE),
+        'passive': GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
+        'trigger': GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
     },
     Signals: {
-        'append-wmclass': {},
+        'add-or-remove-wmclass': {},
     },
 }, class DictBtn extends PanelMenu.Button {
     _init(params) {
@@ -598,7 +599,7 @@ const DictBtn = GObject.registerClass({
 
     _applistItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.connect('activate', () => { item._getTopMenu().close(); this.emit('append-wmclass'); });
+        item.connect('activate', () => { item._getTopMenu().close(); this.emit('add-or-remove-wmclass'); });
         item.add_child(new St.Label({ x_expand: true, text: _('Add/remove current window'), }));
 
         return item;
@@ -615,14 +616,14 @@ const DictBtn = GObject.registerClass({
 
 const LightDict = GObject.registerClass({
     Properties: {
-        'filter':    GObject.param_spec_string('filter', '', '', '', GObject.ParamFlags.READWRITE),
-        'applist':   GObject.param_spec_string('applist', '', '', '', GObject.ParamFlags.READWRITE),
-        'dcommand':  GObject.param_spec_string('dcommand', '', '', '', GObject.ParamFlags.READWRITE),
-        'passive':   GObject.param_spec_uint('passive', '', '', 0, 1, 0, GObject.ParamFlags.READWRITE),
-        'systray':   GObject.param_spec_boolean('systray', '', '', true, GObject.ParamFlags.READWRITE),
-        'trigger':   GObject.param_spec_uint('trigger', '', '', 0, 2, 1, GObject.ParamFlags.READWRITE),
-        'listtype':  GObject.param_spec_uint('listtype', '', '', 0, 1, 1, GObject.ParamFlags.READWRITE),
-        'textstrip': GObject.param_spec_boolean('textstrip', '', '', true, GObject.ParamFlags.READWRITE),
+        'filter':    GObject.param_spec_string('filter', 'filter', 'filter', '', GObject.ParamFlags.READWRITE),
+        'applist':   GObject.param_spec_string('applist', 'applist', 'app list', '', GObject.ParamFlags.READWRITE),
+        'systray':   GObject.param_spec_boolean('systray', 'systray', 'systray', true, GObject.ParamFlags.WRITABLE),
+        'passive':   GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
+        'trigger':   GObject.param_spec_uint('trigger', 'systray', 'systray', 0, 2, 1, GObject.ParamFlags.READWRITE),
+        'dcommand':  GObject.param_spec_string('dcommand', 'dcommand', 'd command', '', GObject.ParamFlags.READWRITE),
+        'listtype':  GObject.param_spec_uint('listtype', 'listtype', 'list type', 0, 1, 1, GObject.ParamFlags.READWRITE),
+        'textstrip': GObject.param_spec_boolean('textstrip', 'textstrip', 'strip text', true, GObject.ParamFlags.READWRITE),
     },
 }, class LightDict extends St.Widget {
     _init() {
@@ -659,7 +660,7 @@ const LightDict = GObject.registerClass({
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
 
-        this._onBarClickedId = this._bar.connect('iconbar-signals', this._onBarClicked.bind(this));
+        this._onBarClickedId = this._bar.connect('dict-bar-clicked', this._onBarClicked.bind(this));
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
     }
@@ -668,7 +669,7 @@ const LightDict = GObject.registerClass({
         if(systray) {
             if(this._button) return;
             this._button = new DictBtn(null);
-            this._button.connect('append-wmclass', this.Block.bind(this));
+            this._button.connect('add-or-remove-wmclass', this.Block.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
             if(!this._button) return;
@@ -781,17 +782,17 @@ const LightDict = GObject.registerClass({
         }
     }
 
-    _runWithJS(popup, clip, commit, cmd) {
+    _runWithJS(popup, clip, commit_, cmd) {
         try {
             let WMCLASS = this._wmclass;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
             let copy = x => this._act.copy(x);
             let commit = x => this._act.commit(x);
-            if(popup|clip|commit) {
+            if(popup|clip|commit_) {
                 let result = eval(cmd).toString();
-                if(clip) this._act.copy(result);
-                if(commit) this._act.commit(result);
+                if(clip) copy(result);
+                if(commit_) commit(result);
                 if(popup) this._box._show(result, this._selection, true);
             } else {
                 eval(cmd);
@@ -844,13 +845,17 @@ const LightDict = GObject.registerClass({
 
     Block() {
         if(!this._wmclass) return;
-        let applist = this.applist.split(',');
-        if(this.applist.includes(this._wmclass)) {
-            applist.splice(applist.indexOf(this._wmclass), 1);
+        if(!this.applist) {
+            this.applist = this._wmclass;
         } else {
-            applist.push(this._wmclass);
+            let applist = this.applist.split(',');
+            if(this.applist.includes(this._wmclass)) {
+                applist.splice(applist.indexOf(this._wmclass), 1);
+            } else {
+                applist.push(this._wmclass);
+            }
+            this.applist = applist.join(',');
         }
-        this.applist = applist.join(',');
     }
 
     destory() {
