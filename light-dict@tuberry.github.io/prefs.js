@@ -106,7 +106,6 @@ class LightDictAbout extends Gtk.Box {
         }
         count = count ? count : icons.length;
         icons.slice(0, count).forEach(x => hbox.pack_start(x, false, false, 0));
-        let frame = new Gtk.Frame();
         this.add(hbox);
     }
 
@@ -367,12 +366,12 @@ class LightDictAdvanced extends Gtk.Box {
         this._commands = gsettings.get_strv(Fields.BCOMMANDS);
         this._default =
 `{
+    "enable" : false,
     "name" : "name",
     "icon" : "",
     "type" : 0,
     "command" : "",
     "popup" : false,
-    "enable" : false,
     "clip"  : false,
     "commit" : false,
     "tooltip" : "",

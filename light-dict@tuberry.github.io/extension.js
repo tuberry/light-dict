@@ -71,9 +71,9 @@ const DictBar = GObject.registerClass({
         });
         this.bin.set_child(this._box);
 
-        this._leaveId = this._box.connect('leave-event', this._hide.bind(this));
-        this._enterId = this._box.connect('enter-event', this._onEnter.bind(this));
-        this._scrollId = this._box.connect('scroll-event', this._onScroll.bind(this));
+        this._box.connect('leave-event', this._hide.bind(this));
+        this._box.connect('enter-event', this._onEnter.bind(this));
+        this._box.connect('scroll-event', this._onScroll.bind(this));
     }
 
     _bindSettings() {
@@ -97,7 +97,7 @@ const DictBar = GObject.registerClass({
         } else {
             if(!this._tooltip) return;
             this._tooltip.destroy();
-            this._tooltip = null;
+            delete this._tooltip;
         }
     }
 
@@ -222,22 +222,14 @@ const DictBar = GObject.registerClass({
         if(this._tooltip) this._tooltip.hide();
     }
 
-    destory() {
+    destroy() {
         if(this._delayId)
             GLib.source_remove(this._delayId), this._delayId = 0;
-        if(this._leaveId)
-            this._box.disconnect(this._leaveId), this._leaveId = 0;
-        if(this._enterId)
-            this._box.disconnect(this._enterId), this._enterId = 0;
-        if(this._scrollId)
-            this._box.disconnect(this._scrollId), this._scrollId = 0;
         if(this.bcommandsId)
             gsettings.disconnect(this.bcommandsId), this.bcommandsId = 0;
 
-        this.bcommands = [];
         this.tooltips = false;
-        this._box.destroy();
-        this._box = null;
+        this.destroy_all_children();
         super.destroy();
     }
 });
@@ -299,9 +291,9 @@ const DictBox = GObject.registerClass({
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
 
-        this._leaveId = this._box.connect('leave-event', this._onLeave.bind(this));
-        this._enterId = this._box.connect('enter-event', this._onEnter.bind(this));
-        this._clickId = this._box.connect('button-press-event', this._onClick.bind(this));
+        this._box.connect('leave-event', this._onLeave.bind(this));
+        this._box.connect('enter-event', this._onEnter.bind(this));
+        this._box.connect('button-press-event', this._onClick.bind(this));
         gsettings.bind(Fields.HIDETITLE, this._word, 'visible', Gio.SettingsBindFlags.INVERT_BOOLEAN);
     }
 
@@ -434,24 +426,11 @@ const DictBox = GObject.registerClass({
         });
     }
 
-    destory() {
+    destroy() {
         if(this._delayId)
             GLib.source_remove(this._delayId), this._delayId = 0;
-        if(this._leaveId)
-            this._box.disconnect(this._leaveId), this._leaveId = 0;
-        if(this._enterId)
-            this._box.disconnect(this._enterId), this._enterId = 0;
-        if(this._clickId)
-            this._box.disconnect(this._clickId), this._clickId = 0;
 
-        this._word.destroy();
-        this._info.destroy();
-        this._box.destroy();
-        this._view.destroy();
-        this._word = null;
-        this._info = null;
-        this._box = null;
-        this._view = null
+        this.destroy_all_children();
         super.destroy();
     }
 });
@@ -660,7 +639,7 @@ const LightDict = GObject.registerClass({
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
 
-        this._onBarClickedId = this._bar.connect('dict-bar-clicked', this._onBarClicked.bind(this));
+        this._bar.connect('dict-bar-clicked', this._onBarClicked.bind(this));
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
     }
@@ -674,7 +653,7 @@ const LightDict = GObject.registerClass({
         } else {
             if(!this._button) return;
             this._button.destroy();
-            this._button = null;
+            delete this._button;
         }
     }
 
@@ -700,17 +679,17 @@ const LightDict = GObject.registerClass({
 
     _selectionChanged(sel, type, src) {
         if(type != St.ClipboardType.PRIMARY) return;
-        if(this._mouseReleased)
-            GLib.source_remove(this._mouseReleased), this._mouseReleased = 0;
+        if(this._mouseReleasedId)
+            GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
         if(!this._allow || this.trigger == TRIGGER.Nil) return;
         let [, , initModifier] = global.get_pointer();
         if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
-            this._mouseReleased = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+            this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
                     this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
-                    this._mouseReleased = 0;
+                    this._mouseReleasedId = 0;
                     return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
@@ -858,11 +837,9 @@ const LightDict = GObject.registerClass({
         }
     }
 
-    destory() {
-        if(this._mouseReleased)
-            GLib.source_remove(this._mouseReleased), this._mouseReleased = 0;
-        if(this._onBarClickedId)
-            this._bar.disconnect(this._onBarClickedId), this._onBarClickedId = 0;
+    destroy() {
+        if(this._mouseReleasedId)
+            GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
         if(this._onWindowChangedId)
             global.display.disconnect(this._onWindowChangedId), this._onWindowChangedId = 0;
         if(this._onSelectChangedId)
@@ -871,21 +848,20 @@ const LightDict = GObject.registerClass({
         this.systray = false;
         this._dbus.flush();
         this._dbus.unexport();
-        this._bar.destory();
+        this._bar.destroy();
         this._box.destroy();
         this._act.destroy();
-        this._dbus = null;
-        this._bar = null;
-        this._box = null;
-        this._act = null;
+        delete this._dbus;
+        delete this._bar;
+        delete this._box;
+        delete this._act;
         super.destroy();
     }
 });
 
-const Extension = GObject.registerClass(
-class Extension extends GObject.Object {
-    _init() {
-        super._init();
+const Extension = class Extension {
+    constructor() {
+        ExtensionUtils.initTranslations();
         let logfilePath = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/');
         if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
@@ -895,13 +871,12 @@ class Extension extends GObject.Object {
     }
 
     disable() {
-        this._dict.destory();
-        this._dict = null;
+        this._dict.destroy();
+        delete this._dict;
     }
-});
+};
 
 function init() {
-    ExtensionUtils.initTranslations();
     return new Extension();
 }
 

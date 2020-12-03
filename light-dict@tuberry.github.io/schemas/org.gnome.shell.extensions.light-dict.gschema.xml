@@ -71,7 +71,7 @@
         <summary>command when left-clicking popup box</summary>
     </key>
     <key type="as" name="iconbar-commands">
-        <default>[]</default>
+        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"Main.overview.toggle(); Main.overview.searchEntry.set_text(LDWORD);","popup":false,"clip":false,"tooltip":"Search in overview","commit":false}']</default>
         <summary>icon bar commands</summary>
     </key>
   </schema>

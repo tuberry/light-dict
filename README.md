@@ -21,9 +21,9 @@ cd light-dict && make install
 The inspiration comes from two lovely extensions in Firefox, [SSS](https://github.com/CanisLupus/swift-selection-search) and [youdaodict](https://github.com/HalfdogStudio/youdaodict).
 If you have any other questions about the usage, feel free to open an issue for discussion.
 
-1. Scroll on icon bar to flip page;
-2. Scroll on systray icon to toggle mode;
-3. Add `wmclass` to app list, click on the menu for easier manipulation;
+1. Scroll on iconbar to flip page;
+2. Scroll on systray to toggle mode;
+3. Click on the menu to add/remove current `wmclass`;
 4. [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. [OCR](/ldocr.sh) to translate):
 ```
 # LookUp
