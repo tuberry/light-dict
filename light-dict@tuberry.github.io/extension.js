@@ -71,17 +71,17 @@ const DictBar = GObject.registerClass({
         });
         this.bin.set_child(this._box);
 
-        this._box.connect('leave-event', this._hide.bind(this));
+        this._box.connect('leave-event', this._onLeave.bind(this));
         this._box.connect('enter-event', this._onEnter.bind(this));
         this._box.connect('scroll-event', this._onScroll.bind(this));
     }
 
     _bindSettings() {
+        // gsettings.bind(Fields.BCOMMANDS, this, 'bcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
         gsettings.bind(Fields.XOFFSET,  this, 'xoffset',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TOOLTIPS, this, 'tooltips', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PAGESIZE, this, 'pagesize', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
-        // gsettings.bind_with_mapping(Fields.BCOMMANDS, this, 'bcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
         this.bcommands = gsettings.get_strv(Fields.BCOMMANDS);
         this.bcommandsId = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this.bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
     }
@@ -131,6 +131,16 @@ const DictBar = GObject.registerClass({
         this._box.visible = true;
     }
 
+    _onLeave(actor) {
+        if(this._delayId)
+            GLib.source_remove(this._delayId), this._delayId = 0;
+        this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, actor ? this.autohide / 2 : this.autohide, () => {
+            this._hide();
+            this._delayId = 0;
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
     _updatePages() {
         this._icons.forEach(x => x.visible = x._visible);
         if(this.pagesize === 0) return;
@@ -145,13 +155,13 @@ const DictBar = GObject.registerClass({
         }
     }
 
-    _updateVisible(fw, text) {
+    _updateVisible(wmclass, text) {
         this._icons.forEach(x => {
-            switch((x.hasOwnProperty("windows") << 1) + x.hasOwnProperty("regexp")) {
+            switch((!!x.windows << 1) + !!x.regexp) {
             case 0: x._visible = true; break;
             case 1: x._visible = RegExp(x.regexp).test(text); break;
-            case 2: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()); break;
-            case 3: x._visible = x.windows.toLowerCase().includes(fw.toLowerCase()) & RegExp(x.regexp).test(text); break;
+            case 2: x._visible = x.windows.toLowerCase().includes(wmclass.toLowerCase()); break;
+            case 3: x._visible = x.windows.toLowerCase().includes(wmclass.toLowerCase()) & RegExp(x.regexp).test(text); break;
             }
         });
         this._updatePages();
@@ -169,8 +179,7 @@ const DictBar = GObject.registerClass({
             fallback_icon_name: 'help',
             style_class: 'light-dict-button-icon-%s light-dict-button-icon'.format(x.icon || 'help'),
         });
-        if(x.windows) btn.windows = x.windows;
-        if(x.regexp) btn.regexp = x.regexp;
+        Object.assign(btn, x);
         btn.connect('clicked', (actor, event) => {
             this._hide();
             this.emit('dict-bar-clicked', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
@@ -182,7 +191,7 @@ const DictBar = GObject.registerClass({
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide / 2, () => {
                 if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
                 this._tooltip.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                this._tooltip.set_text(x.tooltip ? x.tooltip : x.icon || 'tooltips');
+                this._tooltip.set_text(x.tooltip || (x.icon || 'tooltip'));
                 this._tooltip.show();
                 return GLib.SOURCE_REMOVE;
             });
@@ -206,13 +215,7 @@ const DictBar = GObject.registerClass({
             this.get_parent().set_child_above_sibling(this, null);
         }
 
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
-        this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide, () => {
-            this._hide();
-            this._delayId = 0;
-            return GLib.SOURCE_REMOVE;
-        });
+        this._onLeave();
     }
 
     _hide() {
@@ -229,7 +232,6 @@ const DictBar = GObject.registerClass({
             gsettings.disconnect(this.bcommandsId), this.bcommandsId = 0;
 
         this.tooltips = false;
-        this.destroy_all_children();
         super.destroy();
     }
 });
@@ -279,7 +281,6 @@ const DictBox = GObject.registerClass({
         this._word.clutter_text.line_wrap = true;
         this._word.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
         this._word.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        this._word.visible = !gsettings.get_boolean(Fields.HIDETITLE);
 
         this._info = new St.Label({ style_class: 'light-dict-info' });
         this._info.clutter_text.line_wrap = true;
@@ -430,7 +431,6 @@ const DictBox = GObject.registerClass({
         if(this._delayId)
             GLib.source_remove(this._delayId), this._delayId = 0;
 
-        this.destroy_all_children();
         super.destroy();
     }
 });
@@ -484,8 +484,7 @@ class DictAct extends GObject.Object {
     }
 
     destroy() {
-        this._keyboard.run_dispose();
-        this.run_dispose();
+       delete this._keyboard;
     }
 });
 
@@ -614,7 +613,7 @@ const LightDict = GObject.registerClass({
         Main.uiGroup.add_actor(this);
 
         this._selection = '';
-        this._setWmclass();
+        this._wmclass = global.display.focus_window?.wm_class ?? '';
 
         this._bindSettings();
         this._buildWidgets();
@@ -669,12 +668,7 @@ const LightDict = GObject.registerClass({
     _onWindowChanged() {
         this._box._hide();
         this._bar._hide();
-        this._setWmclass();
-    }
-
-    _setWmclass() {
-        let focused = global.display.get_focus_window();
-        this._wmclass = focused ? (focused.wm_class ? focused.wm_class : '') : '';
+        this._wmclass = global.display.focus_window?.wm_class ?? '';
     }
 
     _selectionChanged(sel, type, src) {
@@ -721,7 +715,9 @@ const LightDict = GObject.registerClass({
 
     _store(text) {
         return new Promise((resolve, reject) => {
-            this._selection = this.textstrip ? text.replace(/[\n\t]/g, ' ').trim() : text;
+            let selection = this.textstrip ? text.replace(/[\n\t]/g, ' ').trim() : text;
+            if(!selection) reject();
+            this._selection = selection;
             this._pointer = global.get_pointer();
             resolve();
         });

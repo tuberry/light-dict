@@ -364,20 +364,6 @@ class LightDictAdvanced extends Gtk.Box {
         this.isSetting = false;
 
         this._commands = gsettings.get_strv(Fields.BCOMMANDS);
-        this._default =
-`{
-    "enable" : false,
-    "name" : "name",
-    "icon" : "",
-    "type" : 0,
-    "command" : "",
-    "popup" : false,
-    "clip"  : false,
-    "commit" : false,
-    "tooltip" : "",
-    "windows" : "",
-    "regexp" : ""
-}`;
         this._buildWidgets();
         this._buildUI();
         this._syncStatus();
@@ -470,32 +456,19 @@ class LightDictAdvanced extends Gtk.Box {
         if(!ok) return;
         this.isSetting = true;
         this.conf = JSON.parse(this._commands[index]);
-        this._clip.set_state(this.conf.clip);
-        this._type.set_active(this.conf.type);
-        this._commit.set_state(this.conf.commit);
-        this._popup.set_state(this.conf.popup);
-        this._enable.set_state(this.conf.enable);
+        this._clip.set_state(this.conf.clip || false);
+        this._type.set_active(this.conf.type || 0);
+        this._commit.set_state(this.conf.commit || false);
+        this._popup.set_state(this.conf.popup || false);
+        this._enable.set_state(this.conf.enable || false);
         this._icon.set_text(this.conf.icon || "");
-        this._name.set_text(this.conf.name || "");
+        this._name.set_text(this.conf.name || "name");
         this._win.set_text(this.conf.windows || "")
         this._cmd.set_text(this.conf.command || "");
         this._regx.set_text(this.conf.regexp || "");
         this._tip.set_text(this.conf.tooltip || "");
         this._toggleEditable();
         this.isSetting = false;
-    }
-
-    _saveConf() {
-        this._commands = this._commands.map(x => {
-            let cmd = JSON.parse(x);
-            for(let attr in cmd) {
-                if(cmd[attr] !== "")
-                    continue;
-                delete cmd[attr];
-            }
-            return JSON.stringify(cmd, null, 0);
-        });
-        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _toggleEditable() {
@@ -539,7 +512,7 @@ class LightDictAdvanced extends Gtk.Box {
         model.iter_previous(iter);
         model.set(iter, [0], [JSON.parse(this._commands[index - 1]).name]);
         this._treeView.get_selection().select_iter(iter);
-        this._saveConf();
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _onNxtClicked() {
@@ -551,7 +524,7 @@ class LightDictAdvanced extends Gtk.Box {
         model.iter_next(iter);
         model.set(iter, [0], [JSON.parse(this._commands[index + 1]).name]);
         this._treeView.get_selection().select_iter(iter);
-        this._saveConf();
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _onDelClicked() {
@@ -560,30 +533,34 @@ class LightDictAdvanced extends Gtk.Box {
 
         this._commands.splice(index, 1);
         model.remove(iter);
-        this._saveConf();
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _onAddClicked() {
         let [ok, model, iter, index] = this.selected;
         if(!ok) {
-            this._commands.splice(0, 0, this._default);
+            this._commands.splice(0, 0, '{"name":"name"}');
             model.set(model.insert(0), [0], ['name']);
-            this._saveConf();
+            gsettings.set_strv(Fields.BCOMMANDS, this._commands);
             return;
         }
 
-        this._commands.splice(index + 1, 0, this._default);
+        this._commands.splice(index + 1, 0, '{"name":"name"}');
         model.set(model.insert(index + 1), [0], ['name']);
-        this._saveConf();
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _setConfig(key, value) {
         if(this.isSetting) return;
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
-        this.conf[key] = value;
+        if(!value) {
+            delete this.conf[key];
+        } else {
+            this.conf[key] = value;
+        }
         this._commands[index] = JSON.stringify(this.conf, null, 0);
-        this._saveConf();
+        gsettings.set_strv(Fields.BCOMMANDS, this._commands);
     }
 
     _frameWrapper(widget) {
