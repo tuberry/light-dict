@@ -18,16 +18,16 @@ const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
-const TRIGGER = { Box: 0, Bar: 1, Nil: 2 };
-const LOGLEVEL = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
+const TriggerType = { Swift: 0, Popup: 1, Disable: 2 };
+const LogLevel = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
-        <method name="LookUp">
+        <method name="Swift">
             <arg type="s" direction="in" name="word"/>
         </method>
-        <method name="ShowBar">
+        <method name="Popup">
             <arg type="s" direction="in" name="word"/>
         </method>
         <method name="Toggle">
@@ -43,7 +43,7 @@ const DictBar = GObject.registerClass({
         'pagesize': GObject.param_spec_uint('pagesize', 'pagesize', 'page zise', 1, 10, 5, GObject.ParamFlags.READWRITE),
         'xoffset':  GObject.param_spec_int('xoffset', 'xoffset', 'x offset', -400, 400, -5, GObject.ParamFlags.WRITABLE),
         'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
-       // 'bcommands': GObject.param_spec_variant('bcommands', '', '', new GLib.VariantType('as'), null, GObject.ParamFlags.WRITABLE),
+       // 'pcommands': GObject.param_spec_variant('pcommands', '', '', new GLib.VariantType('as'), null, GObject.ParamFlags.WRITABLE),
     },
     Signals: {
         'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
@@ -77,13 +77,13 @@ const DictBar = GObject.registerClass({
     }
 
     _bindSettings() {
-        // gsettings.bind(Fields.BCOMMANDS, this, 'bcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
+        // gsettings.bind(Fields.PCOMMANDS, this, 'pcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
         gsettings.bind(Fields.XOFFSET,  this, 'xoffset',  Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.TOOLTIPS, this, 'tooltips', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.TOOLTIP,  this, 'tooltips', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PAGESIZE, this, 'pagesize', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
-        this.bcommands = gsettings.get_strv(Fields.BCOMMANDS);
-        this.bcommandsId = gsettings.connect('changed::' + Fields.BCOMMANDS, () => { this.bcommands = gsettings.get_strv(Fields.BCOMMANDS); });
+        this.pcommands = gsettings.get_strv(Fields.PCOMMANDS);
+        this.pcommandsId = gsettings.connect('changed::' + Fields.PCOMMANDS, () => { this.pcommands = gsettings.get_strv(Fields.PCOMMANDS); });
     }
 
     set tooltips(tooltips) {
@@ -105,7 +105,7 @@ const DictBar = GObject.registerClass({
         this.set_style('-arrow-border-radius: %dpx;'.format(-offset + 20));
     }
 
-    set bcommands(commands) {
+    set pcommands(commands) {
         this._index = 1;
         this._box.remove_all_children();
         commands.forEach(x => this._iconMaker(x));
@@ -182,7 +182,7 @@ const DictBar = GObject.registerClass({
         Object.assign(btn, x);
         btn.connect('clicked', (actor, event) => {
             this._hide();
-            this.emit('dict-bar-clicked', [x.popup, x.clip, x.type, x.commit].map(x => x ? '1' : '0').join(''), x.command);
+            this.emit('dict-bar-clicked',x.command, [x.type, x.popup, x.copy, x.commit, x.select].map(x => x ? '1' : '0').join(''));
             return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
@@ -228,8 +228,8 @@ const DictBar = GObject.registerClass({
     destroy() {
         if(this._delayId)
             GLib.source_remove(this._delayId), this._delayId = 0;
-        if(this.bcommandsId)
-            gsettings.disconnect(this.bcommandsId), this.bcommandsId = 0;
+        if(this.pcommandsId)
+            gsettings.disconnect(this.pcommandsId), this.pcommandsId = 0;
 
         this.tooltips = false;
         super.destroy();
@@ -315,14 +315,14 @@ const DictBox = GObject.registerClass({
 
     _onEnter() {
         this._view.visible = true;
-        if(this.loglevel === LOGLEVEL.HOVER) this._recordLog();
+        if(this.loglevel === LogLevel.HOVER) this._recordLog();
         if(this._delayId) GLib.source_remove(this._delayId), this._delayId = 0;
     }
 
     _onClick(actor, event) {
         switch(event.get_button()) {
         case 1:
-            if(this.loglevel === LOGLEVEL.CLICK) this._recordLog();
+            if(this.loglevel === LogLevel.CLICK) this._recordLog();
             if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
             break;
         case 2:
@@ -352,23 +352,23 @@ const DictBox = GObject.registerClass({
             return;
         let dateFormat = (fmt, date) => {
             let opt = {
-                "Y+": date.getFullYear().toString(),
-                "m+": (date.getMonth() + 1).toString(),
-                "d+": date.getDate().toString(),
-                "H+": date.getHours().toString(),
-                "M+": date.getMinutes().toString(),
-                "S+": date.getSeconds().toString()
+                'Y+': date.getFullYear().toString(),
+                'm+': (date.getMonth() + 1).toString(),
+                'd+': date.getDate().toString(),
+                'H+': date.getHours().toString(),
+                'M+': date.getMinutes().toString(),
+                'S+': date.getSeconds().toString()
             };
             let ret;
             for(let k in opt) {
-                ret = new RegExp("(" + k + ")").exec(fmt);
+                ret = new RegExp('(' + k + ')').exec(fmt);
                 if(!ret) continue;
-                fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, "0")))
+                fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, '0')))
             };
             return fmt;
         }
         let logfile = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/light-dict.log');
-        let log = [dateFormat("YYYY-mm-dd-HH:MM:SS", new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
+        let log = [dateFormat('YYYY-mm-dd-HH:MM:SS', new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
         try {
             logfile.append_to(Gio.FileCreateFlags.NONE, null).write(log, null);
         } catch(e) {
@@ -388,7 +388,7 @@ const DictBox = GObject.registerClass({
     _look(info, word, notFound) {
         this._log = true;
         this._notFound = notFound;
-        if(this.loglevel === LOGLEVEL.ALWAYS) this._recordLog();
+        if(this.loglevel === LogLevel.ALWAYS) this._recordLog();
         this._show(info, word);
     }
 
@@ -483,6 +483,10 @@ class DictAct extends GObject.Object {
         St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, string);
     }
 
+    select(string) {
+        St.Clipboard.get_default().set_text(St.ClipboardType.PRIMARY, string);
+    }
+
     destroy() {
        delete this._keyboard;
     }
@@ -512,6 +516,7 @@ const DictBtn = GObject.registerClass({
     _bindSettings() {
         gsettings.bind(Fields.PASSIVE, this, 'passive', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TRIGGER, this, 'trigger', Gio.SettingsBindFlags.GET);
+        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, this._updateMenu.bind(this));
     }
 
     set passive(passive) {
@@ -526,9 +531,9 @@ const DictBtn = GObject.registerClass({
 
     get _iconname() {
         switch(this._trigger) {
-        case TRIGGER.Nil: return this._passive == 1 ? 'nil-passive' : 'nil-active';
-        case TRIGGER.Box: return this._passive == 1 ? 'box-passive' : 'box-active';
-        case TRIGGER.Bar: return this._passive == 1 ? 'bar-passive' : 'bar-active';
+        case TriggerType.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
+        case TriggerType.Popup:   return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
+        case TriggerType.Swift:   return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
         }
     }
 
@@ -546,21 +551,73 @@ const DictBtn = GObject.registerClass({
         this._updateMenu();
     }
 
+    get scommands() {
+        return gsettings.get_strv(Fields.SCOMMANDS);
+    }
+
+    _scmdMenu() {
+        let scommand;
+        let commands = this.scommands;
+        let index = commands.findIndex(c => !!JSON.parse(c).enable);
+        if(index < 0 || index >= commands.length) {
+            scommand = new PopupMenu.PopupSubMenuMenuItem(_('Enabled: '));
+            commands.forEach((x, i) => {
+                let item = new PopupMenu.PopupMenuItem(JSON.parse(x).name);
+                item.connect('activate', () => {
+                    item._getTopMenu().close();
+                    let inst = JSON.parse(comands[i]);
+                    inst.enable = true;
+                    commands[i] = JSON.stringify(inst, null, 0);
+                    gsettings.set_int(Fields.SCOMMAND, i);
+                    gsettings.set_strv(Fields.SCOMMANDS, commands);
+                });
+                scommand.menu.addMenuItem(item);
+            });
+        } else {
+            scommand = new PopupMenu.PopupSubMenuMenuItem(_('Enabled: ') + JSON.parse(commands[index]).name);
+            commands.forEach((x, i) => {
+                let item = new PopupMenu.PopupMenuItem(JSON.parse(x).name);
+                if(i == index) {
+                    item.setOrnament(PopupMenu.Ornament.DOT);
+                } else {
+                    item.connect('activate', () => {
+                        item._getTopMenu().close();
+                        let cmds = commands.map(c => {
+                            let conf = JSON.parse(c);
+                            delete conf.enable;
+                            return JSON.stringify(conf, null, 0);
+                        });
+                        let inst = JSON.parse(cmds[i]);
+                        inst.enable = true;
+                        cmds[i] = JSON.stringify(inst, null, 0);
+                        gsettings.set_int(Fields.SCOMMAND, i);
+                        gsettings.set_strv(Fields.SCOMMANDS, cmds);
+                    });
+                }
+                scommand.menu.addMenuItem(item);
+            });
+        }
+
+        return scommand
+    }
+
     _updateMenu() {
         this.menu.removeAll();
         this.menu.addMenuItem(this._passiveItem());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        Object.keys(TRIGGER).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
-        this.menu.addMenuItem(this._applistItem());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(''));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Trigger style')));
+        Object.keys(TriggerType).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Swift commands')));
+        this.menu.addMenuItem(this._scmdMenu());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current window')));
+        this.menu.addMenuItem(this._wmlistItem());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('More')));
         this.menu.addMenuItem(this._settingItem());
     }
 
     _menuItemMaker(text) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.setOrnament(this._trigger == TRIGGER[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TRIGGER[text]); });
+        item.setOrnament(this._trigger == TriggerType[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerType[text]); });
         item.add_child(new St.Label({ x_expand: true, text: _(text), }));
 
         return item;
@@ -575,10 +632,10 @@ const DictBtn = GObject.registerClass({
         return item;
     }
 
-    _applistItem() {
+    _wmlistItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
         item.connect('activate', () => { item._getTopMenu().close(); this.emit('add-or-remove-wmclass'); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove current window'), }));
+        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove'), }));
 
         return item;
     }
@@ -590,18 +647,24 @@ const DictBtn = GObject.registerClass({
 
        return item;
     }
+
+    destroy() {
+        if(this.scommandsId)
+            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
+        super.destroy();
+    }
 });
 
 const LightDict = GObject.registerClass({
     Properties: {
         'filter':    GObject.param_spec_string('filter', 'filter', 'filter', '', GObject.ParamFlags.READWRITE),
-        'applist':   GObject.param_spec_string('applist', 'applist', 'app list', '', GObject.ParamFlags.READWRITE),
+        'wmlist':    GObject.param_spec_string('wmlist', 'wmlist', 'wmclss list', '', GObject.ParamFlags.READWRITE),
         'systray':   GObject.param_spec_boolean('systray', 'systray', 'systray', true, GObject.ParamFlags.WRITABLE),
         'passive':   GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
         'trigger':   GObject.param_spec_uint('trigger', 'systray', 'systray', 0, 2, 1, GObject.ParamFlags.READWRITE),
-        'dcommand':  GObject.param_spec_string('dcommand', 'dcommand', 'd command', '', GObject.ParamFlags.READWRITE),
         'listtype':  GObject.param_spec_uint('listtype', 'listtype', 'list type', 0, 1, 1, GObject.ParamFlags.READWRITE),
         'textstrip': GObject.param_spec_boolean('textstrip', 'textstrip', 'strip text', true, GObject.ParamFlags.READWRITE),
+        'scommand':  GObject.param_spec_int('scommand', 'scommand', 'swift command', -1, 20, 0, GObject.ParamFlags.WRITABLE),
     },
 }, class LightDict extends St.Widget {
     _init() {
@@ -612,6 +675,7 @@ const LightDict = GObject.registerClass({
         });
         Main.uiGroup.add_actor(this);
 
+        this._block = false;
         this._selection = '';
         this._wmclass = global.display.focus_window?.wm_class ?? '';
 
@@ -620,14 +684,14 @@ const LightDict = GObject.registerClass({
     }
 
     _bindSettings() {
-        gsettings.bind(Fields.APPLIST,   this, 'applist',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.WMLIST,    this, 'wmlist',    Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,   this, 'trigger',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this, 'systray',   Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.DCOMMAND,  this, 'dcommand',  Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.FILTER,    this, 'filter',    Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.TXTFILTER, this, 'filter',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.LISTTYPE,  this, 'listtype',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PASSIVE,   this, 'passive',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TEXTSTRIP, this, 'textstrip', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.SCOMMAND,  this, 'scommand',  Gio.SettingsBindFlags.GET);
     }
 
     _buildWidgets() {
@@ -640,7 +704,7 @@ const LightDict = GObject.registerClass({
 
         this._bar.connect('dict-bar-clicked', this._onBarClicked.bind(this));
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
-        this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._selectionChanged.bind(this));
+        this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
     }
 
     set systray(systray) {
@@ -660,8 +724,19 @@ const LightDict = GObject.registerClass({
         this.set_position(pointer[0] - 20, pointer[1] - 20);
     }
 
+    set scommand(scommand) {
+        let cmds = gsettings.get_strv(Fields.SCOMMANDS);
+        if(!cmds.length) {
+            this._scmd = null;
+            return;
+        }
+        let index = (scommand < 0 || scommand >= cmds.length) ? 0 : scommand
+        this._scmd = {};
+        Object.assign(this._scmd, JSON.parse(cmds[index]));
+    }
+
     get _allow() {
-        let wlist = !this.applist || this.applist.toLowerCase().includes(this._wmclass.toLowerCase());
+        let wlist = !this.wmlist || this.wmlist.toLowerCase().includes(this._wmclass.toLowerCase());
         return (this.listtype == 0)^wlist;
     }
 
@@ -671,18 +746,22 @@ const LightDict = GObject.registerClass({
         this._wmclass = global.display.focus_window?.wm_class ?? '';
     }
 
-    _selectionChanged(sel, type, src) {
+    _onSelectChanged(sel, type, src) {
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
-        if(!this._allow || this.trigger == TRIGGER.Nil) return;
+        if(this._block) {
+            this._block = false;
+            return;
+        }
+        if(!this._allow || this.trigger == TriggerType.Disable) return;
         let [, , initModifier] = global.get_pointer();
         if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let [, , tmpModifier] = global.get_pointer();
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                    this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
+                    this._fetch().then(this._store.bind(this)).then(this._cope.bind(this));
                     this._mouseReleasedId = 0;
                     return GLib.SOURCE_REMOVE;
                 } else {
@@ -690,16 +769,16 @@ const LightDict = GObject.registerClass({
                 }
             }); // NOTE: `owner-changed` is emitted every char in Gtk+ apps
         } else {
-            this._fetch().then(this._store.bind(this)).then(this._show.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._cope.bind(this));
         }
     }
 
-    _onBarClicked(actor, tag, cmd) {
-        let [popup, clip, type, commit] = Array.from(tag, i => i === '1');
+    _onBarClicked(actor, cmd, tag) {
+        let [type, popup, copy, commit, select] = Array.from(tag, i => i === '1');
         if(type) {
-            this._runWithJS(popup, clip, commit, cmd);
+            this._runWithJS(cmd, popup, copy, commit, select);
         } else {
-            this._runWithSh(popup, clip, commit, cmd);
+            this._runWithSh(cmd, popup, copy, commit, select);
         }
     }
 
@@ -742,13 +821,14 @@ const LightDict = GObject.registerClass({
         });
     }
 
-    _runWithSh(popup, clip, commit, cmd) {
+    _runWithSh(cmd, pop, cpy, cmt, sel) {
         let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/WMCLASS/g, GLib.shell_quote(this._wmclass));
-        if(popup|clip|commit) {
+        if(pop|cpy|cmt|sel) {
             this._execute(rcmd).then(scc => {
-                if(clip) this._act.copy(scc);
-                if(commit) this._act.commit(scc);
-                if(popup) this._box._show(scc, this._selection, true);
+                if(sel) this._select(scc);
+                if(cpy) this._act.copy(scc);
+                if(cmt) this._act.commit(scc);
+                if(pop) this._box._show(scc, this._selection, true);
             }).catch(err => {
                 this._box._show(err, this._selection, true);
             });
@@ -757,18 +837,20 @@ const LightDict = GObject.registerClass({
         }
     }
 
-    _runWithJS(popup, clip, commit_, cmd) {
+    _runWithJS(cmd, pop, cpy, cmt, sel) {
         try {
             let WMCLASS = this._wmclass;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
             let copy = x => this._act.copy(x);
+            let select = x => this._select(x);
             let commit = x => this._act.commit(x);
-            if(popup|clip|commit_) {
+            if(pop|cpy|cmt|sel) {
                 let result = eval(cmd).toString();
-                if(clip) copy(result);
-                if(commit_) commit(result);
-                if(popup) this._box._show(result, this._selection, true);
+                if(cpy) copy(result);
+                if(cmt) commit(result);
+                if(sel) select(result);
+                if(pop) this._box._show(result, this._selection, true);
             } else {
                 eval(cmd);
             }
@@ -777,59 +859,67 @@ const LightDict = GObject.registerClass({
         }
     }
 
-    _lookUp() {
-        if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
-        let rcmd = this.dcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection));
-        this._execute(rcmd).then(scc => {
-            this._box._look(scc, this._selection, false);
-        }, err => {
-            this._box._look(err, this._selection, true);
-        });
+    _select(x) {
+        this._block = true;
+        this._act.select(x);
     }
 
-    _showBar() {
+    _cope() {
+        if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
+        this.trigger == TriggerType.Popup ? this._popup() : this._swift();
+    }
+
+    _swift() {
+        this._box._hide();
+        if(!this._scmd) return;
+        if(this._scmd.regexp && !RegExp(this._scmd.regexp).test(this._selection)) return;
+        if(this._scmd.window && !this._scmd.windows.toLowerCase().includes(this._wmclass.toLowerCase())) return;
+        if(this._scmd.type) {
+            this._runWithJS(this._scmd.command, this._scmd.popup, this._scmd.copy, this._scmd.commit, this._scmd.select);
+        } else {
+            this._runWithSh(this._scmd.command, this._scmd.popup, this._scmd.copy, this._scmd.commit, this._scmd.select);
+        }
+    }
+
+    _popup() {
         this._box._hide();
         this._bar._show(this._wmclass, this._selection);
     }
 
-    _show() {
-        this.trigger == TRIGGER.Bar ? this._showBar() : this._lookUp();
-    }
-
-    LookUp(word) {
+    Swift(word) {
         if(word) {
-            this._store(word).then(this._lookUp.bind(this));
+            this._store(word).then(this._swift.bind(this));
         } else {
-            this._fetch().then(this._store.bind(this)).then(this._lookUp.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._swift.bind(this));
         }
     }
 
-    ShowBar(word) {
+    Popup(word) {
         if(word) {
-            this._store(word).then(this._showBar.bind(this));
+            this._store(word).then(this._popup.bind(this));
         } else {
-            this._fetch().then(this._store.bind(this)).then(this._showBar.bind(this));
+            this._fetch().then(this._store.bind(this)).then(this._popup.bind(this));
         }
     }
 
     Toggle() {
         let next = (this.trigger + 1) % 2;
-        Main.notify(Me.metadata.name, _('Switch to %s mode').format(_(Object.keys(TRIGGER)[next])));
+        Main.notify(Me.metadata.name, _('Switch to %s mode').format(_(Object.keys(TriggerType)[next])));
         this.trigger = next;
     }
 
     Block() {
         if(!this._wmclass) return;
-        if(!this.applist) {
-            this.applist = this._wmclass;
+        if(!this.wmlist) {
+            this.wmlist = this._wmclass;
         } else {
-            let applist = this.applist.split(',');
-            if(this.applist.includes(this._wmclass)) {
-                applist.splice(applist.indexOf(this._wmclass), 1);
+            let wmlist = this.wmlist.split(',');
+            if(this.wmlist.includes(this._wmclass)) {
+                wmlist.splice(wmlist.indexOf(this._wmclass), 1);
             } else {
-                applist.push(this._wmclass);
+                wmlist.push(this._wmclass);
             }
-            this.applist = applist.join(',');
+            this.wmlist = wmlist.join(',');
         }
     }
 

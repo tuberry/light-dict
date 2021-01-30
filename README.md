@@ -1,4 +1,5 @@
 # Light Dict
+
 Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup.
 
 >L, you know what? The Shinigami only eat apples. —— *Light Yagami*<br>
@@ -11,6 +12,7 @@ Lightweight extension for instant action to primary selection, especially optimi
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
 Or manually:
+
 ```
 git clone https://github.com/tuberry/light-dict.git
 cd light-dict && make install
@@ -24,27 +26,39 @@ If you have any other questions about the usage, feel free to open an issue for 
 1. Scroll on iconbar to flip page;
 2. Scroll on systray to toggle mode;
 3. Click on the menu to add/remove current `wmclass`;
-4. [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available here in case of some needs (eg. [OCR](/ldocr.sh) to translate):
+4. [DBus](https://www.freedesktop.org/wiki/Software/dbus/) is also available (eg. [OCR](/ldocr.sh) to translate):
+
 ```
-# LookUp
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "" # primary selection
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.LookUp "'word'" # 'word'
-# ShowBar
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "" # primary selection
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.ShowBar "'word'" # 'word'
+# Swift
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Swift "" # primary selection
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Swift "'word'" # 'word'
+# Popup
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Popup "" # primary selection
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Popup "'word'" # 'word'
 # Toggle
 gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Toggle
 ```
 
 ## Acknowledgements
+
 * [youdaodict](https://github.com/HalfdogStudio/youdaodict): idea of popup;
 * [swift-selection-search](https://github.com/CanisLupus/swift-selection-search): stylesheet of iconbar;
 * [gsconnect](https://github.com/andyholmes/gnome-shell-extension-gsconnect): fake keyboard input;
 
 ## Note
+
 1. This extension doesn't offer any icons or dictionary resources though it's named Light Dict. If you need English-Chinese offline dictionary, try [dict-ecdict](https://github.com/tuberry/dict-ecdict) or [dict-cedict](https://github.com/tuberry/dict-cedict).
 2. If you need to customize the appearance of some widgets, try [User Themes X].
 
+## Breaking Changes
+
+Some settings keys had ben deprecated. You could:
+
+1. `dconf dump /org/gnome/shell/extensions/light-dict/ > conf.txt`;
+2. edit the `conf.txt` according to the [schema](//light-dict@tuberry.github.io/schemas/org.gnome.shell.extensions.light-dict.gschema.xml) changes;
+3. `dconf load /org/gnome/shell/extensions/light-dict/ < conf.txt`;
+4. change The [script](/ldocr.sh) if the DBus interface is called;
+
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
-[User Themes X]:https://github.com/tuberry/user-theme-x
+[User Theme X]:https://github.com/tuberry/user-theme-x

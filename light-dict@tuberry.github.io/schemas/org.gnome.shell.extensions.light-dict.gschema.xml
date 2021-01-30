@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.light-dict" path="/org/gnome/shell/extensions/light-dict/">
-    <key type="b" name="hide-panel-title">
+    <key type="b" name="hide-title">
         <default>true</default>
-        <summary>hide panel title</summary>
+        <summary>hide popup panel title</summary>
     </key>
     <key type="b" name="enable-strip">
         <default>false</default>
         <summary>enable text strip</summary>
     </key>
-    <key type="b" name="enable-tooltips">
+    <key type="b" name="enable-tooltip">
         <default>false</default>
-        <summary>enable tooltips for icon bar</summary>
+        <summary>enable tooltip for popup icon bar</summary>
     </key>
     <key type="b" name="enable-systray">
         <default>true</default>
@@ -20,7 +20,7 @@
     <key type="u" name="passive-mode">
         <range min="0" max="1"/>
         <default>0</default>
-        <summary>need modifier to trriger(1) or not(0)</summary>
+        <summary>need modifier to trigger(1) or not(0)</summary>
     </key>
     <key type="u" name="autohide-timeout">
         <range min="500" max="10000"/>
@@ -30,49 +30,53 @@
     <key type="u" name="icon-pagesize">
         <range min="1" max="10"/>
         <default>5</default>
-        <summary>icon bar page size</summary>
+        <summary>popup icon bar page size</summary>
     </key>
     <key type="u" name="trigger-style">
         <default>0</default>
-        <summary>trigger style of popup</summary>
+        <summary>trigger style: 0-swift, 1-popup</summary>
     </key>
-    <key type="u" name="app-list-type">
+    <key type="u" name="wmlist-type">
         <range min='0' max="1"/>
         <default>1</default>
-        <summary>app list type: 0-block 1-allow</summary>
+        <summary>global wmclass list type: 0-block 1-allow</summary>
     </key>
     <key type="u" name="log-level">
         <default>0</default>
-        <summary>log level in auto mode</summary>
+        <summary>log level: 0-never 1-click 2-hover 3-always</summary>
     </key>
     <key type="i" name="x-offset">
         <range min="-400" max="400"/>
         <default>-5</default>
-        <summary>x offset of icon bar</summary>
+        <summary>horizontal offset of popup icon bar</summary>
     </key>
-    <key type="s" name="selection-filter">
+    <key type="s" name="text-filter">
         <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
-        <summary>selection filter in auto mode</summary>
+        <summary>text filter in proactive mode</summary>
     </key>
-    <key type="s" name="right-click-command">
+    <key type="s" name="right-command">
         <default>""</default>
-        <summary>command when right-clicking popup box</summary>
+        <summary>command executed when right-clicking panel</summary>
     </key>
-    <key type="s" name="application-list">
+    <key type="s" name="wmclass-list">
         <default>"*"</default>
-        <summary>application black/white list</summary>
+        <summary>wmclass allowlist/blocklist</summary>
     </key>
-    <key type="s" name="dict-command">
-        <default>"dict -- LDWORD"</default>
-        <summary>command in auto mode</summary>
-    </key>
-    <key type="s" name="left-click-command">
+    <key type="s" name="left-command">
         <default>""</default>
-        <summary>command when left-clicking popup box</summary>
+        <summary>command executed when left-clicking panel</summary>
     </key>
-    <key type="as" name="iconbar-commands">
-        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"Main.overview.toggle(); Main.overview.searchEntry.set_text(LDWORD);","popup":false,"clip":false,"tooltip":"Search in overview","commit":false}']</default>
-        <summary>icon bar commands</summary>
+    <key type="i" name="swift-command">
+        <default>0</default>
+        <summary>command index of swift style</summary>
+    </key>
+    <key type="as" name="swift-commands">
+        <default>[]</default>
+        <summary>alternative swift commands</summary>
+    </key>
+    <key type="as" name="popup-commands">
+        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"Main.overview.toggle(); Main.overview.searchEntry.set_text(LDWORD);"}']</default>
+        <summary>commands of popup style</summary>
     </key>
   </schema>
 </schemalist>

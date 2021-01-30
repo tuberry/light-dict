@@ -22,9 +22,9 @@ truncate -s -2 $LDWORDOCR.txt # delete \n and ^L at the end of $LDWORDOCR.txt
 word=$(cat $LDWORDOCR.txt | tr '\n' ' ')
 rm $LDWORDOCR.png $LDWORDOCR.txt # delete tmp files
 
-## LookUp $word
+## Swift $word
 gdbus call --session \
 	--dest org.gnome.Shell \
 	--object-path /org/gnome/Shell/Extensions/LightDict \
-	--method org.gnome.Shell.Extensions.LightDict.LookUp "$word" \
+	--method org.gnome.Shell.Extensions.LightDict.Swift "$word" \
 	&> /dev/null # "()" > /dev/null

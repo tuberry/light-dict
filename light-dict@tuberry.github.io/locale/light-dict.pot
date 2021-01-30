@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Light Dict\n"
+"Project-Id-Version: Light Dict 40\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-11-30 22:52+0800\n"
+"POT-Creation-Date: 2021-01-31 00:41+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,279 +17,282 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:596
+#: extension.js:563 extension.js:577
+msgid "Enabled: "
+msgstr ""
+
+#: extension.js:607 prefs.js:212
+msgid "Trigger style"
+msgstr ""
+
+#: extension.js:609
+msgid "Swift commands"
+msgstr ""
+
+#: extension.js:611
+msgid "Current window"
+msgstr ""
+
+#: extension.js:613
+msgid "More"
+msgstr ""
+
+#: extension.js:630
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:604
-msgid "Add/remove current window"
+#: extension.js:638
+msgid "Add/remove"
 msgstr ""
 
-#: extension.js:612
+#: extension.js:646
 msgid "Settings"
 msgstr ""
 
-#: extension.js:844
+#: extension.js:907
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr ""
 
-#: prefs.js:49
+#: prefs.js:51
 msgid "Basic"
 msgstr ""
 
-#: prefs.js:53
-msgid "Advanced"
+#: prefs.js:55 prefs.js:197
+msgid "Swift"
 msgstr ""
 
-#: prefs.js:57
+#: prefs.js:59 prefs.js:197 prefs.js:222
+msgid "Popup"
+msgstr ""
+
+#: prefs.js:63
 msgid "About"
 msgstr ""
 
-#: prefs.js:86
-msgid "Tips"
-msgstr ""
-
-#: prefs.js:93
-msgid "Substitute <b>LDWORD</b> for the selection in commands"
-msgstr ""
-
-#: prefs.js:94
-msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps</i>"
-msgstr ""
-
-#: prefs.js:95
-msgid ""
-"Fake keyboard input is supported in JS statement: <i>key('Control_L+c')</i>"
-msgstr ""
-
-#: prefs.js:96
-msgid "Log file locates in <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-msgstr ""
-
-#: prefs.js:97
-msgid ""
-"Hold <b>Alt|Shift</b> to invoke when highlighting in <b>Passive mode</b>"
-msgstr ""
-
-#: prefs.js:147
-msgid "GNU General Public License, version 3 or later"
-msgstr ""
-
-#: prefs.js:150
+#: prefs.js:122
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:151
+#: prefs.js:123
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
 msgstr ""
 
-#: prefs.js:153
-#, javascript-format
+#: prefs.js:139
+msgid "Tips"
+msgstr ""
+
+#: prefs.js:146
+msgid "Substitute <b>LDWORD</b> for the selected text in the command"
+msgstr ""
+
+#: prefs.js:147
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+msgstr ""
+
+#: prefs.js:148
+msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
+msgstr ""
+
+#: prefs.js:149
 msgid ""
-"This program comes with absolutely no warranty.\n"
-"See the <a href=\"%s\">%s</a> for details."
+"Hold <b>Alt/Shift</b> to invoke when highlighting in <b>Passive mode</b>"
 msgstr ""
 
-#: prefs.js:191
-msgid "Blocklist"
-msgstr ""
-
-#: prefs.js:191
-msgid "Allowlist"
-msgstr ""
-
-#: prefs.js:192
-msgid "Active"
-msgstr ""
-
-#: prefs.js:192
-msgid "Passive"
-msgstr ""
-
-#: prefs.js:192
-msgid "Hold modifier to trigger or not"
-msgstr ""
-
-#: prefs.js:193 prefs.js:211
-msgid "Box"
-msgstr ""
-
-#: prefs.js:193 prefs.js:219
-msgid "Bar"
-msgstr ""
-
-#: prefs.js:193
-msgid "Nil"
-msgstr ""
-
-#: prefs.js:193
-msgid "What to popup when trigger"
-msgstr ""
-
-#: prefs.js:194
-msgid "Never"
-msgstr ""
-
-#: prefs.js:194
-msgid "Click"
-msgstr ""
-
-#: prefs.js:194
-msgid "Hover"
-msgstr ""
-
-#: prefs.js:194
-msgid "Always"
+#: prefs.js:150
+msgid ""
+"The Log file is located at <i>~/.cache/gnome-shell-extension-light-dict/</i>"
 msgstr ""
 
 #: prefs.js:196
-msgid "run with /bin/sh"
+msgid "Blocklist"
+msgstr ""
+
+#: prefs.js:196
+msgid "Allowlist"
 msgstr ""
 
 #: prefs.js:197
-msgid "allow/block list (empty for all)"
+msgid "Disable"
 msgstr ""
 
 #: prefs.js:198
-msgid "Text RegExp filter"
+msgid "Never"
+msgstr ""
+
+#: prefs.js:198
+msgid "Click"
+msgstr ""
+
+#: prefs.js:198
+msgid "Hover"
+msgstr ""
+
+#: prefs.js:198
+msgid "Always"
 msgstr ""
 
 #: prefs.js:199
-msgid "Left click to run"
+msgid "Proactive"
 msgstr ""
 
-#: prefs.js:200
-msgid "Right click to run and hide box"
+#: prefs.js:199
+msgid "Passive"
+msgstr ""
+
+#: prefs.js:199
+msgid "Need modifier to trigger or not"
+msgstr ""
+
+#: prefs.js:201
+msgid "Left click to execute"
+msgstr ""
+
+#: prefs.js:202
+msgid "Text RegExp filter in Passive mode"
+msgstr ""
+
+#: prefs.js:203
+msgid "Allowlist/blocklist (leave blank to indicate all)"
 msgstr ""
 
 #: prefs.js:204
-msgid "Common"
-msgstr ""
-
-#: prefs.js:205
-msgid "Enable systray"
-msgstr ""
-
-#: prefs.js:206
-msgid "Trim whitespaces"
-msgstr ""
-
-#: prefs.js:207
-msgid "Autohide interval"
+msgid "Right click to execute and hide panel"
 msgstr ""
 
 #: prefs.js:208
-msgid "Trigger style"
+msgid "Common"
 msgstr ""
 
 #: prefs.js:209
-msgid "Wmclass list"
+msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:212
-msgid "Hide title"
+#: prefs.js:210
+msgid "Trim whitespaces"
+msgstr ""
+
+#: prefs.js:211
+msgid "Autohide interval"
 msgstr ""
 
 #: prefs.js:213
-msgid "Logs level"
+msgid "WMclass list"
 msgstr ""
 
 #: prefs.js:214
-msgid "Run command"
-msgstr ""
-
-#: prefs.js:215
-msgid "Right click"
-msgstr ""
-
-#: prefs.js:216
-msgid "Left click"
-msgstr ""
-
-#: prefs.js:217
 msgid "Text filter"
 msgstr ""
 
+#: prefs.js:216
+msgid "Panel"
+msgstr ""
+
+#: prefs.js:217
+msgid "Hide title"
+msgstr ""
+
+#: prefs.js:218
+msgid "Logs level"
+msgstr ""
+
+#: prefs.js:219
+msgid "Right click"
+msgstr ""
+
 #: prefs.js:220
+msgid "Left click"
+msgstr ""
+
+#: prefs.js:223
 msgid "Enable tooltips"
 msgstr ""
 
-#: prefs.js:221
+#: prefs.js:224
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:222
+#: prefs.js:225
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:398 prefs.js:427
+#: prefs.js:386 prefs.js:415 prefs.js:719 prefs.js:745
 msgid "Command type"
 msgstr ""
 
-#: prefs.js:399
-msgid "Show on left side"
+#: prefs.js:387 prefs.js:720
+msgid "Showing on the left side"
 msgstr ""
 
-#: prefs.js:400
-msgid "Show in the bar"
+#: prefs.js:388
+msgid "Showing in the popup icon bar"
 msgstr ""
 
-#: prefs.js:401
-msgid "Run when clicking"
+#: prefs.js:389 prefs.js:722
+msgid "Executed when clicking"
 msgstr ""
 
-#: prefs.js:402
+#: prefs.js:390 prefs.js:721
 msgid "Allowed to function"
 msgstr ""
 
-#: prefs.js:403
-msgid "Show when hovering"
+#: prefs.js:391
+msgid "Showing when hovering"
 msgstr ""
 
-#: prefs.js:404
-msgid "Match selected text"
+#: prefs.js:392 prefs.js:723
+msgid "Text RegExp matcher"
 msgstr ""
 
-#: prefs.js:420
+#: prefs.js:408 prefs.js:739
 msgid "Enable"
 msgstr ""
 
-#: prefs.js:421
+#: prefs.js:409 prefs.js:740
 msgid "Name"
 msgstr ""
 
-#: prefs.js:425
+#: prefs.js:413
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:426
+#: prefs.js:414 prefs.js:744
 msgid "Command"
 msgstr ""
 
-#: prefs.js:428
+#: prefs.js:416 prefs.js:746
 msgid "Show result"
 msgstr ""
 
-#: prefs.js:429
+#: prefs.js:417 prefs.js:747
 msgid "Copy result"
 msgstr ""
 
-#: prefs.js:430
+#: prefs.js:418 prefs.js:748
+msgid "Select result"
+msgstr ""
+
+#: prefs.js:419 prefs.js:749
 msgid "Commit result"
 msgstr ""
 
-#: prefs.js:434
+#: prefs.js:423 prefs.js:753
 msgid "Regexp"
 msgstr ""
 
-#: prefs.js:435
-msgid "Wmclass"
+#: prefs.js:424 prefs.js:754
+msgid "WMclass"
 msgstr ""
 
-#: prefs.js:436
-msgid "Tooltips"
+#: prefs.js:425
+msgid "Tooltip"
+msgstr ""
+
+#: prefs.js:758
+msgid ""
+"Only one item can be enabled in swift mode.\n"
+"If none is enabled the first one will be used by default."
 msgstr ""
