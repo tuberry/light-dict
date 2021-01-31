@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict 40\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-01-31 00:41+0800\n"
+"POT-Creation-Date: 2021-01-31 17:55+0800\n"
 "PO-Revision-Date: 2021-01-24 18:45+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,284 +17,260 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:563 extension.js:577
+#: extension.js:519 extension.js:533
 msgid "Enabled: "
 msgstr "已启用: "
 
-#: extension.js:607 prefs.js:212
+#: extension.js:563 prefs.js:209
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: extension.js:609
+#: extension.js:565
 msgid "Swift commands"
 msgstr "即时命令"
 
-#: extension.js:611
+#: extension.js:567
 msgid "Current window"
 msgstr "当前窗口"
 
-#: extension.js:613
+#: extension.js:569
 msgid "More"
 msgstr "更多"
 
-#: extension.js:630
+#: extension.js:586
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:638
+#: extension.js:594
 msgid "Add/remove"
 msgstr "添加/移除"
 
-#: extension.js:646
+#: extension.js:602
 msgid "Settings"
 msgstr "设置"
 
-#: extension.js:907
+#: extension.js:863
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr "切换至%s模式"
 
-#: prefs.js:51
+#: prefs.js:50
 msgid "Basic"
 msgstr "基本"
 
-#: prefs.js:55 prefs.js:197
+#: prefs.js:54 prefs.js:195
 msgid "Swift"
 msgstr "即时"
 
-#: prefs.js:59 prefs.js:197 prefs.js:222
+#: prefs.js:58 prefs.js:195 prefs.js:218
 msgid "Popup"
 msgstr "弹出"
 
-#: prefs.js:63
+#: prefs.js:62
 msgid "About"
 msgstr "关于"
 
-#: prefs.js:122
+#: prefs.js:121
 #, javascript-format
 msgid "Version %d"
 msgstr "版本 %d"
 
-#: prefs.js:123
+#: prefs.js:122
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
 msgstr "即时操作选取文本的轻量扩展，特别对查词进行了优化。"
 
-#: prefs.js:139
+#: prefs.js:138
 msgid "Tips"
 msgstr "提示"
 
-#: prefs.js:146
+#: prefs.js:145
 msgid "Substitute <b>LDWORD</b> for the selected text in the command"
 msgstr "在命令中用 <b>LDWORD</b> 代替所选文本"
 
-#: prefs.js:147
+#: prefs.js:146
 msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
 msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
 
-#: prefs.js:148
+#: prefs.js:147
 msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
 msgstr "JS 语句支持模拟键盘输入: <i>key('Control_L+c')</i>"
 
-#: prefs.js:149
+#: prefs.js:148
 msgid ""
 "Hold <b>Alt/Shift</b> to invoke when highlighting in <b>Passive mode</b>"
 msgstr "<b>被动模式</b>下选取文本时需按住 <b>Alt/Shift</b> 以触发"
 
-#: prefs.js:150
-msgid ""
-"The Log file is located at <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-msgstr "日志位于 <i>~/.cache/gnome-shell-extension-light-dict/</i>"
-
-#: prefs.js:196
+#: prefs.js:194
 msgid "Blocklist"
 msgstr "黑名单"
 
-#: prefs.js:196
+#: prefs.js:194
 msgid "Allowlist"
 msgstr "白名单"
 
-#: prefs.js:197
+#: prefs.js:195
 msgid "Disable"
 msgstr "禁用"
 
-#: prefs.js:198
-msgid "Never"
-msgstr "从不"
-
-#: prefs.js:198
-msgid "Click"
-msgstr "单击"
-
-#: prefs.js:198
-msgid "Hover"
-msgstr "悬停"
-
-#: prefs.js:198
-msgid "Always"
-msgstr "总是"
-
-#: prefs.js:199
+#: prefs.js:196
 msgid "Proactive"
 msgstr "主动"
 
-#: prefs.js:199
+#: prefs.js:196
 msgid "Passive"
 msgstr "被动"
 
-#: prefs.js:199
+#: prefs.js:196
 msgid "Need modifier to trigger or not"
 msgstr "是否要按修饰键触发"
 
-#: prefs.js:201
+#: prefs.js:198
 msgid "Left click to execute"
 msgstr "左键运行命令"
 
-#: prefs.js:202
+#: prefs.js:199
 msgid "Text RegExp filter in Passive mode"
 msgstr "被动模式过滤文本的正则表达式"
 
-#: prefs.js:203
+#: prefs.js:200
 msgid "Allowlist/blocklist (leave blank to indicate all)"
 msgstr "白名单/黑名单(留空表示所有)"
 
-#: prefs.js:204
+#: prefs.js:201
 msgid "Right click to execute and hide panel"
 msgstr "右键运行命令并关闭气泡"
 
-#: prefs.js:208
+#: prefs.js:205
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:209
+#: prefs.js:206
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: prefs.js:210
+#: prefs.js:207
 msgid "Trim whitespaces"
 msgstr "去除空白"
 
-#: prefs.js:211
+#: prefs.js:208
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:213
+#: prefs.js:210
 msgid "WMclass list"
 msgstr "窗口名单"
 
-#: prefs.js:214
+#: prefs.js:211
 msgid "Text filter"
 msgstr "文本过滤"
 
-#: prefs.js:216
+#: prefs.js:213
 msgid "Panel"
 msgstr "气泡"
 
-#: prefs.js:217
+#: prefs.js:214
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: prefs.js:218
-msgid "Logs level"
-msgstr "日志级别"
-
-#: prefs.js:219
+#: prefs.js:215
 msgid "Right click"
 msgstr "右键运行"
 
-#: prefs.js:220
+#: prefs.js:216
 msgid "Left click"
 msgstr "左键运行"
 
-#: prefs.js:223
+#: prefs.js:219
 msgid "Enable tooltips"
 msgstr "启用提示"
 
-#: prefs.js:224
+#: prefs.js:220
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:225
+#: prefs.js:221
 msgid "Horizontal offset"
 msgstr "水平偏移"
 
-#: prefs.js:386 prefs.js:415 prefs.js:719 prefs.js:745
+#: prefs.js:381 prefs.js:410 prefs.js:714 prefs.js:740
 msgid "Command type"
 msgstr "命令类型"
 
-#: prefs.js:387 prefs.js:720
+#: prefs.js:382 prefs.js:715
 msgid "Showing on the left side"
 msgstr "显示在左侧"
 
-#: prefs.js:388
+#: prefs.js:383
 msgid "Showing in the popup icon bar"
 msgstr "显示在图标栏"
 
-#: prefs.js:389 prefs.js:722
+#: prefs.js:384 prefs.js:717
 msgid "Executed when clicking"
 msgstr "点击后执行"
 
-#: prefs.js:390 prefs.js:721
+#: prefs.js:385 prefs.js:716
 msgid "Allowed to function"
 msgstr "白名单"
 
-#: prefs.js:391
+#: prefs.js:386
 msgid "Showing when hovering"
 msgstr "悬停时显示"
 
-#: prefs.js:392 prefs.js:723
+#: prefs.js:387 prefs.js:718
 msgid "Text RegExp matcher"
 msgstr "匹配选取文本的正则表达式"
 
-#: prefs.js:408 prefs.js:739
+#: prefs.js:403 prefs.js:734
 msgid "Enable"
 msgstr "启用"
 
-#: prefs.js:409 prefs.js:740
+#: prefs.js:404 prefs.js:735
 msgid "Name"
 msgstr "备注"
 
-#: prefs.js:413
+#: prefs.js:408
 msgid "Icon"
 msgstr "图标名"
 
-#: prefs.js:414 prefs.js:744
+#: prefs.js:409 prefs.js:739
 msgid "Command"
 msgstr "运行命令"
 
-#: prefs.js:416 prefs.js:746
+#: prefs.js:411 prefs.js:741
 msgid "Show result"
 msgstr "显示结果"
 
-#: prefs.js:417 prefs.js:747
+#: prefs.js:412 prefs.js:742
 msgid "Copy result"
 msgstr "复制结果"
 
-#: prefs.js:418 prefs.js:748
+#: prefs.js:413 prefs.js:743
 msgid "Select result"
 msgstr "选取结果"
 
-#: prefs.js:419 prefs.js:749
+#: prefs.js:414 prefs.js:744
 msgid "Commit result"
 msgstr "提交结果"
 
-#: prefs.js:423 prefs.js:753
+#: prefs.js:418 prefs.js:748
 msgid "Regexp"
 msgstr "文本匹配"
 
-#: prefs.js:424 prefs.js:754
+#: prefs.js:419 prefs.js:749
 msgid "WMclass"
 msgstr "窗口名单"
 
-#: prefs.js:425
+#: prefs.js:420
 msgid "Tooltip"
 msgstr "工具提示"
 
-#: prefs.js:758
+#: prefs.js:753
 msgid ""
 "Only one item can be enabled in swift mode.\n"
 "If none is enabled the first one will be used by default."
 msgstr ""
 "即时模式下仅能启用一项。\n"
 "若未启用默认使用第一项。"
+

@@ -12,7 +12,6 @@ const Orna = { DOT: '\u2022', CHECK: '\u2713', NONE: ' ' }
 
 var Fields = {
     XOFFSET:   'x-offset',
-    LOGLEVEL:  'log-level',
     HIDETITLE: 'hide-title',
     LISTTYPE:  'wmlist-type',
     TXTFILTER: 'text-filter',
@@ -147,7 +146,6 @@ class LightDictAbout extends Gtk.Box {
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
             _('Hold <b>Alt/Shift</b> to invoke when highlighting in <b>Passive mode</b>'),
-            _('The Log file is located at <i>~/.cache/gnome-shell-extension-light-dict/</i>'),
         ];
 
         const vbox = new Gtk.VBox({ margin: 10 });
@@ -195,7 +193,6 @@ class LightDictBasic extends Gtk.Box {
 
         this._field_list_type     = this._comboMaker([_('Blocklist'), _('Allowlist')]);
         this._field_trigger_style = this._comboMaker([_('Swift'), _('Popup'), _('Disable')]);
-        this._field_log_level     = this._comboMaker([_('Never'), _('Click'), _('Hover'), _('Always')]);
         this._field_passive_mode  = this._comboMaker([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
 
         this._field_left_command  = this._entryMaker('notify-send LDWORD', _('Left click to execute'));
@@ -215,7 +212,6 @@ class LightDictBasic extends Gtk.Box {
 
         let panel = this._listFrameMaker(_('Panel'));
         panel._add(this._labelMaker(_('Hide title')), this._field_hide_title);
-        panel._add(this._labelMaker(_('Logs level')), this._field_log_level);
         panel._att(this._labelMaker(_('Right click'), true), this._field_right_command);
         panel._att(this._labelMaker(_('Left click'), true),  this._field_left_command);
 
@@ -245,7 +241,6 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,       'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,  this._field_page_size,       'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,    'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LOGLEVEL,  this._field_log_level,       'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LISTTYPE,  this._field_list_type,       'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray,  'active', Gio.SettingsBindFlags.DEFAULT);

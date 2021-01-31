@@ -19,7 +19,6 @@ const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const TriggerType = { Swift: 0, Popup: 1, Disable: 2 };
-const LogLevel = { NEVER: 0, CLICK: 1, HOVER: 2, ALWAYS: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
@@ -240,7 +239,6 @@ const DictBox = GObject.registerClass({
     Properties: {
         'lcommand': GObject.param_spec_string('lcommand', 'lcommand', 'l command', '', GObject.ParamFlags.READWRITE),
         'rcommand': GObject.param_spec_string('rcommand', 'rcommand', 'r command', '', GObject.ParamFlags.READWRITE),
-        'loglevel': GObject.param_spec_uint('loglevel', 'loglevel', 'log level', 0, 3, 0, GObject.ParamFlags.READWRITE),
         'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
     },
 }, class DictBox extends BoxPointer.BoxPointer {
@@ -251,7 +249,6 @@ const DictBox = GObject.registerClass({
         Main.layoutManager.addTopChrome(this);
         this.setPosition(actor, align); // NOTE: disable => enable :: ...internal: assertion '!isnan (box->x1)...
 
-        this._log = false;
         this._selection = '';
         this._notFound = false;
 
@@ -300,7 +297,6 @@ const DictBox = GObject.registerClass({
 
     _bindSettings() {
         gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.LOGLEVEL, this, 'loglevel', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.LCOMMAND, this, 'lcommand', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.RCOMMAND, this, 'rcommand', Gio.SettingsBindFlags.GET);
     }
@@ -315,14 +311,12 @@ const DictBox = GObject.registerClass({
 
     _onEnter() {
         this._view.visible = true;
-        if(this.loglevel === LogLevel.HOVER) this._recordLog();
         if(this._delayId) GLib.source_remove(this._delayId), this._delayId = 0;
     }
 
     _onClick(actor, event) {
         switch(event.get_button()) {
         case 1:
-            if(this.loglevel === LogLevel.CLICK) this._recordLog();
             if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
             break;
         case 2:
@@ -347,36 +341,6 @@ const DictBox = GObject.registerClass({
         this._hide();
     }
 
-    _recordLog() {
-        if(this._prevLog && this._selection == this._prevLog)
-            return;
-        let dateFormat = (fmt, date) => {
-            let opt = {
-                'Y+': date.getFullYear().toString(),
-                'm+': (date.getMonth() + 1).toString(),
-                'd+': date.getDate().toString(),
-                'H+': date.getHours().toString(),
-                'M+': date.getMinutes().toString(),
-                'S+': date.getSeconds().toString()
-            };
-            let ret;
-            for(let k in opt) {
-                ret = new RegExp('(' + k + ')').exec(fmt);
-                if(!ret) continue;
-                fmt = fmt.replace(ret[1], (ret[1].length == 1) ? (opt[k]) : (opt[k].padStart(ret[1].length, '0')))
-            };
-            return fmt;
-        }
-        let logfile = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/light-dict.log');
-        let log = [dateFormat('YYYY-mm-dd-HH:MM:SS', new Date()), this._selection, this._notFound ? 0 : 1].join('\t') + '\n';
-        try {
-            logfile.append_to(Gio.FileCreateFlags.NONE, null).write(log, null);
-        } catch(e) {
-            Main.notifyError(Me.metadata.name, e.message);
-        }
-        this._prevLog = this._selection;
-    }
-
     _hide() {
         if(!this._view.visible) return;
 
@@ -385,16 +349,8 @@ const DictBox = GObject.registerClass({
         this.close(BoxPointer.PopupAnimation.FULL);
     }
 
-    _look(info, word, notFound) {
-        this._log = true;
-        this._notFound = notFound;
-        if(this.loglevel === LogLevel.ALWAYS) this._recordLog();
-        this._show(info, word);
-    }
-
-    _show(info, word, notLog) {
+    _show(info, word) {
         this._selection = word;
-        if(notLog) this._log = false;
 
         try { // NOTE: seems St.Label doesn't show text more than the screen size even in St.ScrollView
             Pango.parse_markup(info, -1, '');
@@ -828,9 +784,9 @@ const LightDict = GObject.registerClass({
                 if(sel) this._select(scc);
                 if(cpy) this._act.copy(scc);
                 if(cmt) this._act.commit(scc);
-                if(pop) this._box._show(scc, this._selection, true);
+                if(pop) this._box._show(scc, this._selection);
             }).catch(err => {
-                this._box._show(err, this._selection, true);
+                this._box._show(err, this._selection);
             });
         } else {
             Util.spawnCommandLine(rcmd);
@@ -850,12 +806,12 @@ const LightDict = GObject.registerClass({
                 if(cpy) copy(result);
                 if(cmt) commit(result);
                 if(sel) select(result);
-                if(pop) this._box._show(result, this._selection, true);
+                if(pop) this._box._show(result, this._selection);
             } else {
                 eval(cmd);
             }
         } catch(e) {
-            this._box._show(e.message, this._selection, true);
+            this._box._show(e.message, this._selection);
         }
     }
 
@@ -948,8 +904,6 @@ const LightDict = GObject.registerClass({
 const Extension = class Extension {
     constructor() {
         ExtensionUtils.initTranslations();
-        let logfilePath = Gio.file_new_for_path(GLib.get_home_dir() + '/.cache/gnome-shell-extension-light-dict/');
-        if(!logfilePath.query_exists(null)) logfilePath.make_directory(Gio.Cancellable.new());
     }
 
     enable() {

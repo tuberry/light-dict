@@ -41,10 +41,6 @@
         <default>1</default>
         <summary>global wmclass list type: 0-block 1-allow</summary>
     </key>
-    <key type="u" name="log-level">
-        <default>0</default>
-        <summary>log level: 0-never 1-click 2-hover 3-always</summary>
-    </key>
     <key type="i" name="x-offset">
         <range min="-400" max="400"/>
         <default>-5</default>
