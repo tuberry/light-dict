@@ -2,7 +2,7 @@
 
 Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup.
 
->L, you know what? The Shinigami only eat apples. —— *Light Yagami*<br>
+>L, you know what? The Shinigami only eats apples. —— *Light Yagami*<br>
 [![license]](/LICENSE)
 <br>
 
@@ -48,17 +48,17 @@ gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Exten
 ## Note
 
 1. This extension doesn't offer any icons or dictionary resources though it's named Light Dict. If you need English-Chinese offline dictionary, try [dict-ecdict](https://github.com/tuberry/dict-ecdict) or [dict-cedict](https://github.com/tuberry/dict-cedict).
-2. If you need to customize the appearance of some widgets, try [User Themes X].
+2. If you need to customize the appearance of some widgets, try [user-theme-x].
 
 ## Breaking Changes
 
 Some settings keys had ben deprecated. You could:
 
 1. `dconf dump /org/gnome/shell/extensions/light-dict/ > conf.txt`;
-2. edit the `conf.txt` according to the [schema](//light-dict@tuberry.github.io/schemas/org.gnome.shell.extensions.light-dict.gschema.xml) changes;
+2. edit the `conf.txt` according to the [schema](https://github.com/tuberry/light-dict/commit/5818afd651190be4bb441cae49bcacfc895623fe#diff-0f322fface52cc1e68c32d98ff3990a08e100bff4fc56ac230f6db9e4093c9f3) changes;
 3. `dconf load /org/gnome/shell/extensions/light-dict/ < conf.txt`;
-4. change The [script](/ldocr.sh) if the DBus interface is called;
+4. change The DBus interface in the [script](/ldocr.sh) if it's used;
 
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
-[User Theme X]:https://github.com/tuberry/user-theme-x
+[user-theme-x]:https://github.com/tuberry/user-theme-x

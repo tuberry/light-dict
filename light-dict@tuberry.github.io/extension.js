@@ -472,7 +472,6 @@ const DictBtn = GObject.registerClass({
     _bindSettings() {
         gsettings.bind(Fields.PASSIVE, this, 'passive', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TRIGGER, this, 'trigger', Gio.SettingsBindFlags.GET);
-        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, this._updateMenu.bind(this));
     }
 
     set passive(passive) {
@@ -511,7 +510,7 @@ const DictBtn = GObject.registerClass({
         return gsettings.get_strv(Fields.SCOMMANDS);
     }
 
-    _scmdMenu() {
+    _scommandsMenu() {
         let scommand;
         let commands = this.scommands;
         let index = commands.findIndex(c => !!JSON.parse(c).enable);
@@ -563,7 +562,7 @@ const DictBtn = GObject.registerClass({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Trigger style')));
         Object.keys(TriggerType).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Swift commands')));
-        this.menu.addMenuItem(this._scmdMenu());
+        this.menu.addMenuItem(this._scommandsMenu());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current window')));
         this.menu.addMenuItem(this._wmlistItem());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('More')));
@@ -603,24 +602,18 @@ const DictBtn = GObject.registerClass({
 
        return item;
     }
-
-    destroy() {
-        if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
-        super.destroy();
-    }
 });
 
 const LightDict = GObject.registerClass({
     Properties: {
         'filter':    GObject.param_spec_string('filter', 'filter', 'filter', '', GObject.ParamFlags.READWRITE),
-        'wmlist':    GObject.param_spec_string('wmlist', 'wmlist', 'wmclss list', '', GObject.ParamFlags.READWRITE),
+        'wmlist':    GObject.param_spec_string('wmlist', 'wmlist', 'wmclass list', '', GObject.ParamFlags.READWRITE),
         'systray':   GObject.param_spec_boolean('systray', 'systray', 'systray', true, GObject.ParamFlags.WRITABLE),
         'passive':   GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
-        'trigger':   GObject.param_spec_uint('trigger', 'systray', 'systray', 0, 2, 1, GObject.ParamFlags.READWRITE),
+        'trigger':   GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
         'listtype':  GObject.param_spec_uint('listtype', 'listtype', 'list type', 0, 1, 1, GObject.ParamFlags.READWRITE),
         'textstrip': GObject.param_spec_boolean('textstrip', 'textstrip', 'strip text', true, GObject.ParamFlags.READWRITE),
-        'scommand':  GObject.param_spec_int('scommand', 'scommand', 'swift command', -1, 20, 0, GObject.ParamFlags.WRITABLE),
+        'scommand':  GObject.param_spec_int('scommand', 'scommand', 'swift command', -1, 2000, 0, GObject.ParamFlags.READWRITE),
     },
 }, class LightDict extends St.Widget {
     _init() {
@@ -648,6 +641,8 @@ const LightDict = GObject.registerClass({
         gsettings.bind(Fields.PASSIVE,   this, 'passive',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TEXTSTRIP, this, 'textstrip', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.SCOMMAND,  this, 'scommand',  Gio.SettingsBindFlags.GET);
+        this.scommands = gsettings.get_strv(Fields.SCOMMANDS);
+        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
     }
 
     _buildWidgets() {
@@ -680,15 +675,15 @@ const LightDict = GObject.registerClass({
         this.set_position(pointer[0] - 20, pointer[1] - 20);
     }
 
-    set scommand(scommand) {
-        let cmds = gsettings.get_strv(Fields.SCOMMANDS);
+    set scommands(cmds) {
         if(!cmds.length) {
             this._scmd = null;
-            return;
+        } else {
+            this._scmd = {};
+            let index = (this.scommand < 0 || this.scommand >= cmds.length) ? 0 : this.scommand;
+            Object.assign(this._scmd, JSON.parse(cmds[index]));
         }
-        let index = (scommand < 0 || scommand >= cmds.length) ? 0 : scommand
-        this._scmd = {};
-        Object.assign(this._scmd, JSON.parse(cmds[index]));
+        if(this._button) this._button._updateMenu();
     }
 
     get _allow() {
@@ -880,6 +875,8 @@ const LightDict = GObject.registerClass({
     }
 
     destroy() {
+        if(this.scommandsId)
+            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
         if(this._onWindowChangedId)

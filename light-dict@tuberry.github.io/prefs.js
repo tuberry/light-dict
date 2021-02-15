@@ -848,8 +848,8 @@ class LightDictSwift extends Gtk.Box {
         model.iter_previous(iter);
         model.set(iter, [0, 1], [enable == index - 1 ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index - 1]).name]);
         this._tre.get_selection().select_iter(iter);
-        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
     _onNxtClicked() {
@@ -862,8 +862,8 @@ class LightDictSwift extends Gtk.Box {
         model.iter_next(iter);
         model.set(iter, [0, 1], [enable == index + 1 ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index + 1]).name]);
         this._tre.get_selection().select_iter(iter);
-        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
     _onDelClicked() {
@@ -873,8 +873,8 @@ class LightDictSwift extends Gtk.Box {
         this._commands.splice(index, 1);
         let enable = this.enable;
         model.remove(iter);
-        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
     _onAddClicked() {
@@ -889,8 +889,8 @@ class LightDictSwift extends Gtk.Box {
         this._commands.splice(index + 1, 0, '{"name":"name"}');
         let enable = this.enable;
         model.set(model.insert(index + 1), [0, 1], [Orna.NONE, 'name']);
-        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
     _setConfig(key, value) {
@@ -904,6 +904,7 @@ class LightDictSwift extends Gtk.Box {
             if(value) {
                 this.conf[key] = value;
                 model.set(iter, [0], [Orna.DOT]);
+                gsettings.set_int(Fields.SCOMMAND, index);
             } else {
                 delete this.conf[key];
             }
@@ -916,7 +917,6 @@ class LightDictSwift extends Gtk.Box {
         }
         this._commands[index] = JSON.stringify(this.conf, null, 0);
         gsettings.set_strv(Fields.SCOMMANDS, this._commands);
-        if(this.conf.enable) gsettings.set_int(Fields.SCOMMAND, index);
     }
 
     _frameWrapper(widget) {
