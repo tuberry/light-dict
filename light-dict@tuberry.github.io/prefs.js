@@ -8,14 +8,13 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const _GTK = imports.gettext.domain('gtk30').gettext;
-const Orna = { DOT: '\u2022', CHECK: '\u2713', NONE: ' ' }
 
 var Fields = {
+    APPLIST:   'app-list',
     XOFFSET:   'x-offset',
+    LISTTYPE:  'list-type',
     HIDETITLE: 'hide-title',
-    LISTTYPE:  'wmlist-type',
     TXTFILTER: 'text-filter',
-    WMLIST:    'wmclass-list',
     LCOMMAND:  'left-command',
     PASSIVE:   'passive-mode',
     TEXTSTRIP: 'enable-strip',
@@ -45,30 +44,243 @@ class LightDictPrefsWidget extends Gtk.Stack {
             expand: true,
             transition_type: Gtk.StackTransitionType.NONE,
         });
-        this._basic = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
-        this._basic.add(new LightDictBasic());
-        this.add_titled(this._basic, 'basic', _('Basic'));
 
-        this._swift = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
-        this._swift.add(new LightDictSwift());
-        this.add_titled(this._swift, 'swift', _('Swift'));
-
-        this._pop = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
-        this._pop.add(new LightDictPopup());
-        this.add_titled(this._pop, 'popup', _('Popup'));
-
-        this._about = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
-        this._about.add(new LightDictAbout());
-        this.add_titled(this._about, 'about', _('About'));
+        this._add_tab(new LightDictBasic(), 'basic', _('Basic'));
+        this._add_tab(new LightDictSwift(), 'swift', _('Swift'));
+        this._add_tab(new LightDictPopup(), 'popup', _('Popup'));
+        this._add_tab(new LightDictAbout(), 'about', _('About'));
 
         GLib.timeout_add(GLib.PRIORITY_DEFAULT, 0, () => {
             let window = this.get_toplevel();
-            window.resize(700, 620);
+            window.resize(700, 520);
             let headerBar = window.get_titlebar();
             headerBar.custom_title = new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, visible: true, stack: this });
             return GLib.SOURCE_REMOVE;
         });
         this.show_all();
+    }
+
+    _add_tab(tab, name, title) {
+        let win = new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, });
+        win.add(tab);
+        this.add_titled(win, name, title);
+    }
+});
+
+function clear(obj) {
+    return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v));
+}
+
+function _listGridMaker() {
+    let grid = new Gtk.Grid({
+        margin: 10,
+        hexpand: true,
+        row_spacing: 12,
+        column_spacing: 18,
+        row_homogeneous: true,
+        column_homogeneous: false,
+    });
+
+    grid._row = 0;
+    grid._add = (x, y, z) => {
+        const hbox = new Gtk.Box();
+        hbox.pack_start(x, true, true, 0);
+        hbox.pack_start(y, false, false, 0)
+        if(z) hbox.pack_start(z, false, false, 0);
+        grid.attach(hbox, 0, grid._row++, 2, 1);
+    }
+    grid._att = (x, y, z) => {
+        let r = grid._row++;
+        if(z) {
+            let hbox = new Gtk.Box();
+            hbox.pack_start(y, true, true, 0);
+            hbox.pack_end(z, false, false, 0);
+            grid.attach(x, 0, r, 1, 1);
+            grid.attach(hbox, 1, r, 1, 1);
+        } else if(y) {
+            grid.attach(x, 0, r, 1, 1);
+            grid.attach(y, 1, r, 1, 1);
+        } else {
+            grid.attach(x, 0, r, 1, 2)
+        }
+    }
+
+    return grid;
+}
+
+function _frameWrapper(widget) {
+    let frame = new Gtk.Frame();
+    frame.add(widget);
+    return frame;
+}
+
+function _spinMaker(l, u, s) {
+    return new Gtk.SpinButton({
+        adjustment: new Gtk.Adjustment({
+            lower: l,
+            upper: u,
+            step_increment: s,
+        }),
+    });
+}
+
+function _labelMaker(x, y) {
+    return new Gtk.Label({
+        label: x,
+        hexpand: y ? false : true,
+        halign: Gtk.Align.START,
+    });
+}
+
+function _entryMaker(x, y, z) {
+    let entry = new Gtk.Entry({
+        hexpand: !z,
+        editable: false,
+        placeholder_text: x,
+        secondary_icon_sensitive: true,
+        secondary_icon_tooltip_text: y,
+        secondary_icon_activatable: true,
+        secondary_icon_name: 'action-unavailable',
+    });
+    entry.connect('icon-press', () => {
+        if(entry.get_editable()) {
+            entry.set_editable(false);
+            entry.secondary_icon_name = 'action-unavailable'
+        } else {
+            entry.set_editable(true);
+            entry.secondary_icon_name = 'document-edit-symbolic';
+        }
+    });
+
+    return entry;
+}
+
+function _comboMaker(ops, tip) {
+    let l = new Gtk.ListStore();
+    l.set_column_types([GObject.TYPE_STRING]);
+    ops.forEach(op => l.set(l.append(), [0], [op]));
+    let c = new Gtk.ComboBox({ model: l });
+    let r = new Gtk.CellRendererText();
+    if(tip) c.set_tooltip_text(tip);
+    c.pack_start(r, false);
+    c.add_attribute(r, 'text', 0);
+    return c;
+}
+
+function _toggleEdit(entry, str) {
+    entry.set_editable(!str);
+    entry.secondary_icon_name = !str ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
+}
+
+function _renderBgcolor(widget) {
+    const entry = new Gtk.Entry(); // hack for background color
+    const bgcolor = entry.get_style_context().get_background_color(Gtk.STATE_FLAG_NORMAL);
+    const context = widget.get_style_context();
+    const cssProvider = new Gtk.CssProvider();
+    cssProvider.load_from_data('* { background-color: %s; }'.format(bgcolor.to_string()));
+    context.add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
+const LightDictNewApp = GObject.registerClass(
+class LightDictNewApp extends Gtk.AppChooserDialog {
+    _init(parent, ids) {
+        super._init({
+            transient_for: parent,
+            modal: true,
+        });
+
+        this._ids = ids;
+        this.get_widget().set({ show_all: true, show_other: true, });
+        this.get_widget().connect('application-selected', this._updateSensitivity.bind(this));
+        this._updateSensitivity();
+        this.show();
+    }
+
+    _updateSensitivity() {
+        const appInfo = this.get_widget().get_app_info();
+        this.set_response_sensitive(Gtk.ResponseType.OK, appInfo && !this._ids.includes(appInfo.get_id()));
+    }
+});
+
+const LightDictAppBox = GObject.registerClass({
+    Properties: {
+        'apps': GObject.param_spec_string('apps', 'apps', 'apps', '', GObject.ParamFlags.READWRITE),
+    },
+    Signals: {
+        'changed': { param_types: [GObject.TYPE_STRING] },
+    },
+}, class LightDictAppBox extends Gtk.Frame {
+    _init(ids, tip1, tip2) {
+        super._init();
+
+        let box = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
+        _renderBgcolor(box);
+
+        this._box = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, tooltip_text: tip1 || '' });
+        box.pack_start(this._box, true, true, 5);
+        box.pack_start(new Gtk.Separator(), false, false, 0);
+        box.pack_end(this._addBtnMaker(tip2), false, false, 10);
+        this._ids = ids || '';
+        this.add(box);
+        this.show_all();
+    }
+
+    set_apps(apps) {
+        this._ids = apps;
+    }
+
+    get_apps(apps) {
+        return this.apps;
+    }
+
+    set _ids(apps) {
+        this.apps = apps;
+        let ids = apps.split(',');
+        this._box.get_children().forEach(x => this._box.remove(x));
+        this._ids.forEach(x => { if(x) this._genAppBtn(x); });
+        this.show_all();
+    }
+
+    get _ids() {
+        return this.apps.split(',');
+    }
+
+    _onAddActivated(widget) {
+        const dialog = new LightDictNewApp(this.get_toplevel(), this._ids);
+        dialog.connect('response', (dlg, id) => {
+            const appInfo = id === Gtk.ResponseType.OK
+                ? dialog.get_widget().get_app_info() : null;
+            if(appInfo) {
+                this._ids = [this.apps, appInfo.get_id()].join(',');
+                this.emit('changed', this.apps);
+                this.show_all()
+            }
+            dialog.destroy();
+        });
+    }
+
+    _addBtnMaker(tips) {
+        let add = new Gtk.EventBox({ tooltip_text: tips || '' });
+        add.add(new Gtk.Image({ icon_name: 'list-add-symbolic' }));
+        add.connect('button-press-event', this._onAddActivated.bind(this));
+
+        return add;
+    }
+
+    _genAppBtn(id) {
+        let appInfo = Gio.DesktopAppInfo.new(id);
+        if(!appInfo) return;
+        const icon = new Gtk.Image({ gicon: appInfo.get_icon() });
+        icon.get_style_context().add_class('icon-dropshadow');
+
+        let app = new Gtk.EventBox({ tooltip_text: appInfo.get_display_name() });
+        app.add(icon);
+        app.connect('button-press-event', widget => {
+            this._ids = this._ids.filter(x => x !== id).join(',');
+            this.emit('changed', this.apps)
+            widget.destroy();
+        })
+        this._box.pack_start(app, false, false, 4);
     }
 });
 
@@ -96,17 +308,10 @@ class LightDictAbout extends Gtk.Box {
         let icon_size = 5;
         if(active.length) {
             active.forEach(x => {
-                let y = JSON.parse(x)
-                icons.push(new Gtk.Image({
-                    icon_size: icon_size,
-                    icon_name: y.icon || 'help',
-                }));
+                icons.push(new Gtk.Image({ icon_size: icon_size, icon_name: JSON.parse(x)?.icon ?? 'help', }));
             });
         } else {
-            icons.push(new Gtk.Image({
-                icon_size: icon_size,
-                icon_name: 'accessories-dictionary',
-            }));
+            icons.push(new Gtk.Image({ icon_size: icon_size, icon_name: 'accessories-dictionary', }));
         }
         count = count ? count : icons.length;
         icons.slice(0, count).forEach(x => hbox.pack_start(x, false, false, 0));
@@ -187,57 +392,51 @@ class LightDictBasic extends Gtk.Box {
         this._field_enable_tooltips = new Gtk.Switch();
         this._field_hide_title      = new Gtk.Switch();
 
-        this._field_page_size    = this._spinMaker(1, 10, 1);
-        this._field_icon_xoffset = this._spinMaker(-400, 400, 50);
-        this._field_auto_hide    = this._spinMaker(500, 10000, 250);
+        this._field_page_size    = _spinMaker(1, 10, 1);
+        this._field_icon_xoffset = _spinMaker(-400, 400, 50);
+        this._field_auto_hide    = _spinMaker(500, 10000, 250);
 
-        this._field_list_type     = this._comboMaker([_('Blocklist'), _('Allowlist')]);
-        this._field_trigger_style = this._comboMaker([_('Swift'), _('Popup'), _('Disable')]);
-        this._field_passive_mode  = this._comboMaker([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
+        this._field_list_type     = _comboMaker([_('Allowlist'), _('Blocklist')]);
+        this._field_trigger_style = _comboMaker([_('Swift'), _('Popup'), _('Disable')]);
+        this._field_passive_mode  = _comboMaker([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
+        this._field_app_list      = new LightDictAppBox(gsettings.get_string(Fields.APPLIST), _('Click app icon to remove'));
 
-        this._field_left_command  = this._entryMaker('notify-send LDWORD', _('Left click to execute'));
-        this._field_text_filter   = this._entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter in Passive mode'));
-        this._field_wmclass_list  = this._entryMaker('Yelp,Evince', _('Allowlist/blocklist (leave blank to indicate all)'));
-        this._field_right_command = this._entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to execute and hide panel'));
+        this._field_left_command  = _entryMaker('notify-send LDWORD', _('Left click to execute'));
+        this._field_text_filter   = _entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter'));
+        this._field_right_command = _entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to execute and hide panel'));
     }
 
     _bulidUI() {
         let common = this._listFrameMaker(_('Common'));
-        common._add(this._labelMaker(_('Enable systray')),     this._field_enable_systray);
-        common._add(this._labelMaker(_('Trim whitespaces')),   this._field_enable_strip);
-        common._add(this._labelMaker(_('Autohide interval')),  this._field_auto_hide);
-        common._add(this._labelMaker(_('Trigger style')),      this._field_passive_mode, this._field_trigger_style);
-        common._att(this._labelMaker(_('WMclass list'), true), this._field_wmclass_list, this._field_list_type);
-        common._att(this._labelMaker(_('Text filter'), true), this._field_text_filter);
+        common._add(_labelMaker(_('Enable systray')),     this._field_enable_systray);
+        common._add(_labelMaker(_('Trim whitespaces')),   this._field_enable_strip);
+        common._add(_labelMaker(_('Autohide interval')),  this._field_auto_hide);
+        common._add(_labelMaker(_('Trigger style')),      this._field_passive_mode, this._field_trigger_style);
+        common._att(_labelMaker(_('Application list'), true), this._field_app_list, this._field_list_type);
+        common._att(_labelMaker(_('Text filter'), true), this._field_text_filter);
 
         let panel = this._listFrameMaker(_('Panel'));
-        panel._add(this._labelMaker(_('Hide title')), this._field_hide_title);
-        panel._att(this._labelMaker(_('Right click'), true), this._field_right_command);
-        panel._att(this._labelMaker(_('Left click'), true),  this._field_left_command);
+        panel._add(_labelMaker(_('Hide title')), this._field_hide_title);
+        panel._att(_labelMaker(_('Right click'), true), this._field_right_command);
+        panel._att(_labelMaker(_('Left click'), true),  this._field_left_command);
 
         let popup = this._listFrameMaker(_('Popup'));
-        popup._add(this._labelMaker(_('Enable tooltips')),   this._field_enable_tooltips);
-        popup._add(this._labelMaker(_('Page size')),         this._field_page_size);
-        popup._add(this._labelMaker(_('Horizontal offset')), this._field_icon_xoffset);
+        popup._add(_labelMaker(_('Enable tooltips')),   this._field_enable_tooltips);
+        popup._add(_labelMaker(_('Page size')),         this._field_page_size);
+        popup._add(_labelMaker(_('Horizontal offset')), this._field_icon_xoffset);
     }
 
     _syncStatus() {
-        this._toggleEditable(this._field_wmclass_list,  gsettings.get_string(Fields.WMLIST));
-        this._toggleEditable(this._field_left_command,  gsettings.get_string(Fields.LCOMMAND));
-        this._toggleEditable(this._field_right_command, gsettings.get_string(Fields.RCOMMAND));
-        this._toggleEditable(this._field_text_filter,   gsettings.get_string(Fields.TXTFILTER));
-    }
-
-    _toggleEditable(entry, str) {
-        entry.set_editable(!str);
-        entry.secondary_icon_name = !str ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
+        _toggleEdit(this._field_left_command,  gsettings.get_string(Fields.LCOMMAND));
+        _toggleEdit(this._field_right_command, gsettings.get_string(Fields.RCOMMAND));
+        _toggleEdit(this._field_text_filter,   gsettings.get_string(Fields.TXTFILTER));
     }
 
     _bindValues() {
         gsettings.bind(Fields.TXTFILTER, this._field_text_filter,     'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.RCOMMAND,  this._field_right_command,   'text',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LCOMMAND,  this._field_left_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.WMLIST,    this._field_wmclass_list,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPLIST,   this._field_app_list,        'apps',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,       'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,  this._field_page_size,       'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,    'value',  Gio.SettingsBindFlags.DEFAULT);
@@ -262,90 +461,12 @@ class LightDictBasic extends Gtk.Box {
         }));
         this.add(frame);
 
-        frame.grid = new Gtk.Grid({
-            margin: 10,
-            hexpand: true,
-            row_spacing: 12,
-            column_spacing: 18,
-            row_homogeneous: false,
-            column_homogeneous: false,
-        });
-
-        frame.grid._row = 0;
+        frame.grid = _listGridMaker();
         frame.add(frame.grid);
-        frame._add = (x, y, z) => {
-            let hbox = new Gtk.Box();
-            hbox.pack_start(x, true, true, 0);
-            hbox.pack_start(y, false, false, 4);
-            if(z) hbox.pack_start(z, false, false, 4);
-            frame.grid.attach(hbox, 0, frame.grid._row++, 2, 1);
-        }
-        frame._att = (x, y, z) => {
-            let r = frame.grid._row++;
-            if(z) {
-                let hbox = new Gtk.Box();
-                hbox.pack_start(y, true, true, 4);
-                hbox.pack_start(z, false, false, 4);
-                frame.grid.attach(x, 0, r, 1, 1);
-                frame.grid.attach(hbox, 1, r, 1, 1);
-            } else {
-                frame.grid.attach(x, 0, r, 1, 1);
-                frame.grid.attach(y, 1, r, 1, 1);
-            }
-        }
+        frame._add = frame.grid._add;
+        frame._att = frame.grid._att;
+
         return frame;
-    }
-
-    _spinMaker(l, u, s) {
-        return new Gtk.SpinButton({
-            adjustment: new Gtk.Adjustment({
-                lower: l,
-                upper: u,
-                step_increment: s,
-            }),
-        });
-    }
-
-    _labelMaker(x, y) {
-        return new Gtk.Label({
-            label: x,
-            hexpand: y ? false : true,
-            halign: Gtk.Align.START,
-        });
-    }
-
-    _entryMaker(x, y) {
-        let entry = new Gtk.Entry({
-            hexpand: true,
-            editable: false,
-            placeholder_text: x,
-            secondary_icon_sensitive: true,
-            secondary_icon_tooltip_text: y,
-            secondary_icon_activatable: true,
-            secondary_icon_name: 'action-unavailable',
-        });
-        entry.connect('icon-press', () => {
-            if(entry.get_editable()) {
-                entry.set_editable(false);
-                entry.secondary_icon_name = 'action-unavailable'
-            } else {
-                entry.set_editable(true);
-                entry.secondary_icon_name = 'document-edit-symbolic';
-            }
-        });
-        return entry;
-    }
-
-    _comboMaker(ops, tip) {
-        let l = new Gtk.ListStore();
-        l.set_column_types([GObject.TYPE_STRING]);
-        ops.forEach(op => l.set(l.append(), [0], [op]));
-        let c = new Gtk.ComboBox({ model: l });
-        let r = new Gtk.CellRendererText();
-        if(tip) c.set_tooltip_text(tip);
-        c.pack_start(r, false);
-        c.add_attribute(r, 'text', 0);
-        return c;
     }
 });
 
@@ -373,18 +494,16 @@ class LightDictPopup extends Gtk.Box {
         this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }) });
         this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
 
-        this._ebl = new Gtk.Switch();
         this._pop = new Gtk.Switch();
         this._cmt = new Gtk.Switch();
         this._sel = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
-        this._typ = this._comboMaker(['sh', 'JS'], _('Command type'));
-        this._nam = this._entryMaker('Link', _('Showing on the left side'), true);
-        this._ico = this._entryMaker('face-cool-symbolic', _('Showing in the popup icon bar'), true);
-        this._cmd = this._entryMaker('gio open LDWORD', _('Executed when clicking'));
-        this._win = this._entryMaker('Yelp,Evince,Gedit', _('Allowed to function'));
-        this._tip = this._entryMaker('Open URL with gio open', _('Showing when hovering'));
-        this._reg = this._entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
+        this._app = new LightDictAppBox('', _('Leave blank for no restriction'), _('Allowed to function'));
+        this._typ = _comboMaker(['sh', 'JS'], _('Command type'));
+        this._ico = _entryMaker('face-cool-symbolic', _('Showing in the popup icon bar'), true);
+        this._cmd = _entryMaker('gio open LDWORD', _('Executed when clicking'));
+        this._tip = _entryMaker('Open URL with gio open', _('Showing when hovering'));
+        this._reg = _entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
     }
 
     _buildUI() {
@@ -399,25 +518,20 @@ class LightDictPopup extends Gtk.Box {
         leftBox.pack_end(toolBar, false, false, 0);
 
         let rightBox = new Gtk.VBox({});
-        let basic = this._listGridMaker();
-        basic._add(this._labelMaker(_('Enable')), this._ebl);
-        basic._add(this._labelMaker(_('Name'), true), this._nam);
-        rightBox.pack_start(basic, false, false, 0);
-        rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let details = this._listGridMaker();
-        details._add(this._labelMaker(_('Icon')), this._ico);
-        details._att(this._labelMaker(_('Command'), true), this._cmd);
-        details._add(this._labelMaker(_('Command type')), this._typ);
-        details._add(this._labelMaker(_('Show result')), this._pop);
-        details._add(this._labelMaker(_('Copy result')), this._cpy);
-        details._add(this._labelMaker(_('Select result')), this._sel);
-        details._add(this._labelMaker(_('Commit result')), this._cmt);
+        let details = _listGridMaker();
+        details._add(_labelMaker(_('Icon')), this._ico);
+        details._att(_labelMaker(_('Command'), true), this._cmd);
+        details._add(_labelMaker(_('Command type')), this._typ);
+        details._add(_labelMaker(_('Show result')), this._pop);
+        details._add(_labelMaker(_('Copy result')), this._cpy);
+        details._add(_labelMaker(_('Select result')), this._sel);
+        details._add(_labelMaker(_('Commit result')), this._cmt);
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let addition = this._listGridMaker();
-        addition._att(this._labelMaker(_('Regexp'), true), this._reg);
-        addition._att(this._labelMaker(_('WMclass'), true), this._win);
-        addition._att(this._labelMaker(_('Tooltip'), true), this._tip);
+        let addition = _listGridMaker();
+        addition._att(_labelMaker(_('Apps'), true), this._app);
+        addition._att(_labelMaker(_('Regexp'), true), this._reg);
+        addition._att(_labelMaker(_('Tooltip'), true), this._tip);
         rightBox.pack_start(addition, false, false, 0);
 
         let outBox = new Gtk.HBox();
@@ -425,7 +539,7 @@ class LightDictPopup extends Gtk.Box {
         outBox.pack_start(new Gtk.Separator(), false, false, 0);
         outBox.pack_end(rightBox, true, true, 0);
 
-        this.add(this._frameWrapper(outBox));
+        this.add(_frameWrapper(outBox));
     }
 
     _syncStatus() {
@@ -436,52 +550,47 @@ class LightDictPopup extends Gtk.Box {
         this._prv.connect('clicked', this._onPrvClicked.bind(this));
         this._nxt.connect('clicked', this._onNxtClicked.bind(this));
 
-        this._ebl.connect('state-set', (widget, state) => { this._setConfig('enable', state); });
         this._pop.connect('state-set', (widget, state) => { this._setConfig('popup', state); });
         this._cmt.connect('state-set', (widget, state) => { this._setConfig('commit', state); });
         this._sel.connect('state-set', (widget, state) => { this._setConfig('select', state); });
         this._cpy.connect('state-set', (widget, state) => { this._setConfig('copy', state); });
+        this._app.connect('changed', widget => { this._setConfig('apps', widget.get_apps()); });
         this._typ.connect('changed', widget => { this._setConfig('type', widget.get_active()); });
         this._reg.connect('changed', widget => { this._setConfig('regexp', widget.get_text()); });
         this._cmd.connect('changed', widget => { this._setConfig('command', widget.get_text()); });
-        this._win.connect('changed', widget => { this._setConfig('wmclass', widget.get_text()); });
         this._tip.connect('changed', widget => { this._setConfig('tooltip', widget.get_text()); });
         this._ico.connect('changed', widget => { this._setConfig('icon', widget.get_text()); });
-        this._nam.connect('changed', widget => { this._setConfig('name', widget.get_text()); });
     }
 
     _onSelected() {
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
         this.isSetting = true;
-        this.conf = JSON.parse(this._commands[index]);
-        this._typ.set_active(this.conf.type || 0);
-        this._cpy.set_state(this.conf.copy || false);
-        this._cmt.set_state(this.conf.commit || false);
-        this._sel.set_state(this.conf.select || false);
-        this._pop.set_state(this.conf.popup || false);
-        this._ebl.set_state(this.conf.enable || false);
-        this._ico.set_text(this.conf.icon || '');
-        this._nam.set_text(this.conf.name || 'name');
-        this._win.set_text(this.conf.wmclass || '')
-        this._cmd.set_text(this.conf.command || '');
-        this._reg.set_text(this.conf.regexp || '');
-        this._tip.set_text(this.conf.tooltip || '');
+        let conf = JSON.parse(this._commands[index]);
+        let keys = ['type', 'copy', 'commit', 'select', 'popup', 'icon', 'apps', 'command', 'regexp', 'tooltip'];
+        for(let key in conf)
+            if(!keys.includes(key) || !conf[key]) delete conf[key];
+        this.conf = conf;
+
+        this._typ.set_active(this.conf?.type ?? 0);
+        this._cpy.set_state(this.conf?.copy ?? false);
+        this._cmt.set_state(this.conf?.commit ?? false);
+        this._sel.set_state(this.conf?.select ?? false);
+        this._pop.set_state(this.conf?.popup ?? false);
+        this._ico.set_text(this.conf?.icon ?? '');
+        this._app.set_apps(this.conf?.apps ?? '')
+        this._cmd.set_text(this.conf?.command ?? '');
+        this._reg.set_text(this.conf?.regexp ?? '');
+        this._tip.set_text(this.conf?.tooltip ?? '');
         this._toggleEditable();
         this.isSetting = false;
     }
 
     _toggleEditable() {
-        let toggle = (x, y) => {
-            x.set_editable(y);
-            x.secondary_icon_name = y ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
-        };
-        toggle(this._nam, !this.conf.name || this.conf.name == 'name');
-        toggle(this._ico, !this.conf.icon);
-        toggle(this._cmd, !this.conf.command);
-        toggle(this._win, !this.conf.wmclass);
-        toggle(this._reg, !this.conf.regexp);
-        toggle(this._tip, !this.conf.tooltip);
+        _toggleEdit(this._ico, this.conf.icon);
+        _toggleEdit(this._cmd, this.conf.command);
+        _toggleEdit(this._reg, this.conf.regexp);
+        _toggleEdit(this._tip, this.conf.tooltip);
     }
 
     get selected() {
@@ -496,9 +605,9 @@ class LightDictPopup extends Gtk.Box {
         [this._commands[index], this._commands[index - 1]] = [this._commands[index - 1], this._commands[index]]
         let p = JSON.parse(this._commands[index]);
         let q = JSON.parse(this._commands[index - 1]);
-        model.set(iter, [0, 1], [p.enable ? Orna.CHECK : Orna.NONE, p.name]);
+        model.set(iter, [0, 1], [!!p.enable, p.name]);
         model.iter_previous(iter);
-        model.set(iter, [0, 1], [q.enable ? Orna.CHECK : Orna.NONE, q.name]);
+        model.set(iter, [0, 1], [!!q.enable, q.name]);
         this._tre.get_selection().select_iter(iter);
         gsettings.set_strv(Fields.PCOMMANDS, this._commands);
     }
@@ -510,9 +619,9 @@ class LightDictPopup extends Gtk.Box {
         [this._commands[index], this._commands[index + 1]] = [this._commands[index + 1], this._commands[index]]
         let p = JSON.parse(this._commands[index]);
         let q = JSON.parse(this._commands[index + 1]);
-        model.set(iter, [0, 1], [p.enable ? Orna.CHECK : Orna.NONE, p.name]);
+        model.set(iter, [0, 1], [!!p.enable, p.name]);
         model.iter_next(iter);
-        model.set(iter, [0, 1], [q.enable ? Orna.CHECK : Orna.NONE, q.name]);
+        model.set(iter, [0, 1], [!!q.enable, q.name]);
         this._tre.get_selection().select_iter(iter);
         gsettings.set_strv(Fields.PCOMMANDS, this._commands);
     }
@@ -530,7 +639,7 @@ class LightDictPopup extends Gtk.Box {
         let [ok, model, iter, index] = this.selected;
         if(!ok) {
             this._commands.splice(0, 0, '{"name":"name"}');
-            model.set(model.insert(0), [0, 1], [Orna.NONE, 'name']);
+            model.set(model.insert(0), [0, 1], [false, 'name']);
             gsettings.set_strv(Fields.PCOMMANDS, this._commands);
             return;
         }
@@ -544,141 +653,67 @@ class LightDictPopup extends Gtk.Box {
         if(this.isSetting) return;
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
-        if(key == 'name')
-            model.set(iter, [1], [value]);
-        if(key == 'enable')
-            model.set(iter, [0], [value ? Orna.CHECK : Orna.NONE])
-        if(!value) {
-            delete this.conf[key];
-        } else {
-            this.conf[key] = value;
-        }
-        this._commands[index] = JSON.stringify(this.conf, null, 0);
+        this.conf[key] = value;
+        let conf = { name: model.get_value(iter, [1]) };
+        if(model.get_value(iter, [0])) conf.enable = true;
+        Object.assign(conf, clear(this.conf));
+
+        this._commands[index] = JSON.stringify(conf, null, 0);
         gsettings.set_strv(Fields.PCOMMANDS, this._commands);
     }
 
-    _frameWrapper(widget) {
-        let frame = new Gtk.Frame();
-        frame.add(widget);
-        return frame;
+    _setEnable(selected, enable) {
+        let model = this._tre.model;
+        let index = model.get_path(selected).get_indices()[0];
+        let conf = JSON.parse(this._commands[index]);
+        conf.enable = enable;
+        this._commands[index] = JSON.stringify(clear(conf), null, 0);
+        model.set(selected, [0], [enable]);
+        gsettings.set_strv(Fields.PCOMMANDS, this._commands);
+    }
+
+    _setName(selected, text) {
+        let model = this._tre.model;
+        let name = text ? text : 'name';
+        let index = model.get_path(selected).get_indices()[0];
+        let conf = JSON.parse(this._commands[index]);
+        conf.name = name;
+        this._commands[index] = JSON.stringify(conf, null, 0);
+        model.set(selected, [1], [name]);
+        gsettings.set_strv(Fields.PCOMMANDS, this._commands);
     }
 
     _treeViewMaker(commands) {
         let listStore = new Gtk.ListStore();
-        listStore.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
+        listStore.set_column_types([GObject.TYPE_BOOLEAN, GObject.TYPE_STRING]);
         let treeView = new Gtk.TreeView({ model: listStore, headers_visible: false });
         commands.forEach(x => {
             let conf = JSON.parse(x);
-            listStore.set(listStore.append(), [0, 1], [!!conf.enable ? Orna.CHECK : Orna.NONE, conf.name]);
+            listStore.set(listStore.append(), [0, 1], [!!conf.enable, conf.name]);
         });
 
-        let enable = new Gtk.CellRendererText({ editable: false });
-        let status = new Gtk.TreeViewColumn({ title: 'Status' });
-        status.pack_start(enable, false);
-        status.add_attribute(enable, 'text', 0);
+        let enable = new Gtk.CellRendererToggle({ radio: false });
+        let status = new Gtk.TreeViewColumn({ title: 'Enable' });
+        status.pack_start(enable, true);
+        status.add_attribute(enable, 'active', 0);
         treeView.append_column(status);
+        enable.connect('toggled', (actor, path) => {
+            let active = !actor.get_active();
+            let [ok, iter] = listStore.get_iter_from_string(path);
+            this._setEnable(iter, active);
+        });
 
-        let text = new Gtk.CellRendererText({ editable: false });
+        let text = new Gtk.CellRendererText({ editable: true });
         let name = new Gtk.TreeViewColumn({ title: 'Name' });
         name.pack_start(text, true);
         name.add_attribute(text, 'text', 1);
         treeView.append_column(name);
-
-        return treeView;
-    }
-
-    _treeeViewMaker(commands) {
-        let listStore = new Gtk.ListStore();
-        listStore.set_column_types([GObject.TYPE_STRING]);
-        let treeView = new Gtk.TreeView({ model: listStore });
-
-        let cell = new Gtk.CellRendererText({ editable: false });
-        let name = new Gtk.TreeViewColumn({ title: 'Name' });
-        name.pack_start(cell, true);
-        name.add_attribute(cell, 'text', 0);
-        treeView.append_column(name);
-        treeView.set_headers_visible(false);
-        // treeView.set_grid_lines(Gtk.TreeViewGridLines.HORIZONTAL);
-        commands.forEach(x => {
-            let conf = JSON.parse(x);
-            treeView.model.set(treeView.model.append(), [0], [conf.name]);
+        text.connect('edited', (actor, path, text) => {
+            let [ok, iter] = listStore.get_iter_from_string(path);
+            this._setName(iter, text);
         });
 
         return treeView;
-    }
-
-    _listGridMaker() {
-        let grid = new Gtk.Grid({
-            margin: 10,
-            hexpand: true,
-            row_spacing: 12,
-            column_spacing: 18,
-        });
-
-        grid._row = 0;
-        grid._add = (x, y) => {
-            const hbox = new Gtk.Box();
-            hbox.pack_start(x, true, true, 0);
-            hbox.pack_start(y, false, false, 0)
-            grid.attach(hbox, 0, grid._row++, 2, 1);
-        }
-        grid._att = (x, y, z) => {
-            let r = grid._row++;
-            if(z) {
-                let hbox = new Gtk.Box();
-                hbox.pack_start(y, false, false, 4);
-                hbox.pack_start(z, true, true, 4);
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(hbox, 1, r, 1, 1);
-            } else {
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(y, 1, r, 1, 1);
-            }
-        }
-
-        return grid;
-    }
-
-    _labelMaker(x, y) {
-        return new Gtk.Label({
-            label: x,
-            hexpand: y ? false : true,
-            halign: Gtk.Align.START,
-        });
-    }
-
-    _entryMaker(x, y, z) {
-        let entry = new Gtk.Entry({
-            editable: false,
-            placeholder_text: x,
-            hexpand: z ? false : true,
-            secondary_icon_sensitive: true,
-            secondary_icon_tooltip_text: y,
-            secondary_icon_activatable: true,
-            secondary_icon_name: 'action-unavailable',
-        });
-        entry.connect('icon-press', () => {
-            if(entry.get_editable()) {
-                entry.set_editable(false);
-                entry.secondary_icon_name = 'action-unavailable'
-            } else {
-                entry.set_editable(true);
-                entry.secondary_icon_name = 'document-edit-symbolic';
-            }
-        });
-        return entry;
-    }
-
-    _comboMaker(ops, tip) {
-        let l = new Gtk.ListStore();
-        l.set_column_types([GObject.TYPE_STRING]);
-        ops.forEach(op => l.set(l.append(), [0], [op]));
-        let c = new Gtk.ComboBox({ model: l });
-        let r = new Gtk.CellRendererText();
-        if(tip) c.set_tooltip_text(tip);
-        c.pack_start(r, false);
-        c.add_attribute(r, 'text', 0);
-        return c;
     }
 });
 
@@ -706,16 +741,14 @@ class LightDictSwift extends Gtk.Box {
         this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }) });
         this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
 
-        this._ebl = new Gtk.Switch();
         this._pop = new Gtk.Switch();
         this._cmt = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
         this._sel = new Gtk.Switch();
-        this._typ = this._comboMaker(['sh', 'JS'], _('Command type'));
-        this._nam = this._entryMaker('Link', _('Showing on the left side'), true);
-        this._win = this._entryMaker('yelp,evince,gedit', _('Allowed to function'));
-        this._cmd = this._entryMaker('gio open LDWORD', _('Executed when clicking'));
-        this._reg = this._entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
+        this._typ = _comboMaker(['sh', 'JS'], _('Command type'));
+        this._app = new LightDictAppBox('', _('Leave blank for no restriction'), _('Allowed to function'));
+        this._cmd = _entryMaker('gio open LDWORD', _('Executed when clicking'));
+        this._reg = _entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
     }
 
     _buildUI() {
@@ -730,27 +763,25 @@ class LightDictSwift extends Gtk.Box {
         leftBox.pack_end(toolBar, false, false, 0);
 
         let rightBox = new Gtk.VBox({});
-        let basic = this._listGridMaker();
-        basic._add(this._labelMaker(_('Enable')), this._ebl);
-        basic._add(this._labelMaker(_('Name'), true), this._nam);
-        rightBox.pack_start(basic, false, false, 0);
-        rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let details = this._listGridMaker();
-        details._att(this._labelMaker(_('Command'), true), this._cmd);
-        details._add(this._labelMaker(_('Command type')), this._typ);
-        details._add(this._labelMaker(_('Show result')), this._pop);
-        details._add(this._labelMaker(_('Copy result')), this._cpy);
-        details._add(this._labelMaker(_('Select result')), this._sel);
-        details._add(this._labelMaker(_('Commit result')), this._cmt);
+        let details = _listGridMaker();
+        details._att(_labelMaker(_('Command'), true), this._cmd);
+        details._add(_labelMaker(_('Command type')), this._typ);
+        details._add(_labelMaker(_('Show result')), this._pop);
+        details._add(_labelMaker(_('Copy result')), this._cpy);
+        details._add(_labelMaker(_('Select result')), this._sel);
+        details._add(_labelMaker(_('Commit result')), this._cmt);
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let addition = this._listGridMaker();
-        addition._att(this._labelMaker(_('Regexp'), true), this._reg);
-        addition._att(this._labelMaker(_('WMclass'), true), this._win);
+        let addition = _listGridMaker();
+        addition._att(_labelMaker(_('Apps'), true), this._app);
+        addition._att(_labelMaker(_('Regexp'), true), this._reg);
         rightBox.pack_start(addition, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let info = this._listGridMaker();
-        info._att(this._labelMaker(_('Only one item can be enabled in swift mode.\nIf none is enabled the first one will be used by default.')));
+        let info = _listGridMaker();
+        info._att(_labelMaker(_('Only one item can be enabled in swift mode.\n') +
+                              _('If none is enabled the first one will be used by default.\n') +
+                              _('Double click a list item on the left to change the name.')
+        ));
         rightBox.pack_start(info, false, false, 0);
 
         let outBox = new Gtk.HBox();
@@ -758,7 +789,7 @@ class LightDictSwift extends Gtk.Box {
         outBox.pack_start(new Gtk.Separator(), false, false, 0);
         outBox.pack_end(rightBox, true, true, 0);
 
-        this.add(this._frameWrapper(outBox));
+        this.add(_frameWrapper(outBox));
     }
 
     _syncStatus() {
@@ -769,60 +800,41 @@ class LightDictSwift extends Gtk.Box {
         this._prv.connect('clicked', this._onPrvClicked.bind(this));
         this._nxt.connect('clicked', this._onNxtClicked.bind(this));
 
-        this._ebl.connect('state-set', (widget, state) => { this._setConfig('enable', state); });
         this._pop.connect('state-set', (widget, state) => { this._setConfig('popup', state); });
         this._cmt.connect('state-set', (widget, state) => { this._setConfig('commit', state); });
         this._sel.connect('state-set', (widget, state) => { this._setConfig('select', state); });
         this._cpy.connect('state-set', (widget, state) => { this._setConfig('copy', state); });
+        this._app.connect('changed', widget => { this._setConfig('apps', widget.get_apps()); });
         this._typ.connect('changed', widget => { this._setConfig('type', widget.get_active()); });
         this._reg.connect('changed', widget => { this._setConfig('regexp', widget.get_text()); });
         this._cmd.connect('changed', widget => { this._setConfig('command', widget.get_text()); });
-        this._win.connect('changed', widget => { this._setConfig('wmclass', widget.get_text()); });
-        this._nam.connect('changed', widget => { this._setConfig('name', widget.get_text()); });
     }
 
     _onSelected() {
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
         this.isSetting = true;
-        this.conf = JSON.parse(this._commands[index]);
-        this._typ.set_active(this.conf.type || 0);
-        this._cpy.set_state(this.conf.copy || false);
-        this._cmt.set_state(this.conf.commit || false);
-        this._sel.set_state(this.conf.select || false);
-        this._pop.set_state(this.conf.popup || false);
-        this._ebl.set_state(this.conf.enable || false);
-        this._nam.set_text(this.conf.name || 'name');
-        this._win.set_text(this.conf.wmclass || '')
-        this._cmd.set_text(this.conf.command || '');
-        this._reg.set_text(this.conf.regexp || '');
+        let conf = JSON.parse(this._commands[index]);
+        let keys = ['type', 'copy', 'commit', 'select', 'popup', 'apps', 'command', 'regexp'];
+        for(let key in conf)
+            if(!keys.includes(key) || !conf[key]) delete conf[key];
+        this.conf = conf;
+
+        this._typ.set_active(this.conf?.type ?? 0);
+        this._cpy.set_state(this.conf?.copy ?? false);
+        this._cmt.set_state(this.conf?.commit ?? false);
+        this._sel.set_state(this.conf?.select ?? false);
+        this._pop.set_state(this.conf?.popup ?? false);
+        this._app.set_apps(this.conf?.apps ?? '')
+        this._cmd.set_text(this.conf?.command ?? '');
+        this._reg.set_text(this.conf?.regexp ?? '');
         this._toggleEditable();
         this.isSetting = false;
     }
 
     _toggleEditable() {
-        let toggle = (x, y) => {
-            x.set_editable(y);
-            x.secondary_icon_name = y ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
-        };
-        toggle(this._nam, !this.conf.name || this.conf.name == 'name');
-        toggle(this._cmd, !this.conf.command);
-        toggle(this._win, !this.conf.wmclass);
-        toggle(this._reg, !this.conf.regexp);
-    }
-
-    _clearOrnament() {
-        let model = this._tre.model;
-        let [ok, iter] = model.get_iter_first();
-        if(!ok) return;
-        do {
-            model.set(iter, [0], ['']);
-        } while(model.iter_next(iter));
-        this._commands = this._commands.map(c => {
-            let conf = JSON.parse(c);
-            delete conf['enable'];
-            return JSON.stringify(conf, null, 0);
-        })
+        _toggleEdit(this._cmd, this.conf.command);
+        _toggleEdit(this._reg, this.conf.regexp);
     }
 
     get selected() {
@@ -844,9 +856,9 @@ class LightDictSwift extends Gtk.Box {
 
         [this._commands[index], this._commands[index - 1]] = [this._commands[index - 1], this._commands[index]]
         let enable = this.enable;
-        model.set(iter, [0, 1], [enable == index ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index]).name]);
+        model.set(iter, [0, 1], [enable == index, JSON.parse(this._commands[index]).name]);
         model.iter_previous(iter);
-        model.set(iter, [0, 1], [enable == index - 1 ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index - 1]).name]);
+        model.set(iter, [0, 1], [enable == index - 1, JSON.parse(this._commands[index - 1]).name]);
         this._tre.get_selection().select_iter(iter);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
         gsettings.set_strv(Fields.SCOMMANDS, this._commands);
@@ -858,9 +870,9 @@ class LightDictSwift extends Gtk.Box {
 
         [this._commands[index], this._commands[index + 1]] = [this._commands[index + 1], this._commands[index]]
         let enable = this.enable;
-        model.set(iter, [0, 1], [enable == index ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index]).name]);
+        model.set(iter, [0, 1], [enable == index, JSON.parse(this._commands[index]).name]);
         model.iter_next(iter);
-        model.set(iter, [0, 1], [enable == index + 1 ? Orna.DOT : Orna.NONE, JSON.parse(this._commands[index + 1]).name]);
+        model.set(iter, [0, 1], [enable == index + 1, JSON.parse(this._commands[index + 1]).name]);
         this._tre.get_selection().select_iter(iter);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
         gsettings.set_strv(Fields.SCOMMANDS, this._commands);
@@ -881,14 +893,14 @@ class LightDictSwift extends Gtk.Box {
         let [ok, model, iter, index] = this.selected;
         if(!ok) {
             this._commands.splice(0, 0, '{"name":"name"}');
-            model.set(model.insert(0), [0, 1], [Orna.NONE, 'name']);
+            model.set(model.insert(0), [0, 1], [false, 'name']);
             gsettings.set_strv(Fields.SCOMMANDS, this._commands);
             return;
         }
 
         this._commands.splice(index + 1, 0, '{"name":"name"}');
         let enable = this.enable;
-        model.set(model.insert(index + 1), [0, 1], [Orna.NONE, 'name']);
+        model.set(model.insert(index + 1), [0, 1], [false, 'name']);
         if(enable != this.enabled) gsettings.set_int(Fields.SCOMMAND, enable);
         gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
@@ -897,143 +909,79 @@ class LightDictSwift extends Gtk.Box {
         if(this.isSetting) return;
         let [ok, model, iter, index] = this.selected;
         if(!ok) return;
-        if(key == 'name')
-            model.set(iter, [1], [value]);
-        if(key == 'enable') {
-            this._clearOrnament();
-            if(value) {
-                this.conf[key] = value;
-                model.set(iter, [0], [Orna.DOT]);
-                gsettings.set_int(Fields.SCOMMAND, index);
-            } else {
-                delete this.conf[key];
-            }
-        } else {
-            if(!value) {
-                delete this.conf[key];
-            } else {
-                this.conf[key] = value;
-            }
-        }
-        this._commands[index] = JSON.stringify(this.conf, null, 0);
+        this.conf[key] = value;
+        let conf = { name: model.get_value(iter, [1]) };
+        if(model.get_value(iter, [0])) conf.enable = true;
+        Object.assign(conf, clear(this.conf));
+
+        this._commands[index] = JSON.stringify(conf, null, 0);
         gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
-    _frameWrapper(widget) {
-        let frame = new Gtk.Frame();
-        frame.add(widget);
-        return frame;
+    _setEnable(selected, enable) {
+        let model = this._tre.model;
+        let [ok, iter] = model.get_iter_first();
+        if(!ok) return;
+        do {
+            model.set(iter, [0], [false]);
+        } while(model.iter_next(iter));
+        let index = model.get_path(selected).get_indices()[0];
+        this._commands = this._commands.map((c, i) => {
+            let conf = JSON.parse(c);
+            if(i == index && enable) {
+                conf.enable = true;
+                gsettings.set_int(Fields.SCOMMAND, index);
+            } else {
+                delete conf['enable'];
+            }
+            return JSON.stringify(conf, null, 0);
+        });
+        model.set(selected, [0], [enable]);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
+    }
+
+    _setName(selected, text) {
+        let model = this._tre.model;
+        let name = text ? text : 'name';
+        let index = model.get_path(selected).get_indices()[0];
+        let conf = JSON.parse(this._commands[index]);
+        conf.name = name;
+        this._commands[index] = JSON.stringify(clear(conf), null, 0);
+        model.set(selected, [1], [name]);
+        gsettings.set_strv(Fields.SCOMMANDS, this._commands);
     }
 
     _treeViewMaker(commands) {
         let listStore = new Gtk.ListStore();
-        listStore.set_column_types([GObject.TYPE_STRING, GObject.TYPE_STRING]);
+        listStore.set_column_types([GObject.TYPE_BOOLEAN, GObject.TYPE_STRING]);
         let treeView = new Gtk.TreeView({ model: listStore, headers_visible: false });
         commands.forEach(x => {
             let conf = JSON.parse(x);
-            listStore.set(listStore.append(), [0, 1], [!!conf.enable ? Orna.DOT : Orna.NONE, conf.name]);
+            listStore.set(listStore.append(), [0, 1], [!!conf.enable, conf.name]);
         });
 
-        // NOTE: the radio is not togglable
-        // let enable = new Gtk.CellRendererToggle({ radio: false });
-        // let status = new Gtk.TreeViewColumn({ title: 'Enable' });
-        // status.add_attribute(enable, 'active', 0);
-        // status.pack_start(enable, true);
-        // treeView.append_column(status);
-        // enable.connect('toggled', (actor, path) => {
-        //     let active = !actor.get_active();
-        //     let [ok, iter] = listStore.get_iter_from_string(path);
-        //     listStore.set(iter, [0], [active]);
-        // });
-        let enable = new Gtk.CellRendererText({ editable: false });
-        let status = new Gtk.TreeViewColumn({ title: 'Status' });
-        status.pack_start(enable, false);
-        status.add_attribute(enable, 'text', 0);
+        let enable = new Gtk.CellRendererToggle({ radio: true });
+        let status = new Gtk.TreeViewColumn({ title: 'Enable' });
+        status.pack_start(enable, true);
+        status.add_attribute(enable, 'active', 0);
         treeView.append_column(status);
+        enable.connect('toggled', (actor, path) => {
+            let active = !actor.get_active();
+            let [ok, iter] = listStore.get_iter_from_string(path);
+            this._setEnable(iter, active);
+        });
 
-        let text = new Gtk.CellRendererText({ editable: false });
+        let text = new Gtk.CellRendererText({ editable: true });
         let name = new Gtk.TreeViewColumn({ title: 'Name' });
         name.pack_start(text, true);
         name.add_attribute(text, 'text', 1);
         treeView.append_column(name);
-        // treeView.set_grid_lines(Gtk.TreeViewGridLines.HORIZONTAL);
+        text.connect('edited', (actor, path, text) => {
+            let [ok, iter] = listStore.get_iter_from_string(path);
+            this._setName(iter, text);
+        });
+
         return treeView;
-    }
-
-    _listGridMaker() {
-        let grid = new Gtk.Grid({
-            margin: 10,
-            hexpand: true,
-            row_spacing: 12,
-            column_spacing: 18,
-        });
-
-        grid._row = 0;
-        grid._add = (x, y) => {
-            const hbox = new Gtk.Box();
-            hbox.pack_start(x, true, true, 0);
-            hbox.pack_start(y, false, false, 0)
-            grid.attach(hbox, 0, grid._row++, 2, 1);
-        }
-        grid._att = (x, y, z) => {
-            let r = grid._row++;
-            if(z) {
-                let hbox = new Gtk.Box();
-                hbox.pack_start(y, false, false, 4);
-                hbox.pack_start(z, true, true, 4);
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(hbox, 1, r, 1, 1);
-            } else if(y) {
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(y, 1, r, 1, 1);
-            } else {
-                grid.attach(x, 0, r, 1, 2)
-            }
-        }
-
-        return grid;
-    }
-
-    _labelMaker(x, y) {
-        return new Gtk.Label({
-            label: x,
-            hexpand: y ? false : true,
-            halign: Gtk.Align.START,
-        });
-    }
-
-    _entryMaker(x, y, z) {
-        let entry = new Gtk.Entry({
-            editable: false,
-            placeholder_text: x,
-            hexpand: z ? false : true,
-            secondary_icon_sensitive: true,
-            secondary_icon_tooltip_text: y,
-            secondary_icon_activatable: true,
-            secondary_icon_name: 'action-unavailable',
-        });
-        entry.connect('icon-press', () => {
-            if(entry.get_editable()) {
-                entry.set_editable(false);
-                entry.secondary_icon_name = 'action-unavailable'
-            } else {
-                entry.set_editable(true);
-                entry.secondary_icon_name = 'document-edit-symbolic';
-            }
-        });
-        return entry;
-    }
-
-    _comboMaker(ops, tip) {
-        let l = new Gtk.ListStore();
-        l.set_column_types([GObject.TYPE_STRING]);
-        ops.forEach(op => l.set(l.append(), [0], [op]));
-        let c = new Gtk.ComboBox({ model: l });
-        let r = new Gtk.CellRendererText();
-        if(tip) c.set_tooltip_text(tip);
-        c.pack_start(r, false);
-        c.add_attribute(r, 'text', 0);
-        return c;
     }
 });
 

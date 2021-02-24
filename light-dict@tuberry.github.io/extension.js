@@ -18,6 +18,7 @@ const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
+const ListType = { Allow: 0, Block: 1 };
 const TriggerType = { Swift: 0, Popup: 1, Disable: 2 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
@@ -27,6 +28,20 @@ const DBUSINTERFACE = `
             <arg type="s" direction="in" name="word"/>
         </method>
         <method name="Popup">
+            <arg type="s" direction="in" name="word"/>
+        </method>
+        <method name="SwiftR">
+            <arg type="i" direction="in" name="x"/>
+            <arg type="i" direction="in" name="y"/>
+            <arg type="i" direction="in" name="width"/>
+            <arg type="i" direction="in" name="height"/>
+            <arg type="s" direction="in" name="word"/>
+        </method>
+        <method name="PopupR">
+            <arg type="i" direction="in" name="x"/>
+            <arg type="i" direction="in" name="y"/>
+            <arg type="i" direction="in" name="width"/>
+            <arg type="i" direction="in" name="height"/>
             <arg type="s" direction="in" name="word"/>
         </method>
         <method name="Toggle">
@@ -48,11 +63,10 @@ const DictBar = GObject.registerClass({
         'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
     },
 }, class DictBar extends BoxPointer.BoxPointer {
-    _init(actor, align) {
+    _init() {
         super._init(St.Side.BOTTOM);
         this.style_class = 'light-dict-bar-boxpointer';
         Main.layoutManager.addTopChrome(this);
-        this.setPosition(actor, align);
 
         this._pages = 1;
         this._index = 1;
@@ -154,13 +168,13 @@ const DictBar = GObject.registerClass({
         }
     }
 
-    _updateVisible(wmclass, text) {
+    _updateVisible(app, text) {
         this._icons.forEach(x => {
-            switch((!!x.windows << 1) + !!x.regexp) {
+            switch((!!x.apps << 1) + !!x.regexp) {
             case 0: x._visible = true; break;
             case 1: x._visible = RegExp(x.regexp).test(text); break;
-            case 2: x._visible = x.windows.toLowerCase().includes(wmclass.toLowerCase()); break;
-            case 3: x._visible = x.windows.toLowerCase().includes(wmclass.toLowerCase()) & RegExp(x.regexp).test(text); break;
+            case 2: x._visible = x.apps.includes(app); break;
+            case 3: x._visible = x.apps.includes(app) & RegExp(x.regexp).test(text); break;
             }
         });
         this._updatePages();
@@ -242,12 +256,11 @@ const DictBox = GObject.registerClass({
         'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
     },
 }, class DictBox extends BoxPointer.BoxPointer {
-    _init(actor, align) {
+    _init() {
         super._init(St.Side.TOP);
         this.style_class = 'light-dict-box-boxpointer';
         this.style = '-arrow-border-radius: 10px;';
         Main.layoutManager.addTopChrome(this);
-        this.setPosition(actor, align); // NOTE: disable => enable :: ...internal: assertion '!isnan (box->x1)...
 
         this._selection = '';
         this._notFound = false;
@@ -454,7 +467,7 @@ const DictBtn = GObject.registerClass({
         'trigger': GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
     },
     Signals: {
-        'add-or-remove-wmclass': {},
+        'add-or-remove-app': {},
     },
 }, class DictBtn extends PanelMenu.Button {
     _init(params) {
@@ -563,8 +576,8 @@ const DictBtn = GObject.registerClass({
         Object.keys(TriggerType).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Swift commands')));
         this.menu.addMenuItem(this._scommandsMenu());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current window')));
-        this.menu.addMenuItem(this._wmlistItem());
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current application')));
+        this.menu.addMenuItem(this._applistItem());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('More')));
         this.menu.addMenuItem(this._settingItem());
     }
@@ -587,9 +600,9 @@ const DictBtn = GObject.registerClass({
         return item;
     }
 
-    _wmlistItem() {
+    _applistItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.connect('activate', () => { item._getTopMenu().close(); this.emit('add-or-remove-wmclass'); });
+        item.connect('activate', () => { item._getTopMenu().close(); this.emit('add-or-remove-app'); });
         item.add_child(new St.Label({ x_expand: true, text: _('Add/remove'), }));
 
         return item;
@@ -607,7 +620,7 @@ const DictBtn = GObject.registerClass({
 const LightDict = GObject.registerClass({
     Properties: {
         'filter':    GObject.param_spec_string('filter', 'filter', 'filter', '', GObject.ParamFlags.READWRITE),
-        'wmlist':    GObject.param_spec_string('wmlist', 'wmlist', 'wmclass list', '', GObject.ParamFlags.READWRITE),
+        'applist':   GObject.param_spec_string('applist', 'applist', 'app list', '', GObject.ParamFlags.READWRITE),
         'systray':   GObject.param_spec_boolean('systray', 'systray', 'systray', true, GObject.ParamFlags.WRITABLE),
         'passive':   GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
         'trigger':   GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
@@ -615,25 +628,20 @@ const LightDict = GObject.registerClass({
         'textstrip': GObject.param_spec_boolean('textstrip', 'textstrip', 'strip text', true, GObject.ParamFlags.READWRITE),
         'scommand':  GObject.param_spec_int('scommand', 'scommand', 'swift command', -1, 2000, 0, GObject.ParamFlags.READWRITE),
     },
-}, class LightDict extends St.Widget {
+}, class LightDict extends GObject.Object {
     _init() {
-        super._init({
-            width: 40,
-            height: 40,
-            opacity: 0,
-        });
-        Main.uiGroup.add_actor(this);
+        super._init();
 
         this._block = false;
         this._selection = '';
-        this._wmclass = global.display.focus_window?.wm_class ?? '';
+        this._app = this.appid;
 
         this._bindSettings();
         this._buildWidgets();
     }
 
     _bindSettings() {
-        gsettings.bind(Fields.WMLIST,    this, 'wmlist',    Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPLIST,   this, 'applist',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,   this, 'trigger',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this, 'systray',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TXTFILTER, this, 'filter',    Gio.SettingsBindFlags.GET);
@@ -647,8 +655,8 @@ const LightDict = GObject.registerClass({
 
     _buildWidgets() {
         this._act = new DictAct();
-        this._box = new DictBox(this, 0);
-        this._bar = new DictBar(this, 0);
+        this._box = new DictBox(Main.layoutManager.dummyCursor, 0);
+        this._bar = new DictBar(Main.layoutManager.dummyCursor, 0);
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
@@ -662,7 +670,7 @@ const LightDict = GObject.registerClass({
         if(systray) {
             if(this._button) return;
             this._button = new DictBtn(null);
-            this._button.connect('add-or-remove-wmclass', this.Block.bind(this));
+            this._button.connect('add-or-remove-app', this.Block.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
             if(!this._button) return;
@@ -671,8 +679,15 @@ const LightDict = GObject.registerClass({
         }
     }
 
+    set _cursor(cursor) {
+        Main.layoutManager.setDummyCursorGeometry(...cursor);
+        if(this._box.visible) this._box.setPosition(Main.layoutManager.dummyCursor, 0);
+        if(this._bar.visible) this._bar.setPosition(Main.layoutManager.dummyCursor, 0);
+    }
+
     set _pointer(pointer) {
-        this.set_position(pointer[0] - 20, pointer[1] - 20);
+        const size = Meta.prefs_get_cursor_size() * 0.8;
+        this._cursor = [pointer[0] - size, pointer[1] - size, size + size, size + size];
     }
 
     set scommands(cmds) {
@@ -687,14 +702,22 @@ const LightDict = GObject.registerClass({
     }
 
     get _allow() {
-        let wlist = !this.wmlist || this.wmlist.toLowerCase().includes(this._wmclass.toLowerCase());
-        return (this.listtype == 0)^wlist;
+        return this.listtype ^ this.applist.includes(this._app);
     }
 
     _onWindowChanged() {
         this._box._hide();
         this._bar._hide();
-        this._wmclass = global.display.focus_window?.wm_class ?? '';
+        this._app = this.appid;
+    }
+
+    get appid() {
+        try {
+            let app = Shell.WindowTracker.get_default().get_window_app(global.display.focus_window);
+            return app != null && !app.is_window_backed() ? app.get_id() : '';
+        } catch(e) {
+            return '';
+        }
     }
 
     _onSelectChanged(sel, type, src) {
@@ -753,6 +776,16 @@ const LightDict = GObject.registerClass({
         });
     }
 
+    _storeR(x, y, w, h, text) {
+        return new Promise((resolve, reject) => {
+            let selection = this.textstrip ? text.replace(/[\n\t]/g, ' ').trim() : text;
+            if(!selection) reject();
+            this._selection = selection;
+            this._cursor = [x, y, w, h];
+            resolve();
+        });
+    }
+
     _execute(cmd) {
         return new Promise((resolve, reject) => {
             try {
@@ -773,7 +806,7 @@ const LightDict = GObject.registerClass({
     }
 
     _runWithSh(cmd, pop, cpy, cmt, sel) {
-        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/WMCLASS/g, GLib.shell_quote(this._wmclass));
+        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/APPID/g, GLib.shell_quote(this._app));
         if(pop|cpy|cmt|sel) {
             this._execute(rcmd).then(scc => {
                 if(sel) this._select(scc);
@@ -790,7 +823,7 @@ const LightDict = GObject.registerClass({
 
     _runWithJS(cmd, pop, cpy, cmt, sel) {
         try {
-            let WMCLASS = this._wmclass;
+            let APPID = this._app;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
             let copy = x => this._act.copy(x);
@@ -823,8 +856,8 @@ const LightDict = GObject.registerClass({
     _swift() {
         this._box._hide();
         if(!this._scmd) return;
+        if(this._scmd.apps && !this._scmd.apps.includes(this._app)) return;
         if(this._scmd.regexp && !RegExp(this._scmd.regexp).test(this._selection)) return;
-        if(this._scmd.window && !this._scmd.windows.toLowerCase().includes(this._wmclass.toLowerCase())) return;
         if(this._scmd.type) {
             this._runWithJS(this._scmd.command, this._scmd.popup, this._scmd.copy, this._scmd.commit, this._scmd.select);
         } else {
@@ -834,7 +867,7 @@ const LightDict = GObject.registerClass({
 
     _popup() {
         this._box._hide();
-        this._bar._show(this._wmclass, this._selection);
+        this._bar._show(this._app, this._selection);
     }
 
     Swift(word) {
@@ -845,12 +878,22 @@ const LightDict = GObject.registerClass({
         }
     }
 
+    SwiftR(x, y, w, h, word) {
+        if(!word) return;
+        this._storeR(x, y, w, h, word).then(this._swift.bind(this));
+    }
+
     Popup(word) {
         if(word) {
             this._store(word).then(this._popup.bind(this));
         } else {
             this._fetch().then(this._store.bind(this)).then(this._popup.bind(this));
         }
+    }
+
+    PopupR(x, y, w, h, word) {
+        if(!word) return;
+        this._storeR(x, y, w, h, word).then(this._popup.bind(this));
     }
 
     Toggle() {
@@ -860,17 +903,17 @@ const LightDict = GObject.registerClass({
     }
 
     Block() {
-        if(!this._wmclass) return;
-        if(!this.wmlist) {
-            this.wmlist = this._wmclass;
+        if(!this._app) return;
+        if(!this.applist) {
+            this.applist = this._app;
         } else {
-            let wmlist = this.wmlist.split(',');
-            if(this.wmlist.includes(this._wmclass)) {
-                wmlist.splice(wmlist.indexOf(this._wmclass), 1);
+            let applist = this.applist.split(',');
+            if(this.applist.includes(this._app)) {
+                applist.splice(applist.indexOf(this._app), 1);
             } else {
-                wmlist.push(this._wmclass);
+                applist.push(this._app);
             }
-            this.wmlist = wmlist.join(',');
+            this.applist = applist.join(',');
         }
     }
 
@@ -894,7 +937,6 @@ const LightDict = GObject.registerClass({
         delete this._bar;
         delete this._box;
         delete this._act;
-        super.destroy();
     }
 });
 

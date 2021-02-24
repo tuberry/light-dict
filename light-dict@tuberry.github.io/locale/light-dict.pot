@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Light Dict 40\n"
+"Project-Id-Version: Light Dict 42\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-01-31 17:55+0800\n"
+"POT-Creation-Date: 2021-02-24 13:02+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,257 +17,255 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:519 extension.js:533
+#: extension.js:531 extension.js:545
 msgid "Enabled: "
 msgstr ""
 
-#: extension.js:563 prefs.js:209
+#: extension.js:575 prefs.js:414
 msgid "Trigger style"
 msgstr ""
 
-#: extension.js:565
+#: extension.js:577
 msgid "Swift commands"
 msgstr ""
 
-#: extension.js:567
-msgid "Current window"
+#: extension.js:579
+msgid "Current application"
 msgstr ""
 
-#: extension.js:569
+#: extension.js:581
 msgid "More"
 msgstr ""
 
-#: extension.js:586
+#: extension.js:598
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:594
+#: extension.js:606
 msgid "Add/remove"
 msgstr ""
 
-#: extension.js:602
+#: extension.js:614
 msgid "Settings"
 msgstr ""
 
-#: extension.js:863
+#: extension.js:901
 #, javascript-format
 msgid "Switch to %s mode"
 msgstr ""
 
-#: prefs.js:50
+#: prefs.js:48
 msgid "Basic"
 msgstr ""
 
-#: prefs.js:54 prefs.js:195
+#: prefs.js:49 prefs.js:400
 msgid "Swift"
 msgstr ""
 
-#: prefs.js:58 prefs.js:195 prefs.js:218
+#: prefs.js:50 prefs.js:400 prefs.js:423
 msgid "Popup"
 msgstr ""
 
-#: prefs.js:62
+#: prefs.js:51
 msgid "About"
 msgstr ""
 
-#: prefs.js:121
+#: prefs.js:326
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:122
+#: prefs.js:327
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
 msgstr ""
 
-#: prefs.js:138
+#: prefs.js:343
 msgid "Tips"
 msgstr ""
 
-#: prefs.js:145
+#: prefs.js:350
 msgid "Substitute <b>LDWORD</b> for the selected text in the command"
 msgstr ""
 
-#: prefs.js:146
+#: prefs.js:351
 msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
 msgstr ""
 
-#: prefs.js:147
+#: prefs.js:352
 msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
 msgstr ""
 
-#: prefs.js:148
+#: prefs.js:353
 msgid ""
 "Hold <b>Alt/Shift</b> to invoke when highlighting in <b>Passive mode</b>"
 msgstr ""
 
-#: prefs.js:194
-msgid "Blocklist"
-msgstr ""
-
-#: prefs.js:194
+#: prefs.js:399
 msgid "Allowlist"
 msgstr ""
 
-#: prefs.js:195
+#: prefs.js:399
+msgid "Blocklist"
+msgstr ""
+
+#: prefs.js:400
 msgid "Disable"
 msgstr ""
 
-#: prefs.js:196
+#: prefs.js:401
 msgid "Proactive"
 msgstr ""
 
-#: prefs.js:196
+#: prefs.js:401
 msgid "Passive"
 msgstr ""
 
-#: prefs.js:196
+#: prefs.js:401
 msgid "Need modifier to trigger or not"
 msgstr ""
 
-#: prefs.js:198
+#: prefs.js:402
+msgid "Click app icon to remove"
+msgstr ""
+
+#: prefs.js:404
 msgid "Left click to execute"
 msgstr ""
 
-#: prefs.js:199
-msgid "Text RegExp filter in Passive mode"
+#: prefs.js:405
+msgid "Text RegExp filter"
 msgstr ""
 
-#: prefs.js:200
-msgid "Allowlist/blocklist (leave blank to indicate all)"
-msgstr ""
-
-#: prefs.js:201
+#: prefs.js:406
 msgid "Right click to execute and hide panel"
 msgstr ""
 
-#: prefs.js:205
+#: prefs.js:410
 msgid "Common"
 msgstr ""
 
-#: prefs.js:206
+#: prefs.js:411
 msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:207
+#: prefs.js:412
 msgid "Trim whitespaces"
 msgstr ""
 
-#: prefs.js:208
+#: prefs.js:413
 msgid "Autohide interval"
 msgstr ""
 
-#: prefs.js:210
-msgid "WMclass list"
+#: prefs.js:415
+msgid "Application list"
 msgstr ""
 
-#: prefs.js:211
+#: prefs.js:416
 msgid "Text filter"
 msgstr ""
 
-#: prefs.js:213
+#: prefs.js:418
 msgid "Panel"
 msgstr ""
 
-#: prefs.js:214
+#: prefs.js:419
 msgid "Hide title"
 msgstr ""
 
-#: prefs.js:215
+#: prefs.js:420
 msgid "Right click"
 msgstr ""
 
-#: prefs.js:216
+#: prefs.js:421
 msgid "Left click"
 msgstr ""
 
-#: prefs.js:219
+#: prefs.js:424
 msgid "Enable tooltips"
 msgstr ""
 
-#: prefs.js:220
+#: prefs.js:425
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:221
+#: prefs.js:426
 msgid "Horizontal offset"
 msgstr ""
 
-#: prefs.js:381 prefs.js:410 prefs.js:714 prefs.js:740
-msgid "Command type"
+#: prefs.js:501 prefs.js:749
+msgid "Leave blank for no restriction"
 msgstr ""
 
-#: prefs.js:382 prefs.js:715
-msgid "Showing on the left side"
-msgstr ""
-
-#: prefs.js:383
-msgid "Showing in the popup icon bar"
-msgstr ""
-
-#: prefs.js:384 prefs.js:717
-msgid "Executed when clicking"
-msgstr ""
-
-#: prefs.js:385 prefs.js:716
+#: prefs.js:501 prefs.js:749
 msgid "Allowed to function"
 msgstr ""
 
-#: prefs.js:386
+#: prefs.js:502 prefs.js:524 prefs.js:748 prefs.js:768
+msgid "Command type"
+msgstr ""
+
+#: prefs.js:503
+msgid "Showing in the popup icon bar"
+msgstr ""
+
+#: prefs.js:504 prefs.js:750
+msgid "Executed when clicking"
+msgstr ""
+
+#: prefs.js:505
 msgid "Showing when hovering"
 msgstr ""
 
-#: prefs.js:387 prefs.js:718
+#: prefs.js:506 prefs.js:751
 msgid "Text RegExp matcher"
 msgstr ""
 
-#: prefs.js:403 prefs.js:734
-msgid "Enable"
-msgstr ""
-
-#: prefs.js:404 prefs.js:735
-msgid "Name"
-msgstr ""
-
-#: prefs.js:408
+#: prefs.js:522
 msgid "Icon"
 msgstr ""
 
-#: prefs.js:409 prefs.js:739
+#: prefs.js:523 prefs.js:767
 msgid "Command"
 msgstr ""
 
-#: prefs.js:411 prefs.js:741
+#: prefs.js:525 prefs.js:769
 msgid "Show result"
 msgstr ""
 
-#: prefs.js:412 prefs.js:742
+#: prefs.js:526 prefs.js:770
 msgid "Copy result"
 msgstr ""
 
-#: prefs.js:413 prefs.js:743
+#: prefs.js:527 prefs.js:771
 msgid "Select result"
 msgstr ""
 
-#: prefs.js:414 prefs.js:744
+#: prefs.js:528 prefs.js:772
 msgid "Commit result"
 msgstr ""
 
-#: prefs.js:418 prefs.js:748
+#: prefs.js:532 prefs.js:776
+msgid "Apps"
+msgstr ""
+
+#: prefs.js:533 prefs.js:777
 msgid "Regexp"
 msgstr ""
 
-#: prefs.js:419 prefs.js:749
-msgid "WMclass"
-msgstr ""
-
-#: prefs.js:420
+#: prefs.js:534
 msgid "Tooltip"
 msgstr ""
 
-#: prefs.js:753
-msgid ""
-"Only one item can be enabled in swift mode.\n"
-"If none is enabled the first one will be used by default."
+#: prefs.js:781
+msgid "Only one item can be enabled in swift mode.\n"
+msgstr ""
+
+#: prefs.js:782
+msgid "If none is enabled the first one will be used by default.\n"
+msgstr ""
+
+#: prefs.js:783
+msgid "Double click a list item on the left to change the name."
 msgstr ""

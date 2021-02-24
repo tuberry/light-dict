@@ -36,10 +36,10 @@
         <default>0</default>
         <summary>trigger style: 0-swift, 1-popup</summary>
     </key>
-    <key type="u" name="wmlist-type">
+    <key type="u" name="list-type">
         <range min='0' max="1"/>
         <default>1</default>
-        <summary>global wmclass list type: 0-block 1-allow</summary>
+        <summary>global app list type: 0-allow 1-block</summary>
     </key>
     <key type="i" name="x-offset">
         <range min="-400" max="400"/>
@@ -54,9 +54,9 @@
         <default>""</default>
         <summary>command executed when right-clicking panel</summary>
     </key>
-    <key type="s" name="wmclass-list">
-        <default>"*"</default>
-        <summary>wmclass allowlist/blocklist</summary>
+    <key type="s" name="app-list">
+        <default>""</default>
+        <summary>app allowlist/blocklist</summary>
     </key>
     <key type="s" name="left-command">
         <default>""</default>
