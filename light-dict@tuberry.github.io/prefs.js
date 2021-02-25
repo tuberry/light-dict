@@ -138,7 +138,7 @@ function _entryMaker(x, y, z) {
         editable: false,
         placeholder_text: x,
         secondary_icon_sensitive: true,
-        secondary_icon_tooltip_text: y,
+        secondary_icon_tooltip_text: y || '',
         secondary_icon_activatable: true,
         secondary_icon_name: 'action-unavailable',
     });
@@ -159,9 +159,8 @@ function _comboMaker(ops, tip) {
     let l = new Gtk.ListStore();
     l.set_column_types([GObject.TYPE_STRING]);
     ops.forEach(op => l.set(l.append(), [0], [op]));
-    let c = new Gtk.ComboBox({ model: l });
+    let c = new Gtk.ComboBox({ model: l, tooltip_text: tip || '' });
     let r = new Gtk.CellRendererText();
-    if(tip) c.set_tooltip_text(tip);
     c.pack_start(r, false);
     c.add_attribute(r, 'text', 0);
     return c;
@@ -338,7 +337,7 @@ class LightDictAbout extends Gtk.Box {
     }
 
     _buildTips() {
-        const tips = new Gtk.Button({
+        let tips = new Gtk.Button({
             hexpand: false,
             label: _('Tips'),
             halign: Gtk.Align.END,
@@ -347,19 +346,17 @@ class LightDictAbout extends Gtk.Box {
         pop.set_relative_to(tips);
 
         let msgs = [
+            _('Leave RegExp/application list blank for no restriction'),
             _('Substitute <b>LDWORD</b> for the selected text in the command'),
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
-            _('Hold <b>Alt/Shift</b> to invoke when highlighting in <b>Passive mode</b>'),
+            _('Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>'),
         ];
 
-        const vbox = new Gtk.VBox({ margin: 10 });
+        let vbox = new Gtk.VBox({ margin: 10 });
         msgs.map((msg, i) => {
-            const label = new Gtk.Label();
-            label.set_margin_top(5);
-            label.set_line_wrap(true);
+            let label = new Gtk.Label({ margin_top: 5, wrap: true });
             label.set_alignment(0, 0.5);
-            label.set_max_width_chars(60);
             label.set_markup((i + 1) + '. ' + msg);
             return label;
         }).forEach(l => vbox.add(l));
@@ -389,7 +386,7 @@ class LightDictBasic extends Gtk.Box {
     _buildWidgets() {
         this._field_enable_strip    = new Gtk.Switch();
         this._field_enable_systray  = new Gtk.Switch();
-        this._field_enable_tooltips = new Gtk.Switch();
+        this._field_enable_tooltip = new Gtk.Switch();
         this._field_hide_title      = new Gtk.Switch();
 
         this._field_page_size    = _spinMaker(1, 10, 1);
@@ -399,30 +396,30 @@ class LightDictBasic extends Gtk.Box {
         this._field_list_type     = _comboMaker([_('Allowlist'), _('Blocklist')]);
         this._field_trigger_style = _comboMaker([_('Swift'), _('Popup'), _('Disable')]);
         this._field_passive_mode  = _comboMaker([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
-        this._field_app_list      = new LightDictAppBox(gsettings.get_string(Fields.APPLIST), _('Click app icon to remove'));
+        this._field_app_list      = new LightDictAppBox(gsettings.get_string(Fields.APPLIST), _('Click the app icon to remove'));
 
-        this._field_left_command  = _entryMaker('notify-send LDWORD', _('Left click to execute'));
-        this._field_text_filter   = _entryMaker('^[^\\n\\.\\t/:]{3,50}$', _('Text RegExp filter'));
-        this._field_right_command = _entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to execute and hide panel'));
+        this._field_text_filter   = _entryMaker('^[^\\n\\.\\t/:]{3,50}$');
+        this._field_left_command  = _entryMaker('notify-send LDWORD', _('Left click to run'));
+        this._field_right_command = _entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
     }
 
     _bulidUI() {
         let common = this._listFrameMaker(_('Common'));
-        common._add(_labelMaker(_('Enable systray')),     this._field_enable_systray);
-        common._add(_labelMaker(_('Trim whitespaces')),   this._field_enable_strip);
-        common._add(_labelMaker(_('Autohide interval')),  this._field_auto_hide);
-        common._add(_labelMaker(_('Trigger style')),      this._field_passive_mode, this._field_trigger_style);
+        common._add(_labelMaker(_('Enable systray')), this._field_enable_systray);
+        common._add(_labelMaker(_('Trim whitespaces')), this._field_enable_strip);
+        common._add(_labelMaker(_('Autohide interval')), this._field_auto_hide);
+        common._add(_labelMaker(_('Trigger style')), this._field_passive_mode, this._field_trigger_style);
         common._att(_labelMaker(_('Application list'), true), this._field_app_list, this._field_list_type);
-        common._att(_labelMaker(_('Text filter'), true), this._field_text_filter);
+        common._att(_labelMaker(_('RegExp filter'), true), this._field_text_filter);
 
         let panel = this._listFrameMaker(_('Panel'));
         panel._add(_labelMaker(_('Hide title')), this._field_hide_title);
-        panel._att(_labelMaker(_('Right click'), true), this._field_right_command);
-        panel._att(_labelMaker(_('Left click'), true),  this._field_left_command);
+        panel._att(_labelMaker(_('Right command'), true), this._field_right_command);
+        panel._att(_labelMaker(_('Left command'), true), this._field_left_command);
 
         let popup = this._listFrameMaker(_('Popup'));
-        popup._add(_labelMaker(_('Enable tooltips')),   this._field_enable_tooltips);
-        popup._add(_labelMaker(_('Page size')),         this._field_page_size);
+        popup._add(_labelMaker(_('Enable tooltip')), this._field_enable_tooltip);
+        popup._add(_labelMaker(_('Page size')), this._field_page_size);
         popup._add(_labelMaker(_('Horizontal offset')), this._field_icon_xoffset);
     }
 
@@ -433,20 +430,20 @@ class LightDictBasic extends Gtk.Box {
     }
 
     _bindValues() {
-        gsettings.bind(Fields.TXTFILTER, this._field_text_filter,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.RCOMMAND,  this._field_right_command,   'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LCOMMAND,  this._field_left_command,    'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.APPLIST,   this._field_app_list,        'apps',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,       'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PAGESIZE,  this._field_page_size,       'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,    'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,   'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LISTTYPE,  this._field_list_type,       'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.HIDETITLE, this._field_hide_title,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,    'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TOOLTIP,   this._field_enable_tooltips, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,    'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TXTFILTER, this._field_text_filter,    'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.RCOMMAND,  this._field_right_command,  'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LCOMMAND,  this._field_left_command,   'text',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.APPLIST,   this._field_app_list,       'apps',   Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,      'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PAGESIZE,  this._field_page_size,      'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,   'value',  Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,  'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.LISTTYPE,  this._field_list_type,      'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.HIDETITLE, this._field_hide_title,     'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,   'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.TOOLTIP,   this._field_enable_tooltip, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
     }
 
     _listFrameMaker(lbl) {
@@ -498,12 +495,12 @@ class LightDictPopup extends Gtk.Box {
         this._cmt = new Gtk.Switch();
         this._sel = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
-        this._app = new LightDictAppBox('', _('Leave blank for no restriction'), _('Allowed to function'));
-        this._typ = _comboMaker(['sh', 'JS'], _('Command type'));
-        this._ico = _entryMaker('face-cool-symbolic', _('Showing in the popup icon bar'), true);
-        this._cmd = _entryMaker('gio open LDWORD', _('Executed when clicking'));
-        this._tip = _entryMaker('Open URL with gio open', _('Showing when hovering'));
-        this._reg = _entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
+        this._app = new LightDictAppBox('', _('Click the app icon to remove'), _('Allowlist'));
+        this._typ = _comboMaker(['sh', 'JS']);
+        this._ico = _entryMaker('face-cool-symbolic', '', true);
+        this._cmd = _entryMaker('gio open LDWORD');
+        this._tip = _entryMaker('Open URL with gio open');
+        this._reg = _entryMaker('(https?|ftp|file)://.*');
     }
 
     _buildUI() {
@@ -519,8 +516,8 @@ class LightDictPopup extends Gtk.Box {
 
         let rightBox = new Gtk.VBox({});
         let details = _listGridMaker();
-        details._add(_labelMaker(_('Icon')), this._ico);
-        details._att(_labelMaker(_('Command'), true), this._cmd);
+        details._add(_labelMaker(_('Icon name')), this._ico);
+        details._att(_labelMaker(_('Run command'), true), this._cmd);
         details._add(_labelMaker(_('Command type')), this._typ);
         details._add(_labelMaker(_('Show result')), this._pop);
         details._add(_labelMaker(_('Copy result')), this._cpy);
@@ -529,9 +526,9 @@ class LightDictPopup extends Gtk.Box {
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
         let addition = _listGridMaker();
-        addition._att(_labelMaker(_('Apps'), true), this._app);
-        addition._att(_labelMaker(_('Regexp'), true), this._reg);
-        addition._att(_labelMaker(_('Tooltip'), true), this._tip);
+        addition._att(_labelMaker(_('Application list'), true), this._app);
+        addition._att(_labelMaker(_('RegExp matcher'), true), this._reg);
+        addition._att(_labelMaker(_('Icon tooltip'), true), this._tip);
         rightBox.pack_start(addition, false, false, 0);
 
         let outBox = new Gtk.HBox();
@@ -745,10 +742,10 @@ class LightDictSwift extends Gtk.Box {
         this._cmt = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
         this._sel = new Gtk.Switch();
-        this._typ = _comboMaker(['sh', 'JS'], _('Command type'));
-        this._app = new LightDictAppBox('', _('Leave blank for no restriction'), _('Allowed to function'));
-        this._cmd = _entryMaker('gio open LDWORD', _('Executed when clicking'));
-        this._reg = _entryMaker('(https?|ftp|file)://.*', _('Text RegExp matcher'));
+        this._typ = _comboMaker(['sh', 'JS']);
+        this._app = new LightDictAppBox('', _('Click the app icon to remove'), _('Allowlist'));
+        this._cmd = _entryMaker('gio open LDWORD');
+        this._reg = _entryMaker('(https?|ftp|file)://.*');
     }
 
     _buildUI() {
@@ -764,7 +761,7 @@ class LightDictSwift extends Gtk.Box {
 
         let rightBox = new Gtk.VBox({});
         let details = _listGridMaker();
-        details._att(_labelMaker(_('Command'), true), this._cmd);
+        details._att(_labelMaker(_('Run command'), true), this._cmd);
         details._add(_labelMaker(_('Command type')), this._typ);
         details._add(_labelMaker(_('Show result')), this._pop);
         details._add(_labelMaker(_('Copy result')), this._cpy);
@@ -773,13 +770,13 @@ class LightDictSwift extends Gtk.Box {
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
         let addition = _listGridMaker();
-        addition._att(_labelMaker(_('Apps'), true), this._app);
-        addition._att(_labelMaker(_('Regexp'), true), this._reg);
+        addition._att(_labelMaker(_('Application list'), true), this._app);
+        addition._att(_labelMaker(_('RegExp matcher'), true), this._reg);
         rightBox.pack_start(addition, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
         let info = _listGridMaker();
-        info._att(_labelMaker(_('Only one item can be enabled in swift mode.\n') +
-                              _('If none is enabled the first one will be used by default.\n') +
+        info._att(_labelMaker(_('Only one item can be enabled in swift style.\n') +
+                              _('The first one will be used by default if none is enabled.\n') +
                               _('Double click a list item on the left to change the name.')
         ));
         rightBox.pack_start(info, false, false, 0);

@@ -19,8 +19,6 @@
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;
-    max-width: 700px;
-    text-align: left;
     padding: 4px 8px;
 }
 
@@ -64,7 +62,6 @@
     color: rgba(255, 255, 255, 1);
     background-color: rgba(98, 98, 98, 0.99);
     border-radius: 3px;
-    text-align: left;
     padding: 4px 8px;
 }
 

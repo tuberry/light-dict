@@ -18,8 +18,7 @@ const Fields = Me.imports.prefs.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
-const ListType = { Allow: 0, Block: 1 };
-const TriggerType = { Swift: 0, Popup: 1, Disable: 2 };
+const TriggerStyle = { Swift: 0, Popup: 1, Disable: 2 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
@@ -174,7 +173,7 @@ const DictBar = GObject.registerClass({
             case 0: x._visible = true; break;
             case 1: x._visible = RegExp(x.regexp).test(text); break;
             case 2: x._visible = x.apps.includes(app); break;
-            case 3: x._visible = x.apps.includes(app) & RegExp(x.regexp).test(text); break;
+            case 3: x._visible = x.apps.includes(app) && RegExp(x.regexp).test(text); break;
             }
         });
         this._updatePages();
@@ -270,6 +269,7 @@ const DictBox = GObject.registerClass({
     }
 
     _buildWidgets() {
+        let [W, H] = global.display.get_size();
         this._view = new St.ScrollView({
             visible: false,
             x_expand: true,
@@ -278,7 +278,7 @@ const DictBox = GObject.registerClass({
             overlay_scrollbars: true,
             style_class: 'light-dict-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
-            style: 'max-height: %dpx'.format(global.display.get_size()[1] * 7 / 16),
+            style: 'max-with: %dpx; max-height: %dpx;'.format(W / 3, H * 7 / 16),
         });
 
         this._box = new St.BoxLayout({
@@ -499,9 +499,9 @@ const DictBtn = GObject.registerClass({
 
     get _iconname() {
         switch(this._trigger) {
-        case TriggerType.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
-        case TriggerType.Popup:   return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
-        case TriggerType.Swift:   return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
+        case TriggerStyle.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
+        case TriggerStyle.Popup:   return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
+        case TriggerStyle.Swift:   return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
         }
     }
 
@@ -573,7 +573,7 @@ const DictBtn = GObject.registerClass({
         this.menu.removeAll();
         this.menu.addMenuItem(this._passiveItem());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Trigger style')));
-        Object.keys(TriggerType).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
+        Object.keys(TriggerStyle).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Swift commands')));
         this.menu.addMenuItem(this._scommandsMenu());
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current application')));
@@ -584,8 +584,8 @@ const DictBtn = GObject.registerClass({
 
     _menuItemMaker(text) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item' });
-        item.setOrnament(this._trigger == TriggerType[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerType[text]); });
+        item.setOrnament(this._trigger == TriggerStyle[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
         item.add_child(new St.Label({ x_expand: true, text: _(text), }));
 
         return item;
@@ -702,7 +702,7 @@ const LightDict = GObject.registerClass({
     }
 
     get _allow() {
-        return this.listtype ^ this.applist.includes(this._app);
+        return !this.applist || this.listtype ^ this.applist.includes(this._app);
     }
 
     _onWindowChanged() {
@@ -728,7 +728,7 @@ const LightDict = GObject.registerClass({
             this._block = false;
             return;
         }
-        if(!this._allow || this.trigger == TriggerType.Disable) return;
+        if(!this._allow || this.trigger == TriggerStyle.Disable) return;
         let [, , initModifier] = global.get_pointer();
         if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
@@ -850,7 +850,7 @@ const LightDict = GObject.registerClass({
 
     _cope() {
         if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
-        this.trigger == TriggerType.Popup ? this._popup() : this._swift();
+        this.trigger == TriggerStyle.Popup ? this._popup() : this._swift();
     }
 
     _swift() {
@@ -898,7 +898,7 @@ const LightDict = GObject.registerClass({
 
     Toggle() {
         let next = (this.trigger + 1) % 2;
-        Main.notify(Me.metadata.name, _('Switch to %s mode').format(_(Object.keys(TriggerType)[next])));
+        Main.notify(Me.metadata.name, _('Switch to %s style').format(_(Object.keys(TriggerStyle)[next])));
         this.trigger = next;
     }
 
