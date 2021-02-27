@@ -42,11 +42,6 @@
         <default>1</default>
         <summary>global app list type: 0-allow 1-block</summary>
     </key>
-    <key type="i" name="x-offset">
-        <range min="-400" max="400"/>
-        <default>-5</default>
-        <summary>horizontal offset of popup icon bar</summary>
-    </key>
     <key type="s" name="text-filter">
         <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
         <summary>text filter in proactive mode</summary>

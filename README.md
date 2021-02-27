@@ -29,18 +29,8 @@ Inspired by two lovely web extensions, [swift-selection-search] and [youdaodict]
 4. [DBus] interface (eg. [OCR](/_ldocr.fish) to translate):
 
 ```bash
-# Swift
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Swift "" # primary selection
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Swift "'word'" # 'word'
-# SwiftR
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.SwiftR 0 0 10 10 "'word'" # x, y, w, h, 'word'
-# Popup
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Popup "" # primary selection
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Popup "'word'" # 'word'
-# PopupR
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.PopupR 0 0 10 10 "'word'" # x, y, w, h, 'word'
-# Toggle
-gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict --method org.gnome.Shell.Extensions.LightDict.Toggle
+# see the methods
+gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict
 ```
 
 ## Acknowledgements

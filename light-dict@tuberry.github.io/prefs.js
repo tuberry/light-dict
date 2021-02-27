@@ -11,7 +11,6 @@ const _GTK = imports.gettext.domain('gtk30').gettext;
 
 var Fields = {
     APPLIST:   'app-list',
-    XOFFSET:   'x-offset',
     LISTTYPE:  'list-type',
     HIDETITLE: 'hide-title',
     TXTFILTER: 'text-filter',
@@ -347,6 +346,7 @@ class LightDictAbout extends Gtk.Box {
 
         let msgs = [
             _('Leave RegExp/application list blank for no restriction'),
+            _('Middle click the panel to copy the result to clipboard'),
             _('Substitute <b>LDWORD</b> for the selected text in the command'),
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
@@ -390,7 +390,6 @@ class LightDictBasic extends Gtk.Box {
         this._field_hide_title      = new Gtk.Switch();
 
         this._field_page_size    = _spinMaker(1, 10, 1);
-        this._field_icon_xoffset = _spinMaker(-400, 400, 50);
         this._field_auto_hide    = _spinMaker(500, 10000, 250);
 
         this._field_list_type     = _comboMaker([_('Allowlist'), _('Blocklist')]);
@@ -420,7 +419,6 @@ class LightDictBasic extends Gtk.Box {
         let popup = this._listFrameMaker(_('Popup'));
         popup._add(_labelMaker(_('Enable tooltip')), this._field_enable_tooltip);
         popup._add(_labelMaker(_('Page size')), this._field_page_size);
-        popup._add(_labelMaker(_('Horizontal offset')), this._field_icon_xoffset);
     }
 
     _syncStatus() {
@@ -436,7 +434,6 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.APPLIST,   this._field_app_list,       'apps',   Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,      'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PAGESIZE,  this._field_page_size,      'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.XOFFSET,   this._field_icon_xoffset,   'value',  Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,  'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.LISTTYPE,  this._field_list_type,      'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray, 'active', Gio.SettingsBindFlags.DEFAULT);
@@ -929,7 +926,7 @@ class LightDictSwift extends Gtk.Box {
                 conf.enable = true;
                 gsettings.set_int(Fields.SCOMMAND, index);
             } else {
-                delete conf['enable'];
+                delete conf.enable;
             }
             return JSON.stringify(conf, null, 0);
         });

@@ -1,67 +1,57 @@
 /*
- * vim:fdm=syntax
- * by:tuberry@github
  * Add your custom extension styling here
  */
 
 .light-dict-box-boxpointer {
-    -arrow-background-color: transparent;
+    -arrow-border-color: rgba(97, 97, 97, 0.95);
+    -arrow-background-color: rgba(97, 97, 97, 0.95);
 }
 
 .light-dict-bar-boxpointer {
-    -arrow-background-color: transparent;
 }
 
 .light-dict-scroll {
 }
 
 .light-dict-content {
+    padding: 0.5em;
+    font-size: 1.25em;
+    border-radius: 0.5em;
     color: rgba(255, 255, 255, 1);
-    background-color: rgba(98, 98, 98, 0.99);
-    border-radius: 3px;
-    padding: 4px 8px;
+    background-color: rgba(97, 97, 97, 0.95);
 }
 
 .light-dict-word {
     border-width: 0;
     border-color: rgba(0, 0, 0, 0.38);
     border-style: dashed;
-    border-bottom-width: 2px;
+    border-bottom-width: 0.1em;
 }
 
 .light-dict-info {
-
 }
 
 .light-dict-iconbox {
-    background-color: rgba(255, 255, 255, 0.99);
-    border-radius: 2px;
-    box-shadow: 0px 0px 2px 2px rgba(0, 0, 0, 0.34);
+    padding: 0;
 }
 
 .light-dict-button {
-    padding: 5px 2px;
+    padding: 0.5em 0.3em;
 }
 
 .light-dict-button:hover {
-    background-color: #ddd;
     border-width: 0;
     border-color: #3385ef;
     border-style: double;
-    border-bottom-width: 3px;
-    padding: 2px 2px 5px 2px;
+    border-bottom-width: 0.2em;
+    padding: 0.3em 0.3em 0.5em 0.3em;
 }
 
 .light-dict-button-icon {
-    color: rgba(0, 0, 0, 0.99);
-    padding: 0 3px;
-    icon-size: 28px;
+    padding: 0 0.1em;
+    icon-size: 2em;
 }
 
-.light-dict-tooltips {
-    color: rgba(255, 255, 255, 1);
-    background-color: rgba(98, 98, 98, 0.99);
-    border-radius: 3px;
-    padding: 4px 8px;
+.light-dict-tooltip {
 }
 
