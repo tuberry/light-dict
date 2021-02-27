@@ -55,7 +55,7 @@ const DictBar = GObject.registerClass({
         'tooltips': GObject.param_spec_boolean('tooltips', 'tooltips', 'tooltips', false, GObject.ParamFlags.WRITABLE),
         'pagesize': GObject.param_spec_uint('pagesize', 'pagesize', 'page zise', 1, 10, 5, GObject.ParamFlags.READWRITE),
         'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
-        // 'pcommands': GObject.param_spec_variant('pcommands', '', '', new GLib.VariantType('as'), null, GObject.ParamFlags.WRITABLE),
+        // 'pcommands': GObject.param_spec_jsobject('pcommands', '', '', ___, null, GObject.ParamFlags.WRITABLE), //TODO: gjs new api maybe working
     },
     Signals: {
         'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
@@ -262,19 +262,18 @@ const DictBox = GObject.registerClass({
     }
 
     _buildWidgets() {
-        let [W, H] = global.display.get_size();
         this._view = new St.ScrollView({
             visible: false,
             overlay_scrollbars: true,
             style_class: 'light-dict-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
-            style: 'max-with: %dpx; max-height: %dpx;'.format(W / 2, H * 7 / 16),
         });
 
         this._box = new St.BoxLayout({
             reactive: true,
             vertical: true,
             style_class: 'light-dict-content',
+            style: 'max-width: %dpx;'.format(global.display.get_size()[0] / 2),
         });
 
         this._word = new St.Label({ style_class: 'light-dict-word' });
@@ -518,7 +517,7 @@ const DictBtn = GObject.registerClass({
                 item.setOrnament(PopupMenu.Ornament.DOT);
             } else {
                 item.connect('activate', () => {
-                    item._getTopMenu().close();
+                    item._getTopMenu().itemActivated();
                     let cmds = commands.map((c, j) => {
                         let conf = JSON.parse(c);
                         i == j ? conf.enable = true : delete conf.enable;
@@ -550,7 +549,7 @@ const DictBtn = GObject.registerClass({
     _menuItemMaker(text) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
         item.setOrnament(this._trigger == TriggerStyle[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
+        item.connect('activate', () => { item._getTopMenu().itemActivated(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
         item.add_child(new St.Label({ x_expand: true, text: _(text), }));
 
         return item;
@@ -559,7 +558,7 @@ const DictBtn = GObject.registerClass({
     _passiveItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
         item.setOrnament(this._passive == 1 ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
+        item.connect('activate', () => { item._getTopMenu().itemActivated(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
         item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
 
         return item;
@@ -567,7 +566,7 @@ const DictBtn = GObject.registerClass({
 
     _applistItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.connect('activate', () => { item._getTopMenu().close(); this.emit('add-or-remove-app'); });
+        item.connect('activate', () => { this.emit('add-or-remove-app'); });
         item.add_child(new St.Label({ x_expand: true, text: _('Add/remove'), }));
 
         return item;
@@ -575,7 +574,7 @@ const DictBtn = GObject.registerClass({
 
     _settingItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.connect('activate', () => { item._getTopMenu().close(); ExtensionUtils.openPrefs(); });
+        item.connect('activate', () => { ExtensionUtils.openPrefs(); });
         item.add_child(new St.Label({ x_expand: true, text: _('Settings'), }));
 
        return item;

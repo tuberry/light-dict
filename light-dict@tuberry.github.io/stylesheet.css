@@ -14,9 +14,9 @@
 }
 
 .light-dict-content {
-    padding: 0.5em;
+    padding: 0.4em;
     font-size: 1.25em;
-    border-radius: 0.5em;
+    border-radius: 0.4em;
     color: rgba(255, 255, 255, 1);
     background-color: rgba(97, 97, 97, 0.95);
 }
