@@ -273,7 +273,6 @@ const DictBox = GObject.registerClass({
             reactive: true,
             vertical: true,
             style_class: 'light-dict-content',
-            style: 'max-width: %dpx;'.format(global.display.get_size()[0] / 2),
         });
 
         this._word = new St.Label({ style_class: 'light-dict-word' });
@@ -306,7 +305,7 @@ const DictBox = GObject.registerClass({
     get _scrollable() {
         let [, height] = this._view.get_preferred_height(-1);
         let maxHeight = this._view.get_theme_node().get_max_height();
-        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 7 / 16;
+        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 15 / 32;
 
         return height >= maxHeight;
     }
