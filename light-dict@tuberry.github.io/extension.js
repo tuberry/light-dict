@@ -55,14 +55,15 @@ const DictBar = GObject.registerClass({
         'tooltips': GObject.param_spec_boolean('tooltips', 'tooltips', 'tooltips', false, GObject.ParamFlags.WRITABLE),
         'pagesize': GObject.param_spec_uint('pagesize', 'pagesize', 'page zise', 1, 10, 5, GObject.ParamFlags.READWRITE),
         'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
-        // 'pcommands': GObject.param_spec_jsobject('pcommands', '', '', ___, null, GObject.ParamFlags.WRITABLE), //TODO: gjs new api maybe working
+        // 'pcommands': GObject.param_spec_jsobject('pcommands', '', '', ___, null, GObject.ParamFlags.WRITABLE), // TODO: gjs new api maybe working
     },
     Signals: {
-        'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] },
+        'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] }, // NOTE: GObject.TYPE_JSOBJECT
     },
 }, class DictBar extends BoxPointer.BoxPointer {
     _init() {
         super._init(St.Side.BOTTOM);
+        this.visible = false;
         this.style_class = 'light-dict-bar-boxpointer candidate-popup-boxpointer';
         Main.layoutManager.addTopChrome(this);
 
@@ -251,6 +252,7 @@ const DictBox = GObject.registerClass({
 }, class DictBox extends BoxPointer.BoxPointer {
     _init() {
         super._init(St.Side.TOP);
+        this.visible = false;
         this.style_class = 'light-dict-box-boxpointer candidate-popup-boxpointer';
         Main.layoutManager.addTopChrome(this);
 
@@ -710,7 +712,7 @@ const LightDict = GObject.registerClass({
         }
     }
 
-    _onBarClicked(actor, cmd, tag) {
+    _onBarClicked(actor, cmd, tag) { // TODO
         let [type, popup, copy, commit, select] = Array.from(tag, i => i === '1');
         if(type) {
             this._runWithJS(cmd, popup, copy, commit, select);
@@ -731,9 +733,9 @@ const LightDict = GObject.registerClass({
 
     _store(text) {
         return new Promise((resolve, reject) => {
-            let selection = this.textstrip ? text.replace(/[\n\t]/g, ' ').trim() : text;
+            let selection = this.textstrip ? text.replace(/\n\s*\n/g, '\n') : text;
             if(!selection) reject();
-            this._selection = selection;
+            this._selection = selection.replace(/\n/g, '\r'); // shell args
             this._pointer = global.get_pointer();
             resolve();
         });
@@ -806,6 +808,14 @@ const LightDict = GObject.registerClass({
         }
     }
 
+    _runCommand(para) {
+        if(para.type) {
+            this._runWithJS(para.command, para.popup, para.copy, para.commit, para.select);
+        } else {
+            this._runWithSh(para.command, para.popup, para.copy, para.commit, para.select);
+        }
+    }
+
     _select(x) {
         this._block = true;
         this._act.select(x);
@@ -820,11 +830,7 @@ const LightDict = GObject.registerClass({
         if(!this._scmd) return;
         if(this._scmd.apps && !this._scmd.apps.includes(this._app)) return;
         if(this._scmd.regexp && !RegExp(this._scmd.regexp).test(this._selection)) return;
-        if(this._scmd.type) {
-            this._runWithJS(this._scmd.command, this._scmd.popup, this._scmd.copy, this._scmd.commit, this._scmd.select);
-        } else {
-            this._runWithSh(this._scmd.command, this._scmd.popup, this._scmd.copy, this._scmd.commit, this._scmd.select);
-        }
+        this._runCommand(this._scmd);
     }
 
     _popup() {

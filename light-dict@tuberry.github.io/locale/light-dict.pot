@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Light Dict 42\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-02-28 13:20+0800\n"
+"POT-Creation-Date: 2021-02-28 17:15+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -155,7 +155,7 @@ msgid "Enable systray"
 msgstr ""
 
 #: prefs.js:410
-msgid "Trim whitespaces"
+msgid "Trim blank lines"
 msgstr ""
 
 #: prefs.js:411

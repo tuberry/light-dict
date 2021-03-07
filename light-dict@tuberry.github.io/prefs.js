@@ -407,7 +407,7 @@ class LightDictBasic extends Gtk.Box {
     _bulidUI() {
         let common = this._listFrameMaker(_('Common'));
         common._add(LightDictWiget._labelMaker(_('Enable systray')), this._field_enable_systray);
-        common._add(LightDictWiget._labelMaker(_('Trim whitespaces')), this._field_enable_strip);
+        common._add(LightDictWiget._labelMaker(_('Trim blank lines')), this._field_enable_strip);
         common._add(LightDictWiget._labelMaker(_('Autohide interval')), this._field_auto_hide);
         common._add(LightDictWiget._labelMaker(_('Trigger style')), this._field_passive_mode, this._field_trigger_style);
         common._att(LightDictWiget._labelMaker(_('Application list'), true), this._field_app_list, this._field_list_type);
