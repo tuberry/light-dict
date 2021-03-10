@@ -150,10 +150,9 @@ const DictBar = GObject.registerClass({
 
     _updatePages() {
         this._icons.forEach(x => x.visible = x._visible);
-        if(this.pagesize === 0) return;
         let icons = this._icons.filter(x => x._visible);
-        this._pages = Math.ceil(icons.length / this.pagesize);
-        if(this._pages === 1 || this._pages === 0) return;
+        this._pages = (icons.length && this.pagesize) ? Math.ceil(icons.length / this.pagesize) : 0;
+        if(this._pages < 2) return;
         this._index = this._index < 1 ? this._pages : (this._index > this._pages ? 1 : this._index);
         if(this._index === this._pages && icons.length % this.pagesize) {
             icons.forEach((x, i) => { x.visible = i >= icons.length - this.pagesize && i < icons.length; });

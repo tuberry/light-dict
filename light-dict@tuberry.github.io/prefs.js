@@ -75,15 +75,6 @@ function toggleEdit(entry, str) {
     entry.secondary_icon_name = !str ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
 }
 
-function renderBgColor(widget) {
-    const entry = new Gtk.Entry(); // hack for background color
-    const bgcolor = entry.get_style_context().get_background_color(Gtk.STATE_FLAG_NORMAL);
-    const context = widget.get_style_context();
-    const cssProvider = new Gtk.CssProvider();
-    cssProvider.load_from_data('* { background-color: %s; }'.format(bgcolor.to_string()));
-    context.add_provider(cssProvider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-}
-
 const LightDictWiget = {
     _listGridMaker: () => {
         let grid = new Gtk.Grid({
@@ -91,8 +82,6 @@ const LightDictWiget = {
             hexpand: true,
             row_spacing: 12,
             column_spacing: 18,
-            row_homogeneous: true,
-            column_homogeneous: false,
         });
 
         grid._row = 0;
@@ -212,10 +201,9 @@ const LightDictAppBox = GObject.registerClass({
 }, class LightDictAppBox extends Gtk.Frame {
     _init(ids, tip1, tip2) {
         super._init();
+        this._addStyleClass();
 
         let box = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
-        renderBgColor(box);
-
         this._box = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, tooltip_text: tip1 || '' });
         box.pack_start(this._box, true, true, 5);
         box.pack_start(new Gtk.Separator(), false, false, 0);
@@ -223,6 +211,19 @@ const LightDictAppBox = GObject.registerClass({
         this._ids = ids || '';
         this.add(box);
         this.show_all();
+    }
+
+    _addStyleClass() {
+        let entry = new Gtk.Entry();
+        let context = this.get_style_context();
+        let provider = new Gtk.CssProvider();
+        let style = entry.get_style_context();
+        let fgcolor = style.get_color(Gtk.STAE_FLAG_INSENSITIVE).to_string();
+        let bgcolor = style.get_background_color(Gtk.STATE_FLAG_NORMAL).to_string();
+        let color = '.appbox { color: %s; background-color: %s; min-height: 2em; } '.format(fgcolor, bgcolor)
+        provider.load_from_data(color + '.appbox>border { border-radius: 0.25em; }');
+        context.add_class('appbox');
+        context.add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
 
     set_apps(apps) {
