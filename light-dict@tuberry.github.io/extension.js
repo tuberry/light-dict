@@ -52,13 +52,13 @@ const DBUSINTERFACE = `
 
 const DictBar = GObject.registerClass({
     Properties: {
-        'tooltips': GObject.param_spec_boolean('tooltips', 'tooltips', 'tooltips', false, GObject.ParamFlags.WRITABLE),
-        'pagesize': GObject.param_spec_uint('pagesize', 'pagesize', 'page zise', 1, 10, 5, GObject.ParamFlags.READWRITE),
-        'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
-        // 'pcommands': GObject.param_spec_jsobject('pcommands', '', '', ___, null, GObject.ParamFlags.WRITABLE), // TODO: gjs new api maybe working
+        'tooltips': GObject.ParamSpec.boolean('tooltips', 'tooltips', 'tooltips', GObject.ParamFlags.WRITABLE, false),
+        'pagesize': GObject.ParamSpec.uint('pagesize', 'pagesize', 'page zise', GObject.ParamFlags.READWRITE, 1, 10, 5),
+        'autohide': GObject.ParamSpec.uint('autohide', 'autohide', 'auto hide', GObject.ParamFlags.READWRITE, 500, 10000, 2500),
+        // 'pcommands': GObject.ParamSpec.jsobject('pcommands', 'pcommands', 'pcommands', GObject.ParamFlags.WRITABLE, []), // NOTE: need mapping
     },
     Signals: {
-        'dict-bar-clicked': { param_types: [GObject.TYPE_STRING, GObject.TYPE_STRING] }, // NOTE: GObject.TYPE_JSOBJECT
+        'dict-bar-clicked': { param_types: [GObject.TYPE_JSOBJECT] },
     },
 }, class DictBar extends BoxPointer.BoxPointer {
     _init() {
@@ -89,7 +89,7 @@ const DictBar = GObject.registerClass({
     }
 
     _bindSettings() {
-        // gsettings.bind(Fields.PCOMMANDS, this, 'pcommands', Gio.SettingsBindFlags.GET, ); // NOTE: unavailable
+        // gsettings.bind_with_mapping(Fields.PCOMMANDS, this, 'pcommands', Gio.SettingsBindFlags.GET); // NOTE: unavailable
         gsettings.bind(Fields.TOOLTIP,  this, 'tooltips', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PAGESIZE, this, 'pagesize', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
@@ -187,7 +187,7 @@ const DictBar = GObject.registerClass({
         Object.assign(btn, x);
         btn.connect('clicked', (actor, event) => {
             this._hide();
-            this.emit('dict-bar-clicked', x.command, [x.type, x.popup, x.copy, x.commit, x.select].map(x => x ? '1' : '0').join(''));
+            this.emit('dict-bar-clicked', x);
             return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
@@ -244,9 +244,9 @@ const DictBar = GObject.registerClass({
 
 const DictBox = GObject.registerClass({
     Properties: {
-        'lcommand': GObject.param_spec_string('lcommand', 'lcommand', 'l command', '', GObject.ParamFlags.READWRITE),
-        'rcommand': GObject.param_spec_string('rcommand', 'rcommand', 'r command', '', GObject.ParamFlags.READWRITE),
-        'autohide': GObject.param_spec_uint('autohide', 'autohide', 'auto hide', 500, 10000, 2500, GObject.ParamFlags.READWRITE),
+        'lcommand': GObject.ParamSpec.string('lcommand', 'lcommand', 'l command', GObject.ParamFlags.READWRITE, ''),
+        'rcommand': GObject.ParamSpec.string('rcommand', 'rcommand', 'r command', GObject.ParamFlags.READWRITE, ''),
+        'autohide': GObject.ParamSpec.uint('autohide', 'autohide', 'auto hide', GObject.ParamFlags.READWRITE, 500, 10000, 2500),
     },
 }, class DictBox extends BoxPointer.BoxPointer {
     _init() {
@@ -446,8 +446,8 @@ class DictAct extends GObject.Object {
 
 const DictBtn = GObject.registerClass({
     Properties: {
-        'passive': GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
-        'trigger': GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
+        'passive': GObject.ParamSpec.uint('passive', 'passive', 'passive', GObject.ParamFlags.READWRITE, 0, 1, 0),
+        'trigger': GObject.ParamSpec.uint('trigger', 'trigger', 'trigger', GObject.ParamFlags.READWRITE, 0, 2, 1),
     },
     Signals: {
         'add-or-remove-app': {},
@@ -498,6 +498,7 @@ const DictBtn = GObject.registerClass({
     };
 
     _setIcon() {
+        if(this._trigger === undefined || this._passive === undefined) return;
         this._icon.set_gicon(new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._iconname)) }));
         this._updateMenu();
     }
@@ -510,14 +511,14 @@ const DictBtn = GObject.registerClass({
         let commands = this.scommands;
         let index = commands.findIndex(c => !!JSON.parse(c).enable);
         let enabled = index < 0 ? '' : JSON.parse(commands[index]).name;
-        let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Enabled: ') + enabled);
+        let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Swift: ') + enabled);
         commands.forEach((x, i) => {
             let item = new PopupMenu.PopupMenuItem(JSON.parse(x).name);
             if(i == index) {
                 item.setOrnament(PopupMenu.Ornament.DOT);
             } else {
                 item.connect('activate', () => {
-                    item._getTopMenu().itemActivated();
+                    item._getTopMenu().close();
                     let cmds = commands.map((c, j) => {
                         let conf = JSON.parse(c);
                         i == j ? conf.enable = true : delete conf.enable;
@@ -530,26 +531,31 @@ const DictBtn = GObject.registerClass({
             scommand.menu.addMenuItem(item);
         });
 
-        return scommand
+        return scommand;
+    }
+
+    _triggerMenu() {
+        let trigger = new PopupMenu.PopupSubMenuMenuItem(_('Trigger: ') + _(Object.keys(TriggerStyle)[this._trigger]));
+        Object.keys(TriggerStyle).forEach(x => { trigger.menu.addMenuItem(this._menuItemMaker(x)); });
+
+        return trigger;
     }
 
     _updateMenu() {
         this.menu.removeAll();
         this.menu.addMenuItem(this._passiveItem());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Trigger style')));
-        Object.keys(TriggerStyle).forEach(x => this.menu.addMenuItem(this._menuItemMaker(x)));
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Swift commands')));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Current application')));
         this.menu.addMenuItem(this._applistItem());
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('More')));
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._settingItem());
     }
 
     _menuItemMaker(text) {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
         item.setOrnament(this._trigger == TriggerStyle[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().itemActivated(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
         item.add_child(new St.Label({ x_expand: true, text: _(text), }));
 
         return item;
@@ -558,7 +564,7 @@ const DictBtn = GObject.registerClass({
     _passiveItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
         item.setOrnament(this._passive == 1 ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().itemActivated(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
+        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
         item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
 
         return item;
@@ -567,7 +573,7 @@ const DictBtn = GObject.registerClass({
     _applistItem() {
         let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
         item.connect('activate', () => { this.emit('add-or-remove-app'); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove'), }));
+        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove current app'), }));
 
         return item;
     }
@@ -583,14 +589,14 @@ const DictBtn = GObject.registerClass({
 
 const LightDict = GObject.registerClass({
     Properties: {
-        'filter':    GObject.param_spec_string('filter', 'filter', 'filter', '', GObject.ParamFlags.READWRITE),
-        'applist':   GObject.param_spec_string('applist', 'applist', 'app list', '', GObject.ParamFlags.READWRITE),
-        'systray':   GObject.param_spec_boolean('systray', 'systray', 'systray', true, GObject.ParamFlags.WRITABLE),
-        'passive':   GObject.param_spec_uint('passive', 'passive', 'passive', 0, 1, 0, GObject.ParamFlags.READWRITE),
-        'trigger':   GObject.param_spec_uint('trigger', 'trigger', 'trigger', 0, 2, 1, GObject.ParamFlags.READWRITE),
-        'listtype':  GObject.param_spec_uint('listtype', 'listtype', 'list type', 0, 1, 1, GObject.ParamFlags.READWRITE),
-        'textstrip': GObject.param_spec_boolean('textstrip', 'textstrip', 'strip text', true, GObject.ParamFlags.READWRITE),
-        'scommand':  GObject.param_spec_int('scommand', 'scommand', 'swift command', -1, 2000, 0, GObject.ParamFlags.READWRITE),
+        'filter':    GObject.ParamSpec.string('filter', 'filter', 'filter', GObject.ParamFlags.READWRITE, ''),
+        'applist':   GObject.ParamSpec.string('applist', 'applist', 'app list', GObject.ParamFlags.READWRITE, ''),
+        'systray':   GObject.ParamSpec.boolean('systray', 'systray', 'systray', GObject.ParamFlags.WRITABLE, true),
+        'passive':   GObject.ParamSpec.uint('passive', 'passive', 'passive', GObject.ParamFlags.READWRITE, 0, 1, 0),
+        'trigger':   GObject.ParamSpec.uint('trigger', 'trigger', 'trigger', GObject.ParamFlags.READWRITE, 0, 2, 1),
+        'listtype':  GObject.ParamSpec.uint('listtype', 'listtype', 'list type', GObject.ParamFlags.READWRITE, 0, 1, 1),
+        'textstrip': GObject.ParamSpec.boolean('textstrip', 'textstrip', 'strip text', GObject.ParamFlags.READWRITE, true),
+        'scommand':  GObject.ParamSpec.int('scommand', 'scommand', 'swift command', GObject.ParamFlags.READWRITE, -1, 2000, 0),
     },
 }, class LightDict extends St.Widget {
     _init() {
@@ -626,7 +632,7 @@ const LightDict = GObject.registerClass({
         this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
 
-        this._bar.connect('dict-bar-clicked', this._onBarClicked.bind(this));
+        this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._runCommand(cmd); });
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
     }
@@ -708,15 +714,6 @@ const LightDict = GObject.registerClass({
             }); // NOTE: `owner-changed` is emitted every char in Gtk+ apps
         } else {
             this._fetch().then(this._store.bind(this)).then(this._cope.bind(this));
-        }
-    }
-
-    _onBarClicked(actor, cmd, tag) { // TODO
-        let [type, popup, copy, commit, select] = Array.from(tag, i => i === '1');
-        if(type) {
-            this._runWithJS(cmd, popup, copy, commit, select);
-        } else {
-            this._runWithSh(cmd, popup, copy, commit, select);
         }
     }
 

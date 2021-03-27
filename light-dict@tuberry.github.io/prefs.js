@@ -8,6 +8,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const _GTK = imports.gettext.domain('gtk30').gettext;
+const UI = Me.imports.ui;
 
 var Fields = {
     APPLIST:   'app-list',
@@ -33,14 +34,14 @@ function init() {
 }
 
 function buildPrefsWidget() {
-    return new LightDictPrefsWidget();
+    return new LightDictPrefs();
 }
 
-const LightDictPrefsWidget = GObject.registerClass(
-class LightDictPrefsWidget extends Gtk.Stack {
+const LightDictPrefs = GObject.registerClass(
+class LightDictPrefs extends Gtk.Stack {
     _init() {
         super._init({
-            expand: true,
+            hexpand: true,
             transition_type: Gtk.StackTransitionType.NONE,
         });
 
@@ -68,106 +69,6 @@ class LightDictPrefsWidget extends Gtk.Stack {
 
 function clear(obj) {
     return Object.fromEntries(Object.entries(obj).filter(([_, v]) => v));
-}
-
-function toggleEdit(entry, str) {
-    entry.set_editable(!str);
-    entry.secondary_icon_name = !str ? 'document-edit-symbolic' : 'action-unavailable-symbolic';
-}
-
-const LightDictWiget = {
-    _listGridMaker: () => {
-        let grid = new Gtk.Grid({
-            margin: 10,
-            hexpand: true,
-            row_spacing: 12,
-            column_spacing: 18,
-        });
-
-        grid._row = 0;
-        grid._add = (x, y, z) => {
-            const hbox = new Gtk.Box();
-            hbox.pack_start(x, true, true, 0);
-            hbox.pack_start(y, false, false, 0)
-            if(z) hbox.pack_start(z, false, false, 0);
-            grid.attach(hbox, 0, grid._row++, 2, 1);
-        }
-        grid._att = (x, y, z) => {
-            let r = grid._row++;
-            if(z) {
-                let hbox = new Gtk.Box();
-                hbox.pack_start(y, true, true, 0);
-                hbox.pack_end(z, false, false, 0);
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(hbox, 1, r, 1, 1);
-            } else if(y) {
-                grid.attach(x, 0, r, 1, 1);
-                grid.attach(y, 1, r, 1, 1);
-            } else {
-                grid.attach(x, 0, r, 1, 2)
-            }
-        }
-
-        return grid;
-    },
-
-    _frameWrapper: (widget) => {
-        let frame = new Gtk.Frame();
-        frame.add(widget);
-        return frame;
-    },
-
-    _spinMaker: (l, u, s) => {
-        return new Gtk.SpinButton({
-            adjustment: new Gtk.Adjustment({
-                lower: l,
-                upper: u,
-                step_increment: s,
-            }),
-        });
-    },
-
-    _labelMaker: (x, y) => {
-        return new Gtk.Label({
-            label: x,
-            hexpand: y ? false : true,
-            halign: Gtk.Align.START,
-        });
-    },
-
-    _entryMaker: (x, y, z) => {
-        let entry = new Gtk.Entry({
-            hexpand: !z,
-            editable: false,
-            placeholder_text: x,
-            secondary_icon_sensitive: true,
-            secondary_icon_tooltip_text: y || '',
-            secondary_icon_activatable: true,
-            secondary_icon_name: 'action-unavailable',
-        });
-        entry.connect('icon-press', () => {
-            if(entry.get_editable()) {
-                entry.set_editable(false);
-                entry.secondary_icon_name = 'action-unavailable'
-            } else {
-                entry.set_editable(true);
-                entry.secondary_icon_name = 'document-edit-symbolic';
-            }
-        });
-
-        return entry;
-    },
-
-    _comboMaker: (ops, tip) => {
-        let l = new Gtk.ListStore();
-        l.set_column_types([GObject.TYPE_STRING]);
-        ops.forEach(op => l.set(l.append(), [0], [op]));
-        let c = new Gtk.ComboBox({ model: l, tooltip_text: tip || '' });
-        let r = new Gtk.CellRendererText();
-        c.pack_start(r, false);
-        c.add_attribute(r, 'text', 0);
-        return c;
-    },
 }
 
 const LightDictNewApp = GObject.registerClass(
@@ -210,7 +111,6 @@ const LightDictAppBox = GObject.registerClass({
         box.pack_end(this._addBtnMaker(tip2), false, false, 10);
         this._ids = ids || '';
         this.add(box);
-        this.show_all();
     }
 
     _addStyleClass() {
@@ -286,12 +186,9 @@ const LightDictAppBox = GObject.registerClass({
 });
 
 const LightDictAbout = GObject.registerClass(
-class LightDictAbout extends Gtk.Box {
+class LightDictAbout extends UI.Box {
     _init() {
-        super._init({
-            margin: 30,
-            orientation: Gtk.Orientation.VERTICAL,
-        });
+        super._init(true, 30);
 
         this._buildIcon();
         this._buildInfo();
@@ -308,9 +205,7 @@ class LightDictAbout extends Gtk.Box {
         let icons  = [];
         let icon_size = 5;
         if(active.length) {
-            active.forEach(x => {
-                icons.push(new Gtk.Image({ icon_size: icon_size, icon_name: JSON.parse(x)?.icon ?? 'help', }));
-            });
+            active.forEach(x => { icons.push(new Gtk.Image({ icon_size: icon_size, icon_name: JSON.parse(x)?.icon ?? 'help', })); });
         } else {
             icons.push(new Gtk.Image({ icon_size: icon_size, icon_name: 'accessories-dictionary', }));
         }
@@ -331,9 +226,9 @@ class LightDictAbout extends Gtk.Box {
         ];
         let about = new Gtk.Label({
             wrap: true,
-            justify: 2,
             use_markup: true,
             label: info.join('\n\n'),
+            justify: Gtk.Justification.CENTER,
         });
         this.add(about);
     }
@@ -356,7 +251,7 @@ class LightDictAbout extends Gtk.Box {
             _('Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>'),
         ];
 
-        let vbox = new Gtk.VBox({ margin: 10 });
+        let vbox = new UI.Box(true, 10);
         msgs.map((msg, i) => {
             let label = new Gtk.Label({ margin_top: 5, wrap: true });
             label.set_alignment(0, 0.5);
@@ -374,60 +269,49 @@ const LightDictBasic = GObject.registerClass(
 class LightDictBasic extends Gtk.Box {
     _init() {
         super._init({
-            margin_left: 90,
-            margin_right: 90,
-            margin_bottom: 30,
+            margin_end: 60,
+            margin_start: 60,
             orientation: Gtk.Orientation.VERTICAL,
         });
 
-        this._buildWidgets();
         this._bulidUI();
         this._bindValues();
-        this._syncStatus();
-    }
-
-    _buildWidgets() {
-        this._field_enable_strip    = new Gtk.Switch();
-        this._field_enable_systray  = new Gtk.Switch();
-        this._field_enable_tooltip = new Gtk.Switch();
-        this._field_hide_title      = new Gtk.Switch();
-
-        this._field_page_size    = LightDictWiget._spinMaker(1, 10, 1);
-        this._field_auto_hide    = LightDictWiget._spinMaker(500, 10000, 250);
-
-        this._field_list_type     = LightDictWiget._comboMaker([_('Allowlist'), _('Blocklist')]);
-        this._field_trigger_style = LightDictWiget._comboMaker([_('Swift'), _('Popup'), _('Disable')]);
-        this._field_passive_mode  = LightDictWiget._comboMaker([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
-        this._field_app_list      = new LightDictAppBox(gsettings.get_string(Fields.APPLIST), _('Click the app icon to remove'));
-
-        this._field_text_filter   = LightDictWiget._entryMaker('^[^\\n\\.\\t/:]{3,50}$');
-        this._field_left_command  = LightDictWiget._entryMaker('notify-send LDWORD', _('Left click to run'));
-        this._field_right_command = LightDictWiget._entryMaker('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
     }
 
     _bulidUI() {
-        let common = this._listFrameMaker(_('Common'));
-        common._add(LightDictWiget._labelMaker(_('Enable systray')), this._field_enable_systray);
-        common._add(LightDictWiget._labelMaker(_('Trim blank lines')), this._field_enable_strip);
-        common._add(LightDictWiget._labelMaker(_('Autohide interval')), this._field_auto_hide);
-        common._add(LightDictWiget._labelMaker(_('Trigger style')), this._field_passive_mode, this._field_trigger_style);
-        common._att(LightDictWiget._labelMaker(_('Application list'), true), this._field_app_list, this._field_list_type);
-        common._att(LightDictWiget._labelMaker(_('RegExp filter'), true), this._field_text_filter);
+        this._field_enable_strip   = new Gtk.Switch();
+        this._field_enable_systray = new Gtk.Switch();
+        this._field_enable_tooltip = new Gtk.Switch();
+        this._field_hide_title     = new Gtk.Switch();
+        this._field_page_size      = new UI.Spin(1, 10, 1);
+        this._field_auto_hide      = new UI.Spin(500, 10000, 250);
+        this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
+        this._field_list_type      = new UI.Combo([_('Allowlist'), _('Blocklist')]);
+        this._field_trigger_style  = new UI.Combo([_('Swift'), _('Popup'), _('Disable')]);
+        this._field_left_command   = new UI.Entry('notify-send LDWORD', _('Left click to run'));
+        this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
+        this._field_app_list       = new LightDictAppBox(gsettings.get_string(Fields.APPLIST), _('Click the app icon to remove'));
+        this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
 
-        let panel = this._listFrameMaker(_('Panel'));
-        panel._add(LightDictWiget._labelMaker(_('Hide title')), this._field_hide_title);
-        panel._att(LightDictWiget._labelMaker(_('Right command'), true), this._field_right_command);
-        panel._att(LightDictWiget._labelMaker(_('Left command'), true), this._field_left_command);
+        let common = new UI.ListGrid();
+        common._add(new UI.Label(_('Enable systray')), this._field_enable_systray);
+        common._add(new UI.Label(_('Trim blank lines')), this._field_enable_strip);
+        common._add(new UI.Label(_('Autohide interval')), this._field_auto_hide);
+        common._add(new UI.Label(_('Trigger style')), this._field_passive_mode, this._field_trigger_style);
+        common._att(new UI.Label(_('Application list'), true), this._field_app_list, this._field_list_type);
+        common._att(new UI.Label(_('RegExp filter'), true), this._field_text_filter);
+        this.add(new UI.Frame(common, _('Common')));
 
-        let popup = this._listFrameMaker(_('Popup'));
-        popup._add(LightDictWiget._labelMaker(_('Enable tooltip')), this._field_enable_tooltip);
-        popup._add(LightDictWiget._labelMaker(_('Page size')), this._field_page_size);
-    }
+        let panel = new UI.ListGrid();
+        panel._add(new UI.Label(_('Hide title')), this._field_hide_title);
+        panel._att(new UI.Label(_('Right command'), true), this._field_right_command);
+        panel._att(new UI.Label(_('Left command'), true), this._field_left_command);
+        this.add(new UI.Frame(panel, _('Panel')));
 
-    _syncStatus() {
-        toggleEdit(this._field_left_command,  gsettings.get_string(Fields.LCOMMAND));
-        toggleEdit(this._field_right_command, gsettings.get_string(Fields.RCOMMAND));
-        toggleEdit(this._field_text_filter,   gsettings.get_string(Fields.TXTFILTER));
+        let popup = new UI.ListGrid();
+        popup._add(new UI.Label(_('Enable tooltip')), this._field_enable_tooltip);
+        popup._add(new UI.Label(_('Page size')), this._field_page_size);
+        this.add(new UI.Frame(popup, _('Popup')));
     }
 
     _bindValues() {
@@ -444,35 +328,17 @@ class LightDictBasic extends Gtk.Box {
         gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TOOLTIP,   this._field_enable_tooltip, 'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
-    }
 
-    _listFrameMaker(lbl) {
-        let frame = new Gtk.Frame({
-            label_yalign: 1,
-            shadow_type: Gtk.ShadowType.IN,
-        });
-        frame.set_label_widget(new Gtk.Label({
-            use_markup: true,
-            margin_top: 30,
-            label: '<b><big>' + lbl + '</big></b>',
-        }));
-        this.add(frame);
-
-        frame.grid = LightDictWiget._listGridMaker();
-        frame.add(frame.grid);
-        frame._add = frame.grid._add;
-        frame._att = frame.grid._att;
-
-        return frame;
+        this._field_left_command.set_edit(!gsettings.get_string(Fields.LCOMMAND));
+        this._field_right_command.set_edit(!gsettings.get_string(Fields.RCOMMAND));
+        this._field_text_filter.set_edit(!gsettings.get_string(Fields.TXTFILTER));
     }
 });
 
 const LightDictPopup = GObject.registerClass(
 class LightDictPopup extends Gtk.Box {
     _init() {
-        super._init({
-            margin: 30,
-        });
+        super._init({});
 
         this.isNew = true;
         this.isSetting = false;
@@ -480,32 +346,32 @@ class LightDictPopup extends Gtk.Box {
         this._commands = gsettings.get_strv(Fields.PCOMMANDS);
         this._buildWidgets();
         this._buildUI();
-        this._syncStatus();
+        this._bindValues();
     }
 
     _buildWidgets() {
         this._tre = this._treeViewMaker(this._commands);
 
-        this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
-        this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }) });
-        this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }) });
-        this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
+        this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }), relief: Gtk.ReliefStyle.NONE });
 
         this._pop = new Gtk.Switch();
         this._cmt = new Gtk.Switch();
         this._sel = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
+        this._typ = new UI.Combo(['sh', 'JS']);
+        this._cmd = new UI.Entry('gio open LDWORD');
+        this._tip = new UI.Entry('Open URL with gio open');
+        this._reg = new UI.Entry('(https?|ftp|file)://.*');
+        this._ico = new UI.Entry('face-cool-symbolic', '', true);
         this._app = new LightDictAppBox('', _('Click the app icon to remove'), _('Allowlist'));
-        this._typ = LightDictWiget._comboMaker(['sh', 'JS']);
-        this._ico = LightDictWiget._entryMaker('face-cool-symbolic', '', true);
-        this._cmd = LightDictWiget._entryMaker('gio open LDWORD');
-        this._tip = LightDictWiget._entryMaker('Open URL with gio open');
-        this._reg = LightDictWiget._entryMaker('(https?|ftp|file)://.*');
     }
 
     _buildUI() {
-        let leftBox = new Gtk.VBox({});
-        let toolBar = new Gtk.HBox({});
+        let leftBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, });
+        let toolBar = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
         toolBar.pack_start(this._add, false, false, 2);
         toolBar.pack_start(this._del, false, false, 2);
         toolBar.pack_start(this._nxt, false, false, 2);
@@ -514,32 +380,32 @@ class LightDictPopup extends Gtk.Box {
         leftBox.pack_start(new Gtk.Separator(), false, false, 0);
         leftBox.pack_end(toolBar, false, false, 0);
 
-        let rightBox = new Gtk.VBox({});
-        let details = LightDictWiget._listGridMaker();
-        details._add(LightDictWiget._labelMaker(_('Icon name')), this._ico);
-        details._att(LightDictWiget._labelMaker(_('Run command'), true), this._cmd);
-        details._add(LightDictWiget._labelMaker(_('Command type')), this._typ);
-        details._add(LightDictWiget._labelMaker(_('Show result')), this._pop);
-        details._add(LightDictWiget._labelMaker(_('Copy result')), this._cpy);
-        details._add(LightDictWiget._labelMaker(_('Select result')), this._sel);
-        details._add(LightDictWiget._labelMaker(_('Commit result')), this._cmt);
+        let rightBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, });
+        let details = new UI.ListGrid();
+        details._add(new UI.Label(_('Icon name')), this._ico);
+        details._att(new UI.Label(_('Run command'), true), this._cmd);
+        details._add(new UI.Label(_('Command type')), this._typ);
+        details._add(new UI.Label(_('Show result')), this._pop);
+        details._add(new UI.Label(_('Copy result')), this._cpy);
+        details._add(new UI.Label(_('Select result')), this._sel);
+        details._add(new UI.Label(_('Commit result')), this._cmt);
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let addition = LightDictWiget._listGridMaker();
-        addition._att(LightDictWiget._labelMaker(_('Application list'), true), this._app);
-        addition._att(LightDictWiget._labelMaker(_('RegExp matcher'), true), this._reg);
-        addition._att(LightDictWiget._labelMaker(_('Icon tooltip'), true), this._tip);
+        let addition = new UI.ListGrid();
+        addition._att(new UI.Label(_('Application list'), true), this._app);
+        addition._att(new UI.Label(_('RegExp matcher'), true), this._reg);
+        addition._att(new UI.Label(_('Icon tooltip'), true), this._tip);
         rightBox.pack_start(addition, false, false, 0);
 
-        let outBox = new Gtk.HBox();
+        let outBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
         outBox.pack_start(leftBox, false, false, 0);
         outBox.pack_start(new Gtk.Separator(), false, false, 0);
         outBox.pack_end(rightBox, true, true, 0);
 
-        this.add(LightDictWiget._frameWrapper(outBox));
+        this.add(new UI.Frame(outBox));
     }
 
-    _syncStatus() {
+    _bindValues() {
         this._tre.get_selection().connect('changed', this._onSelected.bind(this));
 
         this._add.connect('clicked', this._onAddClicked.bind(this));
@@ -584,10 +450,10 @@ class LightDictPopup extends Gtk.Box {
     }
 
     _toggleEditable() {
-        toggleEdit(this._ico, this.conf.icon);
-        toggleEdit(this._cmd, this.conf.command);
-        toggleEdit(this._reg, this.conf.regexp);
-        toggleEdit(this._tip, this.conf.tooltip);
+        this._ico.set_edit(!this.conf.icon);
+        this._cmd.set_edit(!this.conf.command);
+        this._reg.set_edit(!this.conf.regexp);
+        this._tip.set_edit(!this.conf.tooltip);
     }
 
     get selected() {
@@ -717,9 +583,7 @@ class LightDictPopup extends Gtk.Box {
 const LightDictSwift = GObject.registerClass(
 class LightDictSwift extends Gtk.Box {
     _init() {
-        super._init({
-            margin: 30,
-        });
+        super._init();
 
         this.isNew = true;
         this.isSetting = false;
@@ -727,30 +591,30 @@ class LightDictSwift extends Gtk.Box {
         this._commands = gsettings.get_strv(Fields.SCOMMANDS);
         this._buildWidgets();
         this._buildUI();
-        this._syncStatus();
+        this._bindValues();
     }
 
     _buildWidgets() {
         this._tre = this._treeViewMaker(this._commands);
 
-        this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }) });
-        this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }) });
-        this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }) });
-        this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }) });
+        this._add = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-add-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._del = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'list-remove-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._nxt = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-down-symbolic' }), relief: Gtk.ReliefStyle.NONE });
+        this._prv = new Gtk.Button({ image: new Gtk.Image({ icon_name: 'go-up-symbolic' }), relief: Gtk.ReliefStyle.NONE });
 
         this._pop = new Gtk.Switch();
         this._cmt = new Gtk.Switch();
         this._cpy = new Gtk.Switch();
         this._sel = new Gtk.Switch();
-        this._typ = LightDictWiget._comboMaker(['sh', 'JS']);
+        this._typ = new UI.Combo(['sh', 'JS']);
+        this._cmd = new UI.Entry('gio open LDWORD');
+        this._reg = new UI.Entry('(https?|ftp|file)://.*');
         this._app = new LightDictAppBox('', _('Click the app icon to remove'), _('Allowlist'));
-        this._cmd = LightDictWiget._entryMaker('gio open LDWORD');
-        this._reg = LightDictWiget._entryMaker('(https?|ftp|file)://.*');
     }
 
     _buildUI() {
-        let leftBox = new Gtk.VBox({});
-        let toolBar = new Gtk.HBox({});
+        let leftBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, });
+        let toolBar = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
         toolBar.pack_start(this._add, false, false, 2);
         toolBar.pack_start(this._del, false, false, 2);
         toolBar.pack_start(this._nxt, false, false, 2);
@@ -759,37 +623,36 @@ class LightDictSwift extends Gtk.Box {
         leftBox.pack_start(new Gtk.Separator(), false, false, 0);
         leftBox.pack_end(toolBar, false, false, 0);
 
-        let rightBox = new Gtk.VBox({});
-        let details = LightDictWiget._listGridMaker();
-        details._att(LightDictWiget._labelMaker(_('Run command'), true), this._cmd);
-        details._add(LightDictWiget._labelMaker(_('Command type')), this._typ);
-        details._add(LightDictWiget._labelMaker(_('Show result')), this._pop);
-        details._add(LightDictWiget._labelMaker(_('Copy result')), this._cpy);
-        details._add(LightDictWiget._labelMaker(_('Select result')), this._sel);
-        details._add(LightDictWiget._labelMaker(_('Commit result')), this._cmt);
+        let rightBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, });
+        let details = new UI.ListGrid();
+        details._att(new UI.Label(_('Run command'), true), this._cmd);
+        details._add(new UI.Label(_('Command type')), this._typ);
+        details._add(new UI.Label(_('Show result')), this._pop);
+        details._add(new UI.Label(_('Copy result')), this._cpy);
+        details._add(new UI.Label(_('Select result')), this._sel);
+        details._add(new UI.Label(_('Commit result')), this._cmt);
         rightBox.pack_start(details, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let addition = LightDictWiget._listGridMaker();
-        addition._att(LightDictWiget._labelMaker(_('Application list'), true), this._app);
-        addition._att(LightDictWiget._labelMaker(_('RegExp matcher'), true), this._reg);
+        let addition = new UI.ListGrid();
+        addition._att(new UI.Label(_('Application list'), true), this._app);
+        addition._att(new UI.Label(_('RegExp matcher'), true), this._reg);
         rightBox.pack_start(addition, false, false, 0);
         rightBox.pack_start(new Gtk.Separator(), false, false, 0);
-        let info = LightDictWiget._listGridMaker();
-        info._att(LightDictWiget._labelMaker(_('Only one item can be enabled in swift style.\n') +
-                                             _('The first one will be used by default if none is enabled.\n') +
-                                             _('Double click a list item on the left to change the name.')
-        ));
+        let info = new UI.ListGrid();
+        info._att(new UI.Label(_('Only one item can be enabled in swift style.\n') +
+                               _('The first one will be used by default if none is enabled.\n') +
+                               _('Double click a list item on the left to change the name.')));
         rightBox.pack_start(info, false, false, 0);
 
-        let outBox = new Gtk.HBox();
+        let outBox = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, });
         outBox.pack_start(leftBox, false, false, 0);
         outBox.pack_start(new Gtk.Separator(), false, false, 0);
         outBox.pack_end(rightBox, true, true, 0);
 
-        this.add(LightDictWiget._frameWrapper(outBox));
+        this.add(new UI.Frame(outBox));
     }
 
-    _syncStatus() {
+    _bindValues() {
         this._tre.get_selection().connect('changed', this._onSelected.bind(this));
 
         this._add.connect('clicked', this._onAddClicked.bind(this));
@@ -830,8 +693,8 @@ class LightDictSwift extends Gtk.Box {
     }
 
     _toggleEditable() {
-        toggleEdit(this._cmd, this.conf.command);
-        toggleEdit(this._reg, this.conf.regexp);
+        this._cmd.set_edit(!this.conf.command);
+        this._reg.set_edit(!this.conf.regexp);
     }
 
     get selected() {
