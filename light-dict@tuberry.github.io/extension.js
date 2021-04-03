@@ -14,7 +14,7 @@ const InputSources = Keyboard.getInputSourceManager();
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
-const Fields = Me.imports.prefs.Fields;
+const Fields = Me.imports.fields.Fields;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
