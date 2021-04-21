@@ -63,7 +63,7 @@
         <summary>command index of swift style</summary>
     </key>
     <key type="as" name="swift-commands">
-        <default>[]</default>
+        <default>['{"enable":true,"name":"Trans","command":"trans -b -- LDWORD # needs translate-shell installed","popup":true}']</default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="as" name="popup-commands">

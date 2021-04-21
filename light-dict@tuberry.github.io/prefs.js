@@ -29,11 +29,10 @@ class LightDictPrefs extends Gtk.Stack {
         this._add_tab(new LightDictJSON(Fields.PCOMMANDS), 'popup', _('Popup'));
         this._add_tab(new LightDictAbout(), 'about', _('About'));
 
-        GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 20, () => {
+        this.connect('realize', () => {
             this.get_root().get_titlebar().set_title_widget(new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, stack: this }));
             this.get_root().set_default_size(650, 560);
-            return GLib.SOURCE_REMOVE;
-        }); // maybe effective, see https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/4029
+        });
     }
 
     _add_tab(tab, name, title) {
@@ -468,7 +467,7 @@ class LightDictBasic extends UI.Box {
         popup._add(new UI.Label(_('Enable tooltip')), this._field_enable_tooltip);
         popup._add(new UI.Label(_('Page size')), this._field_page_size);
 
-        this.appends([new UI.Frame(panel, _('Panel')), new UI.Frame(common, _('Common')), new UI.Frame(popup, _('Popup'))]);
+        this.appends([new UI.Frame(common, _('Common')), new UI.Frame(panel, _('Panel')), new UI.Frame(popup, _('Popup'))]);
     }
 
     _bindValues() {
