@@ -1,5 +1,5 @@
 {
-  "description": "Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup",
+  "description": "Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup\n\nFor support, please report any issues via the homepage link below.",
   "gettext-domain": "light-dict",
   "name": "Light Dict",
   "settings-schema": "org.gnome.shell.extensions.light-dict",

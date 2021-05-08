@@ -651,7 +651,7 @@ const LightDict = GObject.registerClass({
     }
 
     set _pointer(pointer) {
-        const size = Meta.prefs_get_cursor_size() / 2;
+        let size = Meta.prefs_get_cursor_size() / 2;
         this.setCursor(pointer[0] - size, pointer[1] - size, size * 2.15, size * 2.15);
     }
 

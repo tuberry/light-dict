@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: Light Dict 42\n"
+"Project-Id-Version: Light Dict 54\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-02-28 17:15+0800\n"
+"POT-Creation-Date: 2021-04-24 21:12+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,227 +17,219 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:512
-msgid "Enabled: "
+#: extension.js:514
+msgid "Swift: "
 msgstr ""
 
-#: extension.js:538 prefs.js:412
-msgid "Trigger style"
+#: extension.js:538
+msgid "Trigger: "
 msgstr ""
 
-#: extension.js:540
-msgid "Swift commands"
-msgstr ""
-
-#: extension.js:542
-msgid "Current application"
-msgstr ""
-
-#: extension.js:544
-msgid "More"
-msgstr ""
-
-#: extension.js:561
+#: extension.js:568
 msgid "Passive mode"
 msgstr ""
 
-#: extension.js:569
-msgid "Add/remove"
+#: extension.js:576
+msgid "Add/remove current app"
 msgstr ""
 
-#: extension.js:577
+#: extension.js:584
 msgid "Settings"
 msgstr ""
 
-#: extension.js:870
+#: extension.js:872
 #, javascript-format
 msgid "Switch to %s style"
 msgstr ""
 
-#: prefs.js:47
+#: prefs.js:27
 msgid "Basic"
 msgstr ""
 
-#: prefs.js:48 prefs.js:398
+#: prefs.js:28 prefs.js:448
 msgid "Swift"
 msgstr ""
 
-#: prefs.js:49 prefs.js:398 prefs.js:421
+#: prefs.js:29 prefs.js:448 prefs.js:470
 msgid "Popup"
 msgstr ""
 
-#: prefs.js:50
+#: prefs.js:30
 msgid "About"
 msgstr ""
 
-#: prefs.js:326
+#: prefs.js:276 prefs.js:446
+msgid "Click the app icon to remove"
+msgstr ""
+
+#: prefs.js:276 prefs.js:447
+msgid "Allowlist"
+msgstr ""
+
+#: prefs.js:281 prefs.js:348
+msgid "Run command"
+msgstr ""
+
+#: prefs.js:282 prefs.js:350
+msgid "Command type"
+msgstr ""
+
+#: prefs.js:283 prefs.js:351
+msgid "Show result"
+msgstr ""
+
+#: prefs.js:284 prefs.js:352
+msgid "Copy result"
+msgstr ""
+
+#: prefs.js:285 prefs.js:353
+msgid "Select result"
+msgstr ""
+
+#: prefs.js:286 prefs.js:354
+msgid "Commit result"
+msgstr ""
+
+#: prefs.js:289 prefs.js:357 prefs.js:460
+msgid "Application list"
+msgstr ""
+
+#: prefs.js:290 prefs.js:358
+msgid "RegExp matcher"
+msgstr ""
+
+#: prefs.js:292
+msgid "Only one item can be enabled in swift style.\n"
+msgstr ""
+
+#: prefs.js:293
+msgid "The first one will be used by default if none is enabled.\n"
+msgstr ""
+
+#: prefs.js:294
+msgid "Double click a list item on the left to change the name."
+msgstr ""
+
+#: prefs.js:349
+msgid "Icon name"
+msgstr ""
+
+#: prefs.js:359
+msgid "Icon tooltip"
+msgstr ""
+
+#: prefs.js:393
 #, javascript-format
 msgid "Version %d"
 msgstr ""
 
-#: prefs.js:327
+#: prefs.js:394
 msgid ""
 "Lightweight extension for instant action to primary selection, especially "
 "optimized for Dictionary lookup."
 msgstr ""
 
-#: prefs.js:343
-msgid "Tips"
-msgstr ""
-
-#: prefs.js:350
+#: prefs.js:403
 msgid "Leave RegExp/application list blank for no restriction"
 msgstr ""
 
-#: prefs.js:351
+#: prefs.js:404
 msgid "Middle click the panel to copy the result to clipboard"
 msgstr ""
 
-#: prefs.js:352
+#: prefs.js:405
 msgid "Substitute <b>LDWORD</b> for the selected text in the command"
 msgstr ""
 
-#: prefs.js:353
+#: prefs.js:406
 msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
 msgstr ""
 
-#: prefs.js:354
+#: prefs.js:407
 msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
 msgstr ""
 
-#: prefs.js:355
+#: prefs.js:408
 msgid ""
 "Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>"
 msgstr ""
 
-#: prefs.js:397 prefs.js:497 prefs.js:745
-msgid "Allowlist"
+#: prefs.js:412
+msgid "Tips"
 msgstr ""
 
-#: prefs.js:397
+#: prefs.js:447
 msgid "Blocklist"
 msgstr ""
 
-#: prefs.js:398
+#: prefs.js:448
 msgid "Disable"
 msgstr ""
 
-#: prefs.js:399
-msgid "Proactive"
-msgstr ""
-
-#: prefs.js:399
-msgid "Passive"
-msgstr ""
-
-#: prefs.js:399
-msgid "Need modifier to trigger or not"
-msgstr ""
-
-#: prefs.js:400 prefs.js:497 prefs.js:745
-msgid "Click the app icon to remove"
-msgstr ""
-
-#: prefs.js:403
+#: prefs.js:449
 msgid "Left click to run"
 msgstr ""
 
-#: prefs.js:404
+#: prefs.js:450
+msgid "Proactive"
+msgstr ""
+
+#: prefs.js:450
+msgid "Passive"
+msgstr ""
+
+#: prefs.js:450
+msgid "Need modifier to trigger or not"
+msgstr ""
+
+#: prefs.js:451
 msgid "Right click to run and hide panel"
 msgstr ""
 
-#: prefs.js:408
-msgid "Common"
-msgstr ""
-
-#: prefs.js:409
+#: prefs.js:456
 msgid "Enable systray"
 msgstr ""
 
-#: prefs.js:410
+#: prefs.js:457
 msgid "Trim blank lines"
 msgstr ""
 
-#: prefs.js:411
+#: prefs.js:458
 msgid "Autohide interval"
 msgstr ""
 
-#: prefs.js:413 prefs.js:528 prefs.js:772
-msgid "Application list"
+#: prefs.js:459
+msgid "Trigger style"
 msgstr ""
 
-#: prefs.js:414
+#: prefs.js:461
 msgid "RegExp filter"
 msgstr ""
 
-#: prefs.js:416
-msgid "Panel"
-msgstr ""
-
-#: prefs.js:417
+#: prefs.js:463
 msgid "Hide title"
 msgstr ""
 
-#: prefs.js:418
+#: prefs.js:464
 msgid "Right command"
 msgstr ""
 
-#: prefs.js:419
+#: prefs.js:465
 msgid "Left command"
 msgstr ""
 
-#: prefs.js:422
+#: prefs.js:467
 msgid "Enable tooltip"
 msgstr ""
 
-#: prefs.js:423
+#: prefs.js:468
 msgid "Page size"
 msgstr ""
 
-#: prefs.js:518
-msgid "Icon name"
+#: prefs.js:470
+msgid "Common"
 msgstr ""
 
-#: prefs.js:519 prefs.js:763
-msgid "Run command"
-msgstr ""
-
-#: prefs.js:520 prefs.js:764
-msgid "Command type"
-msgstr ""
-
-#: prefs.js:521 prefs.js:765
-msgid "Show result"
-msgstr ""
-
-#: prefs.js:522 prefs.js:766
-msgid "Copy result"
-msgstr ""
-
-#: prefs.js:523 prefs.js:767
-msgid "Select result"
-msgstr ""
-
-#: prefs.js:524 prefs.js:768
-msgid "Commit result"
-msgstr ""
-
-#: prefs.js:529 prefs.js:773
-msgid "RegExp matcher"
-msgstr ""
-
-#: prefs.js:530
-msgid "Icon tooltip"
-msgstr ""
-
-#: prefs.js:777
-msgid "Only one item can be enabled in swift style.\n"
-msgstr ""
-
-#: prefs.js:778
-msgid "The first one will be used by default if none is enabled.\n"
-msgstr ""
-
-#: prefs.js:779
-msgid "Double click a list item on the left to change the name."
+#: prefs.js:470
+msgid "Panel"
 msgstr ""
