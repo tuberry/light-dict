@@ -17,6 +17,7 @@ Or manually:
 ```bash
 git clone https://github.com/tuberry/light-dict.git
 cd light-dict && make install
+# make mergepo # for translation
 ```
 
 ## Features

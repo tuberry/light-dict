@@ -536,54 +536,40 @@ const DictBtn = GObject.registerClass({
 
     _triggerMenu() {
         let trigger = new PopupMenu.PopupSubMenuMenuItem(_('Trigger: ') + _(Object.keys(TriggerStyle)[this._trigger]));
-        Object.keys(TriggerStyle).forEach(x => { trigger.menu.addMenuItem(this._menuItemMaker(x)); });
+        Object.keys(TriggerStyle).forEach(x => {
+            let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
+            item.setOrnament(this._trigger == TriggerStyle[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+            item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[x]); });
+            trigger.menu.addMenuItem(item);
+        });
 
         return trigger;
     }
 
+    _menuSwitchMaker(text, active, callback) {
+        let item = new PopupMenu.PopupSwitchMenuItem(text, active, { style_class: 'light-dict-item popup-menu-item' });
+        item.connect('toggled', callback);
+
+        return item;
+    }
+
+    _menuItemMaker(text, callback) {
+        let item = new PopupMenu.PopupMenuItem(text, { style_class: 'light-dict-item popup-menu-item' });
+        item.connect('activate', callback);
+
+        return item;
+    }
+
     _updateMenu() {
         this.menu.removeAll();
-        this.menu.addMenuItem(this._passiveItem());
+        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), this._passive == 1, (item, active) => {
+            item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, active ? 1 : 0); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
-        this.menu.addMenuItem(this._applistItem());
+        this.menu.addMenuItem(this._menuItemMaker(_('Add/remove current app'), () => { this.emit('add-or-remove-app'); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.menu.addMenuItem(this._settingItem());
-    }
-
-    _menuItemMaker(text) {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.setOrnament(this._trigger == TriggerStyle[text] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, TriggerStyle[text]); });
-        item.add_child(new St.Label({ x_expand: true, text: _(text), }));
-
-        return item;
-    }
-
-    _passiveItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.setOrnament(this._passive == 1 ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-        item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Passive mode'), }));
-
-        return item;
-    }
-
-    _applistItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.connect('activate', () => { this.emit('add-or-remove-app'); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Add/remove current app'), }));
-
-        return item;
-    }
-
-    _settingItem() {
-        let item = new PopupMenu.PopupBaseMenuItem({ style_class: 'light-dict-item popup-menu-item' });
-        item.connect('activate', () => { ExtensionUtils.openPrefs(); });
-        item.add_child(new St.Label({ x_expand: true, text: _('Settings'), }));
-
-       return item;
+        this.menu.addMenuItem(this._menuItemMaker(_('Settings'), () => { ExtensionUtils.openPrefs(); }));
     }
 });
 
@@ -640,7 +626,7 @@ const LightDict = GObject.registerClass({
     set systray(systray) {
         if(systray) {
             if(this._button) return;
-            this._button = new DictBtn(null);
+            this._button = new DictBtn(null, Me.metadata.uuid);
             this._button.connect('add-or-remove-app', this.Block.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
@@ -651,8 +637,8 @@ const LightDict = GObject.registerClass({
     }
 
     set _pointer(pointer) {
-        let size = Meta.prefs_get_cursor_size() / 2;
-        this.setCursor(pointer[0] - size, pointer[1] - size, size * 2.15, size * 2.15);
+        let size = Meta.prefs_get_cursor_size();
+        this.setCursor(pointer[0] - size / 2, pointer[1] - size / 2, size * 1.25, size * 1.25);
     }
 
     set scommands(cmds) {
