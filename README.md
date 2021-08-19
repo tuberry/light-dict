@@ -17,27 +17,48 @@ Or manually:
 ```bash
 git clone https://github.com/tuberry/light-dict.git
 cd light-dict && make install
+# make mergepo # for translation
 ```
 
 ## Features
 
-Inspired by two lovely web extensions, [swift-selection-search] and [youdaodict].
+### Basic
 
 1. Scroll on iconbar to flip page;
 2. Scroll on systray to toggle mode;
-3. Click on the menu to add/remove current app;
-4. [DBus] interface (eg. [OCR](/_ldocr.fish) to translate):
+
+### DBus
+
+[DBus] interface is available:
 
 ```bash
 # see the methods
 gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict
 ```
 
-## Acknowledgements
+For usage, see [_ldocr.fish](/_ldocr.fish) as a sample reference.
 
-* [youdaodict]: idea of popup;
-* [swift-selection-search]: stylesheet of iconbar;
-* [gsconnect]: fake keyboard input;
+### OCR
+
+#### Dependencies
+
+* [python-opencv]
+* [python-pytesseract]
+* [python-googletrans]: (optional) specify DEST (e.g. `-d zh-cn`) to enable
+
+```bash
+yay -S python-opencv python-pytesseract
+```
+
+#### Usage
+
+Enable OCR and fill in parameters (click the button for details) as you wish:
+
+![ocr](https://user-images.githubusercontent.com/17917040/130025814-1b847b34-0373-46a1-a65e-5546f1687ba5.png)
+
+#### Result
+
+https://user-images.githubusercontent.com/17917040/130017649-ca978f47-7c63-4d31-8d32-99d78ecb8907.mp4
 
 ## Note
 
@@ -45,6 +66,13 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 2. If you need English-Chinese offline dictionary, try [dict-ecdict] or [dict-cedict].
 3. If you need to customize the appearance of some widgets, try [user-theme-x].
 
+## Acknowledgements
+
+* [youdaodict]: idea of popup
+* [gsconnect]: fake keyboard input
+* [swift-selection-search]: stylesheet of iconbar
+
+[python-opencv]:https://opencv.org/
 [dict-cedict]:https://github.com/tuberry/dict-cedict
 [dict-ecdict]:https://github.com/tuberry/dict-ecdict
 [DBus]:https://www.freedesktop.org/wiki/Software/dbus/
@@ -54,3 +82,5 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 [license]:https://img.shields.io/badge/license-GPLv3-green.svg
 [gsconnect]:https://github.com/andyholmes/gnome-shell-extension-gsconnect
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
+[python-pytesseract]:https://github.com/madmaze/pytesseract
+[python-googletrans]:https://github.com/ssut/py-googletrans

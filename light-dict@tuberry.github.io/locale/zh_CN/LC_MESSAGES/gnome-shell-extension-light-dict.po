@@ -1,0 +1,290 @@
+# Chinese translations for gnome-shell-extension-light-dict package
+# gnome-shell-extension-light-dict 软件包的简体中文翻译.
+# Copyright (C) 2021 THE gnome-shell-extension-light-dict'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-light-dict package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-light-dict 55\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-08-19 20:47+0800\n"
+"PO-Revision-Date: 2021-08-18 13:20+0800\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension.js:575
+msgid "Swift: "
+msgstr "即时："
+
+#: extension.js:593
+msgid "Trigger: "
+msgstr "触发："
+
+#: extension.js:605
+msgid "OCR: "
+msgstr "OCR："
+
+#: extension.js:633
+msgid "Passive mode"
+msgstr "被动模式"
+
+#: extension.js:639
+msgid "Add/remove current app"
+msgstr "添加/移除当前应用"
+
+#: extension.js:641
+msgid "Settings"
+msgstr "设置"
+
+#: extension.js:887
+#, javascript-format
+msgid "Switch to %s style"
+msgstr "切换至%s方式"
+
+#: prefs.js:27
+msgid "Basic"
+msgstr "基本"
+
+#: prefs.js:28 prefs.js:449
+msgid "Swift"
+msgstr "即时"
+
+#: prefs.js:29 prefs.js:449 prefs.js:479
+msgid "Popup"
+msgstr "弹出"
+
+#: prefs.js:30
+msgid "About"
+msgstr "关于"
+
+#: prefs.js:276 prefs.js:447
+msgid "Click the app icon to remove"
+msgstr "点击应用图标移除"
+
+#: prefs.js:276 prefs.js:448
+msgid "Allowlist"
+msgstr "白名单"
+
+#: prefs.js:281 prefs.js:348
+msgid "Run command"
+msgstr "运行命令"
+
+#: prefs.js:282 prefs.js:350
+msgid "Command type"
+msgstr "命令类型"
+
+#: prefs.js:283 prefs.js:351
+msgid "Show result"
+msgstr "显示结果"
+
+#: prefs.js:284 prefs.js:352
+msgid "Copy result"
+msgstr "复制结果"
+
+#: prefs.js:285 prefs.js:353
+msgid "Select result"
+msgstr "选取结果"
+
+#: prefs.js:286 prefs.js:354
+msgid "Commit result"
+msgstr "提交结果"
+
+#: prefs.js:289 prefs.js:357 prefs.js:465
+msgid "Application list"
+msgstr "应用名单"
+
+#: prefs.js:290 prefs.js:358
+msgid "RegExp matcher"
+msgstr "正则匹配"
+
+#: prefs.js:292
+msgid "Only one item can be enabled in swift style.\n"
+msgstr "即时方式下仅能启用一项。\n"
+
+#: prefs.js:293
+msgid "The first one will be used by default if none is enabled.\n"
+msgstr "若未启用默认使用第一项。\n"
+
+#: prefs.js:294
+msgid "Double click a list item on the left to change the name."
+msgstr "双击左侧列表项更改名称。"
+
+#: prefs.js:349
+msgid "Icon name"
+msgstr "图标名称"
+
+#: prefs.js:359
+msgid "Icon tooltip"
+msgstr "图标提示"
+
+#: prefs.js:393
+#, javascript-format
+msgid "Version %d"
+msgstr "版本 %d"
+
+#: prefs.js:394
+msgid ""
+"Lightweight extension for instant action to primary selection, especially "
+"optimized for Dictionary lookup."
+msgstr "即时操作所选文本的轻量扩展，为查词而生。"
+
+#: prefs.js:403
+msgid "Leave RegExp/application list blank for no restriction"
+msgstr "正则表达式或应用列表留空则无相应限制"
+
+#: prefs.js:404
+msgid "Middle click the panel to copy the result to clipboard"
+msgstr "中键点击气泡复制结果到系统剪切板"
+
+#: prefs.js:405
+msgid "Substitute <b>LDWORD</b> for the selected text in the command"
+msgstr "以 <b>LDWORD</b> 代替命令中所选文本"
+
+#: prefs.js:406
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+msgstr "添加图标至 <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+
+#: prefs.js:407
+msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
+msgstr "JS 语句模拟键盘输入: <i>key('Control_L+c')</i>"
+
+#: prefs.js:408
+msgid ""
+"Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>"
+msgstr "<b>被动模式</b>高亮文本时需按住 <b>Alt/Shift</b> 来触发"
+
+#: prefs.js:412
+msgid "Tips"
+msgstr "提示"
+
+#: prefs.js:445
+msgid "Enable OCR"
+msgstr "启用OCR"
+
+#: prefs.js:448
+msgid "Blocklist"
+msgstr "黑名单"
+
+#: prefs.js:449
+msgid "Disable"
+msgstr "禁用"
+
+#: prefs.js:450
+msgid "Left click to run"
+msgstr "左键运行"
+
+#: prefs.js:451
+msgid "Shortcut"
+msgstr "快捷键"
+
+#: prefs.js:452
+msgid "Parameters"
+msgstr "参数"
+
+#: prefs.js:453
+msgid "Proactive"
+msgstr "主动"
+
+#: prefs.js:453
+msgid "Passive"
+msgstr "被动"
+
+#: prefs.js:453
+msgid "Need modifier to trigger or not"
+msgstr "触发需修饰键与否"
+
+#: prefs.js:454
+msgid "Word"
+msgstr "单词"
+
+#: prefs.js:454
+msgid "Paragraph"
+msgstr "段落"
+
+#: prefs.js:454
+msgid "Area"
+msgstr "区域"
+
+#: prefs.js:454
+msgid "Selection"
+msgstr "选取"
+
+#: prefs.js:454
+msgid "Line"
+msgstr "单行"
+
+#: prefs.js:454
+msgid "Button"
+msgstr "按钮"
+
+#: prefs.js:455
+msgid "Right click to run and hide panel"
+msgstr "右键运行并关闭气泡"
+
+#: prefs.js:456
+#, fuzzy
+msgid ""
+"Depends on python-opencv, python-pytesseract and python-googletrans "
+"(optional)"
+msgstr "依赖于 python-opencv，python-tesseract 和 python-googletrans（可选）"
+
+#: prefs.js:461
+msgid "Enable systray"
+msgstr "托盘图标"
+
+#: prefs.js:462
+msgid "Trim blank lines"
+msgstr "去除空行"
+
+#: prefs.js:463
+msgid "Autohide interval"
+msgstr "隐藏延迟"
+
+#: prefs.js:464
+msgid "Trigger style"
+msgstr "触发方式"
+
+#: prefs.js:466
+msgid "RegExp filter"
+msgstr "正则过滤"
+
+#: prefs.js:468
+msgid "Hide title"
+msgstr "隐藏标题"
+
+#: prefs.js:469
+msgid "Right command"
+msgstr "右键命令"
+
+#: prefs.js:470
+msgid "Left command"
+msgstr "左键命令"
+
+#: prefs.js:472
+msgid "Enable tooltip"
+msgstr "启用提示"
+
+#: prefs.js:473
+msgid "Page size"
+msgstr "页面容量"
+
+#: prefs.js:476
+msgid "Work mode"
+msgstr "工作模式"
+
+#: prefs.js:479
+msgid "Common"
+msgstr "通用"
+
+#: prefs.js:479
+msgid "Panel"
+msgstr "气泡"
+
+#: prefs.js:479
+msgid "OCR"
+msgstr "OCR"

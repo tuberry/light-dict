@@ -1,10 +1,10 @@
 {
-  "description": "Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup",
-  "gettext-domain": "light-dict",
+  "description": "Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup\n\nFor support, please report any issues via the homepage link below.",
+  "gettext-domain": "gnome-shell-extension-light-dict",
   "name": "Light Dict",
   "settings-schema": "org.gnome.shell.extensions.light-dict",
   "shell-version": [
-    "3.38"
+    "40"
   ],
   "url": "https://github.com/tuberry/light-dict",
   "uuid": "light-dict@tuberry.github.io",

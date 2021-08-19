@@ -17,6 +17,10 @@
         <default>true</default>
         <summary>enable systray</summary>
     </key>
+    <key type="b" name="enable-ocr">
+        <default>false</default>
+        <summary>enable ocr</summary>
+    </key>
     <key type="u" name="passive-mode">
         <range min="0" max="1"/>
         <default>0</default>
@@ -42,6 +46,11 @@
         <default>1</default>
         <summary>global app list type: 0-allow 1-block</summary>
     </key>
+    <key type="u" name="ocr-work-mode">
+        <range min="0" max="5"/>
+        <default>0</default>
+        <summary>the work mode as a script parameter: 0-word 1-paragraph 2-area 3-selection 4-line 5-button</summary>
+    </key>
     <key type="s" name="text-filter">
         <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
         <summary>text filter in proactive mode</summary>
@@ -54,6 +63,10 @@
         <default>""</default>
         <summary>app allowlist/blocklist</summary>
     </key>
+    <key type="s" name="ocr-parameters">
+        <default>""</default>
+        <summary>parameters passed to the ocr script</summary>
+    </key>
     <key type="s" name="left-command">
         <default>""</default>
         <summary>command executed when left-clicking panel</summary>
@@ -62,8 +75,12 @@
         <default>0</default>
         <summary>command index of swift style</summary>
     </key>
+    <key type="as" name="light-dict-ocr-shortcut">
+        <default><![CDATA[['<Super>e']]]></default>
+        <summary>shortcut to invoke the ocr script</summary>
+    </key>
     <key type="as" name="swift-commands">
-        <default>[]</default>
+        <default>['{"enable":true,"name":"Trans","command":"trans -b -- LDWORD # needs translate-shell installed","popup":true}']</default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="as" name="popup-commands">
