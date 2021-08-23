@@ -235,7 +235,7 @@ const SideBar = GObject.registerClass({
     }
 
     _onNameChanged(widget, path, text) {
-        let name = text ? text : 'name';
+        let name = text || 'name';
         let [ok, iter] = this._list.model.get_iter_from_string(path);
         let [index] = this._list.model.get_path(iter).get_indices();
         this.emit('changed', index, name);
@@ -297,8 +297,8 @@ const SwiftBox = GObject.registerClass({
     }
 
     _bindValues() {
-        this._popup.connect('state-set', (widget, state) => { this._emitChanged({ popup: state }) });
-        this._commit.connect('state-set', (widget, state) => { this._emitChanged({ commit: state }) });
+        this._popup.connect('state-set', (widget, state) => { this._emitChanged({ popup: state }); });
+        this._commit.connect('state-set', (widget, state) => { this._emitChanged({ commit: state }); });
         this._select.connect('state-set', (widget, state) => { this._emitChanged({ select: state }); });
         this._copy.connect('state-set', (widget, state) => { this._emitChanged({ copy: state }); });
         this._apps.connect('changed', widget => { this._emitChanged({ apps: widget.get_apps() }); });
@@ -510,20 +510,20 @@ class LightDictBasic extends UI.Box {
     }
 
     _bindOCRHelpMessage() {
-        try {
-            let proc = new Gio.Subprocess({
-                argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
-                flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
-            });
-            proc.init(null);
-            proc.communicate_utf8_async(null, null, (proc, res) => {
+        let proc = new Gio.Subprocess({
+            argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
+            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+        });
+        proc.init(null);
+        proc.communicate_utf8_async(null, null, (proc, res) => {
+            try {
                 let [, stdout, stderr] = proc.communicate_utf8_finish(res);
                 let label = proc.get_successful() ? stdout : stderr;
                 this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: label.trim() }) }));
-            });
-        } catch(e) {
-            // log(e.message);
-        }
+            } catch(e) {
+                this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: e.message }) }));
+            }
+        });
     }
 });
 
@@ -600,19 +600,14 @@ class LightDictJSON extends UI.Box {
 
     _onEnableToggled(widget, index, enable) {
         if(this._swift) {
-            this._cmds = this._cmds.map((c, i) => {
-                let conf = JSON.parse(c);
-                if(enable && i == index) {
-                    conf.enable = true;
-                    this._saveCommand(index);
-                } else {
-                    delete conf.enable;
-                }
-                return JSON.stringify(conf, null, 0);
-            });
+            this._cmds = this._cmds.map((c, i) => (n => {
+                n.enable = (enable && i == index) || undefined
+                if(n.enable) this._saveCommand(index);
+                return JSON.stringify(n, null, 0);
+            })(JSON.parse(c)));
         } else {
             let conf = JSON.parse(this._cmds[index]);
-            conf.enable = enable;
+            conf.enable = enable || undefined;
             this._cmds[index] = JSON.stringify(conf, null, 0);
         }
         this._saveCommands();
@@ -620,10 +615,10 @@ class LightDictJSON extends UI.Box {
 
     _onValueChanged(widget, prop) {
         let index = this._side.selected;
-        if(index === -1 || index >= this._cmds.length) return;
+        if(!this._cmds[index]) return;
         let [key, value] = Object.entries(prop)[0];
         let conf = JSON.parse(this._cmds[index]);
-        value ? conf[key] = value : delete conf[key];
+        conf[key] = value || undefined;
         this._cmds[index] = JSON.stringify(conf, null, 0);
         this._saveCommands();
     }

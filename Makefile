@@ -37,17 +37,21 @@ endif
 all: $(BUILD)
 
 clean:
-	-rm -fR $(BUILD)
-	-rm -fR *.zip
+	rm -rf $(BUILD)
+	rm -f *.zip
 
 $(BUILD):
 	mkdir -p $(BUILD)
-	cp -rf $(UUID)/* $(BUILD)
-	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
+	cp -r $(UUID)/* $(BUILD)
 	if test -d $(BUILD)/locale; then for p in $(BUILD)/locale/*/LC_MESSAGES/*.po; do msgfmt -o $${p/.po/.mo} $$p; done; fi;
-	-rm -fR $(BUILD)/locale/*/LC_MESSAGES/*po
+	rm -f $(BUILD)/locale/*/LC_MESSAGES/*po
 	glib-compile-schemas $(BUILD)/schemas/
-	-rm -fR $(BUILD)/schemas/*xml
+	rm -f $(BUILD)/schemas/*xml
+ifneq ($(VERSION),)
+	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
+else
+	$(warning VERSION is empty)
+endif
 
 pack: $(BUILD)
 	cd $(BUILD); \
@@ -55,14 +59,14 @@ pack: $(BUILD)
 	mv $(BUILD)/*.zip ./
 
 install: $(BUILD)
-	rm -fR $(INSTALLBASE)/$(UUID)
+	rm -rf $(INSTALLBASE)/$(UUID)
 	mkdir -p $(INSTALLBASE)/$(UUID)
 	cp -r $(BUILD)/* $(INSTALLBASE)/$(UUID)/
 ifeq ($(INSTALLTYPE),system)
 	# system-wide settings and locale files
-	rm -r $(INSTALLBASE)/$(UUID)/schemas $(INSTALLBASE)/$(UUID)/locale
+	rm -rf $(INSTALLBASE)/$(UUID)/schemas $(INSTALLBASE)/$(UUID)/locale
 	mkdir -p $(SHARE_PREFIX)/glib-2.0/schemas $(SHARE_PREFIX)/locale
-	cp -r $(UUID)/schemas/*gschema.xml $(SHARE_PREFIX)/glib-2.0/schemas
+	cp $(UUID)/schemas/*gschema.xml $(SHARE_PREFIX)/glib-2.0/schemas
 	cd $(BUILD)/locale; \
 		cp --parents */LC_MESSAGES/*.mo $(SHARE_PREFIX)/locale
 endif
@@ -77,5 +81,5 @@ $(MSGPOT):
 
 mergepo: $(MSGPOT) $(MSGAIM)
 	msgmerge -U $(MSGAIM) $(MSGPOT)
-	-rm -fR $(MSGPOT)
-	-rm -fR $(MSGDIR)/*po~
+	rm -f $(MSGPOT)
+	rm -f $(MSGDIR)/*po~

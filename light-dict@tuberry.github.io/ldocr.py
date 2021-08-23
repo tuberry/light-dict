@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # by tuberry
 
+import re
 import cv2
-import ast
 import string
 import colorsys
 import argparse
@@ -13,15 +13,14 @@ from tempfile import NamedTemporaryFile
 
 edge = 10 # FIXME: some screenshots with obvious edges lead to only 1 huge contour, e.g. Chrome
 
-# @profile
 def main():
     args = parser().parse_args()
     result = mode_exe(args)
-    if args.flash and result.area: gsdbus_call('FlashArea', ('(iiii)', (*result.area,)), '.Screenshot', '/Screenshot', '.Screenshot')
+    if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)), '.Screenshot', '/Screenshot', '.Screenshot')
     if args.cursor: result.area = None
     if args.dest: result.tran_text(args.dest)
     # FIXME: better shortcut needs progress of https://gitlab.gnome.org/GNOME/mutter/-/issues/207
-    gsdbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
+    gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
 
 def parser():
     ap = argparse.ArgumentParser()
@@ -47,10 +46,10 @@ class Result:
         self.area = area
         self.tran = None
         self.error = error
-        self.style = 0
+        self.style = 'swift'
 
     def set_style(self, style):
-        self.style = { 'swift': 0, 'popup': 1, 'display': 2, 'auto': -1 }[style]
+        self.style = style
 
     def tran_text(self, dest):
         if not self.text: return
@@ -64,24 +63,26 @@ class Result:
         except ImportError:
             self.error = 'python-googletrans is missing'
         finally:
-            self.style = 2
+            self.style = 'display'
 
     def set_verbose(self, verbose):
         if not verbose and self.error: self.error = ' '
 
     @property
     def param(self):
-        style = 2 if self.error or not self.text else self.style
-        text = (lambda t: [self.tran, t] if self.tran else [t, 'Error'])(self.error or self.text)
-        return ('RunAt', ('(iasiiii)', (style, text, *self.area))) if self.area else ('Run', ('(ias)', (style, text)))
+        style, text, info = ['display', 'error', self.error] if self.error or self.text == None else [self.style, self.text, self.tran or '']
+        return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
-def gsdbus_call(method_name, parameters, name='', object_path='', interface_name=''):
-    param = parameters if parameters == None else GLib.Variant(*parameters)
-    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None,
-                                           'org.gnome.Shell' + name,
-                                           '/org/gnome/Shell' + object_path,
-                                           'org.gnome.Shell' + interface_name, None)
+def gs_dbus_call(method_name, parameters, name='', object_path='', interface_name=''):
+    param = parameters and GLib.Variant(*parameters)
+    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
+                                           '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
     return proxy.call_sync(method_name, param, Gio.DBusCallFlags.NONE, -1, None).unpack()
+
+def ld_dbus_get(*property_names):
+    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell',
+                                           '/org/gnome/Shell/Extensions/LightDict', 'org.gnome.Shell.Extensions.LightDict', None)
+    return map(lambda x: (lambda y: y and list(y))(proxy.get_cached_property(x)), property_names)
 
 def bincount_img(img):
     # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
@@ -92,8 +93,7 @@ def bincount_img(img):
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
     if trim: img = (lambda e, s: img[e:s[0]-e, e:s[1]-e])(edge, img.shape)
-    if bincount_img(img): img = cv2.bitwise_not(img)
-    return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    return img if not bincount_img(img) else cv2.bitwise_not(img)
 
 def find_rect(rects, point):
     pt_in_rect = lambda p, r: p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
@@ -102,56 +102,57 @@ def find_rect(rects, point):
 
 def crop_img(img, point, kernel, iterations, blur=False):
     # Ref: https://stackoverflow.com/a/57262099
-    blr = cv2.GaussianBlur(gry, (3, 3), 0) if blur else img
+    gry = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    blr = cv2.GaussianBlur(gry, (3, 3), 0) if blur else gry
     thr = cv2.threshold(blr, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
     dlt = cv2.dilate(thr, cv2.getStructuringElement(cv2.MORPH_RECT, kernel), iterations=iterations)
     cts = cv2.findContours(dlt, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
+def typeset_str(para):
+    return re.sub(r'([^\.\?:!; ] *)\n', r'\g<1> ', para.replace('\n\n', '\n')).replace('\n', '\r').replace('|', 'I').strip()
+
+# @profile
 def ocr_word(lang, bttn=False, sz=(250, 50)):
-    ok, ps = gsdbus_call('Eval', ('(s)', ('((a, b) => [[a[0], a[1]], [b[0], b[1]]])(global.get_pointer(), global.get_display().get_size())',)))
-    if not ok: return Result(error='Gnome Shell DBus error.')
-    pt, sc = ast.literal_eval(ps)
+    pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
+    if pt == None or sc == None: return Result(error='LD dbus error')
     w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
-    if w < 5 or h < 5: return Result(error='Too small to screenshot.')
+    if w < 5 or h < 5: return Result(error='too small to screenshot')
     ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
     with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gsdbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        if not ok: return Result(error='Gnome Shell DBus error.')
+        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        if not ok: return Result(error='GS dbus error')
+        img = read_img(fn)
         if bttn:
-            img = read_img(fn)
             rct = crop_img(img, (w, h), (3, 3), 1)
-            return Result(text=pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang).strip(),
+            return Result(text=pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang).strip() or None,
                           area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3])) if rct else Result(error=' ')
         else:
-            img = read_img(fn)
             dat = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, lang=lang)
             bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
             rct = find_rect(bxs, (w, h))
-            return Result(text=rct[-1].strip(string.punctuation),
-                          area=(rct[0] + ar[0], rct[1] + ar[1] - edge, rct[2], rct[3] + edge * 2))
+            return Result(text=rct[-1].strip(string.punctuation).strip() or None,
+                          area=(rct[0] + ar[0], rct[1] + ar[1] - 5, rct[2], rct[3] + 10)) if rct else Result(error=' ')
 
 def ocr_area(lang):
-    area = gsdbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
+    area = gs_dbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
     with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gsdbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        return Result(text=pytesseract.image_to_string(read_img(fn), lang=lang).replace('\n\n', '\r').replace('\n', ' ').replace('|', 'I').strip(),
-                      area=area) if ok else Result(error='Gnome Shell DBus error.')
+        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        return Result(text=typeset_str(pytesseract.image_to_string(read_img(fn), lang=lang)) or None,
+                      area=area) if ok else Result(error='GS dbus error')
 
 def ocr_prln(lang, line=False):
-    ok, pf = gsdbus_call('Eval', ('(s)', ('((a, b) => [[a[0], a[1]], [b.x, b.y, b.width, b.height]])'\
-                                          '(global.get_pointer(), global.display.focus_window.get_frame_rect())',)))
-    if not ok: return Result(error='Gnome Shell DBus error.')
-    pt, fw = ast.literal_eval(pf)
+    pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
+    if pt == None or fw == None: return Result(error='LD dbus error')
     pt = [a - b - edge for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
-        # ok, fn = gsdbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        ok, fn = gsdbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        if not ok: return Result(error='Gnome Shell DBus error.')
+        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        if not ok: return Result(error='GS dbus error')
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
-        return Result(text=pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang).replace('\n', ' ').replace('|', 'I').strip(),
+        return Result(text=typeset_str(pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang)) or None,
                       area=(rct[0] + fw[0] + edge, rct[1] + fw[1] + edge, rct[2], rct[3])) if rct else Result(error=' ')
 
 def mode_exe(args):
@@ -161,7 +162,7 @@ def mode_exe(args):
         'paragraph': (ocr_prln, (args.lang,)),
         'line': (ocr_prln, (args.lang, True)),
         'area': (ocr_area, (args.lang,)),
-        'selection': (lambda: Result(text=' '), ())
+        'selection': (lambda: Result(text=''), ())
     }[args.mode]);
     result.set_style(args.style)
     result.set_verbose(args.verbose)

@@ -15,32 +15,38 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.fields.Fields;
+
+const g_pointer = () => global.get_pointer();
+const g_size = () => global.display.get_size();
+const g_focus = () => global.display.focus_window;
 const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
-const DBus = { Swift: 0, Popup : 1, Display : 2 };
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Selection: 3, Line: 4, Button: 5 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const DBUSINTERFACE = `
 <node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
+        <method name="Block"/>
+        <method name="Toggle"/>
         <method name="Run">
-            <arg type="i" direction="in" name="type"/>
-            <arg type="as" direction="in" name="text"/>
+            <arg type="s" direction="in" name="type"/>
+            <arg type="s" direction="in" name="text"/>
+            <arg type="s" direction="in" name="info"/>
         </method>
         <method name="RunAt">
-            <arg type="i" direction="in" name="type"/>
-            <arg type="as" direction="in" name="text"/>
+            <arg type="s" direction="in" name="type"/>
+            <arg type="s" direction="in" name="text"/>
+            <arg type="s" direction="in" name="info"/>
             <arg type="i" direction="in" name="x"/>
             <arg type="i" direction="in" name="y"/>
             <arg type="i" direction="in" name="width"/>
             <arg type="i" direction="in" name="height"/>
         </method>
-        <method name="Toggle">
-        </method>
-        <method name="Block">
-        </method>
+        <property name="Pointer" type="au" access="read"/>
+        <property name="DisplaySize" type="au" access="read"/>
+        <property name="FocusWindow" type="au" access="read"/>
     </interface>
 </node>`;
 
@@ -189,7 +195,7 @@ const DictBar = GObject.registerClass({
             btn.entered = true;
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide / 2, () => {
                 if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
-                this._tooltip.set_position(global.get_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
+                this._tooltip.set_position(g_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
                 this._tooltip.set_text(x.tooltip || (x.icon || 'tooltip'));
                 this._tooltip.show();
                 return GLib.SOURCE_REMOVE;
@@ -270,15 +276,10 @@ const DictBox = GObject.registerClass({
             style_class: 'light-dict-content',
         });
 
-        this._text = new St.Label({ style_class: 'light-dict-word' });
+        this._text = new St.Label({ style_class: 'light-dict-text' });
         this._text.clutter_text.line_wrap = true;
-        this._text.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
-        this._text.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-
         this._info = new St.Label({ style_class: 'light-dict-info' });
         this._info.clutter_text.line_wrap = true;
-        this._info.clutter_text.line_wrap_mode = Pango.WrapMode.WORD;
-        this._info.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
         this._box.add_child(this._text);
         this._box.add_child(this._info);
@@ -300,7 +301,7 @@ const DictBox = GObject.registerClass({
     get _scrollable() {
         let [, height] = this._view.get_preferred_height(-1);
         let maxHeight = this._view.get_theme_node().get_max_height();
-        if(maxHeight < 0) maxHeight = global.display.get_size()[1] * 15 / 32;
+        if(maxHeight < 0) maxHeight = g_size()[1] * 15 / 32;
 
         return height >= maxHeight;
     }
@@ -312,23 +313,14 @@ const DictBox = GObject.registerClass({
 
     _onClick(actor, event) {
         switch(event.get_button()) {
-        case 1:
-            if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
-            break;
-        case 2:
-            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text());
-            break;
-        case 3:
-            if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection)));
-            this._hide();
-            break;
-        default:
-            break;
+        case 1: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
+        case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
+        case 3: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this._hide(); break;
         }
     }
 
     _onLeave(actor) {
-        let [mx, my] = global.get_pointer();
+        let [mx, my] = g_pointer();
         let [wt, ht] = this.get_transformed_size();
         let [px, py] = this.get_transformed_position();
         let duration = actor === undefined ? this.autohide : this.autohide / 10;
@@ -466,15 +458,18 @@ const DictAct = GObject.registerClass({
     execute(cmd) {
         return new Promise((resolve, reject) => {
             try {
-                let [, command] = GLib.shell_parse_argv(cmd);
                 let proc = new Gio.Subprocess({
-                    argv: command,
+                    argv: GLib.shell_parse_argv(cmd)[1],
                     flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
                 });
                 proc.init(null);
                 proc.communicate_utf8_async(null, null, (proc, res) => {
-                    let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                    proc.get_exit_status() ? reject(stderr.trim()) : resolve(stdout.trim());
+                    try {
+                        let [, stdout, stderr] = proc.communicate_utf8_finish(res);
+                        proc.get_exit_status() ? reject(stderr.trim()) : resolve(stdout.trim());
+                    } catch(e) {
+                        reject(e.message);
+                    }
                 });
             } catch(e) {
                 reject(e.message);
@@ -543,9 +538,9 @@ const DictBtn = GObject.registerClass({
 
     get _icon_name() {
         switch(this._trigger) {
-        case Trigger.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
         case Trigger.Popup:   return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
         case Trigger.Swift:   return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
+        case Trigger.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
         }
     }
 
@@ -579,7 +574,7 @@ const DictBtn = GObject.registerClass({
                 item._getTopMenu().close();
                 gsettings.set_int(Fields.SCOMMAND, i);
                 gsettings.set_strv(Fields.SCOMMANDS, commands.map((c, j) => (n => {
-                    n.enable = i == j ? true : undefined;
+                    n.enable = i == j || undefined;
                     return JSON.stringify(n, null, 0);
                 })(JSON.parse(c))));
             });
@@ -659,7 +654,6 @@ const LightDict = GObject.registerClass({
         this._cur = new St.Widget({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
 
-        this._block = false;
         this._selection = '';
         this._app = this.appid;
 
@@ -707,7 +701,7 @@ const LightDict = GObject.registerClass({
     }
 
     set scommands(cmds) {
-        this._scmd = cmds.length ? JSON.parse(cmds[(this.scommand < 0 || this.scommand >= cmds.length) ? 0 : this.scommand]) : null
+        this._scmd = cmds.length ? JSON.parse((c => c || cmds[0])(cmds[this.scommand])) : null;
         if(this._button) this._button._updateMenu();
     }
 
@@ -717,7 +711,7 @@ const LightDict = GObject.registerClass({
 
     get appid() {
         try {
-            let app = Shell.WindowTracker.get_default().get_window_app(global.display.focus_window);
+            let app = Shell.WindowTracker.get_default().get_window_app(g_focus());
             return app != null && !app.is_window_backed() ? app.get_id() : '';
         } catch(e) {
             return '';
@@ -725,10 +719,11 @@ const LightDict = GObject.registerClass({
     }
 
     set cursor(cursor) {
-        let [x, y, w, h] = cursor ? cursor : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b * 1.25, b * 1.25])(global.get_pointer(), Meta.prefs_get_cursor_size());
+        let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor :
+            ((a, b) => [a[0], a[1], b, b])(g_pointer(), Meta.prefs_get_cursor_size());
         this._cursor = !!cursor &&  w > 150;
-        this._cur.set_position(Math.round(x), Math.round(y));
-        this._cur.set_size(Math.round(w), Math.round(h));
+        this._cur.set_position(x, y);
+        this._cur.set_size(w, h);
     }
 
     _onWindowChanged() {
@@ -741,16 +736,13 @@ const LightDict = GObject.registerClass({
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
-        if(this._block) {
-            this._block = false;
-            return;
-        }
+        if(this._block) { this._block = undefined; return; }
         if(!this._allow || this.trigger == Trigger.Disable) return;
-        let [, , initModifier] = global.get_pointer();
+        let initModifier = g_pointer()[2];
         if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                let [, , tmpModifier] = global.get_pointer();
+                let tmpModifier = g_pointer()[2];
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
                     this._mouseReleasedId = 0;
                     this._run();
@@ -803,11 +795,7 @@ const LightDict = GObject.registerClass({
     }
 
     _exeCmd(p) {
-        if(p.type) {
-            this._exeJS(p.command, p.popup, p.copy, p.commit, p.select);
-        } else {
-            this._exeSh(p.command, p.popup, p.copy, p.commit, p.select);
-        }
+        (q => p.type ? this._exeJS(...q) : this._exeSh(...q))([p.command, p.popup, p.copy, p.commit, p.select]);
     }
 
     _select(x) {
@@ -831,7 +819,7 @@ const LightDict = GObject.registerClass({
     _display(info) {
         this._box._hide();
         this._box.setPosition(this._cur, this._cursor ? 1 / 2 : 0);
-        this._box._show(info.trim(), this._selection);
+        this._box._show(info, this._selection);
     }
 
     _fetch() {
@@ -853,33 +841,28 @@ const LightDict = GObject.registerClass({
         });
     }
 
-    _run(type, text, cursor) {
+    _run(type, text, info, cursor) {
         this.cursor = cursor;
-        if(typeof type === 'undefined') {
+        if(type === undefined) {
             this._fetch().then(this._store.bind(this)).then(() => {
                 if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
                 this.trigger ? this._popup() : this._swift();
             });
         } else {
-            switch(type < 0 ? this.trigger : type) {
-            case DBus.Swift:
-            case DBus.Popup:
-                let cb = type ? this._popup.bind(this) : this._swift.bind(this);
-                text[0].trim() ? this._store(text[0]).then(cb) : this._fetch().then(this._store.bind(this)).then(cb);
-                break;
-            default:
-                this._store(text[1]).then(() => { this._display(text[0] || '_(:з」∠)_'); });
-                break;
+            switch(type == 'auto' ? (this.trigger ? 'swift' : 'popup') : type) {
+            case 'swift': (text ? this._store(text) : this._fetch().then(x => this._store(x))).then(() => this._swift()); break;
+            case 'popup': (text ? this._store(text) : this._fetch().then(x => this._store(x))).then(() => this._popup()); break;
+            default: this._store(text).then(() => { this._display(info.trim() || '_(:з」∠)_'); }); break;
             }
         }
     }
 
-    Run(type, text) {
-        this._run(type, text);
+    Run(type, text, info) {
+        this._run(type, text, info);
     }
 
-    RunAt(type, text, x, y, w, h) {
-        this._run(type, text, [x, y, w, h])
+    RunAt(type, text, info, x, y, w, h) {
+        this._run(type, text, info, [x, y, w, h])
     }
 
     Toggle() {
@@ -893,14 +876,22 @@ const LightDict = GObject.registerClass({
         if(!this.app_list) {
             this.app_list = this._app;
         } else {
-            let app_list = this.app_list.split(',');
-            if(this.app_list.includes(this._app)) {
-                app_list.splice(app_list.indexOf(this._app), 1);
-            } else {
-                app_list.push(this._app);
-            }
-            this.app_list = app_list.join(',');
+            let apps = this.app_list.split(',');
+            this.app_list.includes(this._app) ? apps.splice(apps.indexOf(this._app), 1) : apps.push(this._app);
+            this.app_list = apps.join(',');
         }
+    }
+
+    get Pointer() {
+        return g_pointer().slice(0, 2);
+    }
+
+    get DisplaySize() {
+        return g_size();
+    }
+
+    get FocusWindow() {
+        return (w => w ? (r => [r.x, r.y, r.width, r.height])(w.get_frame_rect()) : null)(g_focus());
     }
 
     destroy() {

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-19 20:47+0800\n"
+"POT-Creation-Date: 2021-08-23 15:57+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,31 +17,31 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:575
+#: extension.js:570
 msgid "Swift: "
 msgstr "即时："
 
-#: extension.js:593
+#: extension.js:588
 msgid "Trigger: "
 msgstr "触发："
 
-#: extension.js:605
+#: extension.js:600
 msgid "OCR: "
 msgstr "OCR："
 
-#: extension.js:633
+#: extension.js:628
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:639
+#: extension.js:634
 msgid "Add/remove current app"
 msgstr "添加/移除当前应用"
 
-#: extension.js:641
+#: extension.js:636
 msgid "Settings"
 msgstr "设置"
 
-#: extension.js:887
+#: extension.js:870
 #, javascript-format
 msgid "Switch to %s style"
 msgstr "切换至%s方式"
@@ -227,11 +227,10 @@ msgid "Right click to run and hide panel"
 msgstr "右键运行并关闭气泡"
 
 #: prefs.js:456
-#, fuzzy
 msgid ""
 "Depends on python-opencv, python-pytesseract and python-googletrans "
 "(optional)"
-msgstr "依赖于 python-opencv，python-tesseract 和 python-googletrans（可选）"
+msgstr "依赖于 python-opencv，python-pytesseract 和 python-googletrans（可选）"
 
 #: prefs.js:461
 msgid "Enable systray"

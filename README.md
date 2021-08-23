@@ -24,19 +24,24 @@ cd light-dict && make install
 
 ### Basic
 
-1. Scroll on iconbar to flip page;
-2. Scroll on systray to toggle mode;
+* Scroll on the iconbar to flip pages;
+* Scroll on the systray to toggle types;
 
 ### DBus
 
-[DBus] interface is available:
+For the [DBus] usage, see [_ldocr.fish](/_ldocr.fish) as a sample reference.
+
+#### Methods
 
 ```bash
-# see the methods
 gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict
 ```
 
-For usage, see [_ldocr.fish](/_ldocr.fish) as a sample reference.
+#### Arguments
+
+* type: `'swift'` | `'popup'` | `'display'` (fallback) | `'auto'` (follow the trigger setting)
+* text: `a string` | `''` (for primary selection)
+* info: `a string` (for the `'display'` type) | `''` (for the other types)
 
 ### OCR
 
@@ -44,10 +49,10 @@ For usage, see [_ldocr.fish](/_ldocr.fish) as a sample reference.
 
 * [python-opencv]
 * [python-pytesseract]
-* [python-googletrans]: (optional) specify DEST (e.g. `-d zh-cn`) to enable
+* [python-googletrans]: (optional) specify the DEST (e.g. `-d zh-cn`) to enable
 
 ```bash
-yay -S python-opencv python-pytesseract
+yay -S python-opencv python-pytesseract # use the package manager of your distro
 ```
 
 #### Usage
@@ -56,21 +61,21 @@ Enable OCR and fill in parameters (click the button for details) as you wish:
 
 ![ocr](https://user-images.githubusercontent.com/17917040/130025814-1b847b34-0373-46a1-a65e-5546f1687ba5.png)
 
-#### Result
+#### Screencast
 
 https://user-images.githubusercontent.com/17917040/130017649-ca978f47-7c63-4d31-8d32-99d78ecb8907.mp4
 
 ## Note
 
-1. This extension doesn't offer any icon or dictionary resources.
-2. If you need English-Chinese offline dictionary, try [dict-ecdict] or [dict-cedict].
-3. If you need to customize the appearance of some widgets, try [user-theme-x].
+* This extension doesn't offer any additional icons or dictionaries.
+* If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
+* If you need to customize the appearance of some widgets, try [user-theme-x].
 
 ## Acknowledgements
 
-* [youdaodict]: idea of popup
+* [youdaodict]: the idea of popup
 * [gsconnect]: fake keyboard input
-* [swift-selection-search]: stylesheet of iconbar
+* [swift-selection-search]: the stylesheet of iconbar
 
 [python-opencv]:https://opencv.org/
 [dict-cedict]:https://github.com/tuberry/dict-cedict

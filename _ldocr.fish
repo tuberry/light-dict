@@ -24,13 +24,13 @@ for i in (seq (count $words))
    and set words[$i] '\r'
    or set words[$i] $words[$i]' '
 end
-set word (string join '' $words)
+set word (string trim (string join '' $words))
 
 ## RunAt word
 test -n "$word"; and gdbus call --session \
    --dest org.gnome.Shell \
    --object-path /org/gnome/Shell/Extensions/LightDict \
-   --method org.gnome.Shell.Extensions.LightDict.RunAt 0 '["'$word'", ""]' $area[1] $area[2] $area[3] $area[4] \
+   --method org.gnome.Shell.Extensions.LightDict.RunAt "swift" "'$word'" "" $area[1] $area[2] $area[3] $area[4] \
    # &> /dev/null # "()" > /dev/null
 
 # delete tmp files
