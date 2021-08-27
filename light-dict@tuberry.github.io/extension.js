@@ -256,8 +256,6 @@ const DictBox = GObject.registerClass({
         Main.layoutManager.addTopChrome(this);
 
         this._selection = '';
-        this._notFound = false;
-
         this._bindSettings();
         this._buildWidgets();
     }
@@ -354,8 +352,7 @@ const DictBox = GObject.registerClass({
         } catch(e) {
             this._info.set_text(info || 'o(T^T)o');
         }
-        if(this._text.visible)
-            this._text.set_text(text);
+        if(this._text.visible) this._text.set_text(text);
 
         if(this._scrollable) {
             this._view.vscrollbar_policy = St.PolicyType.AUTOMATIC;
@@ -479,7 +476,7 @@ const DictAct = GObject.registerClass({
 
     destroy() {
         this.enable_ocr = false;
-       delete this._keyboard;
+        delete this._keyboard;
     }
 });
 
@@ -538,9 +535,9 @@ const DictBtn = GObject.registerClass({
 
     get _icon_name() {
         switch(this._trigger) {
-        case Trigger.Popup:   return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
-        case Trigger.Swift:   return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
-        case Trigger.Disable: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
+        case Trigger.Popup: return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
+        case Trigger.Swift: return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
+        default: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
         }
     }
 
@@ -548,7 +545,6 @@ const DictBtn = GObject.registerClass({
         switch(event.direction) {
         case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
         case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); break;
-        default: break;
         }
         return Clutter.EVENT_STOP;
     };
@@ -564,19 +560,16 @@ const DictBtn = GObject.registerClass({
     }
 
     _scommandsMenu() {
-        let commands = this.scommands;
-        let index = commands.findIndex(c => !!JSON.parse(c).enable);
-        let enabled = index < 0 ? '' : JSON.parse(commands[index]).name;
-        let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Swift: ') + enabled);
+        let commands = this.scommands.map(x => JSON.parse(x));
+        let index = commands.findIndex(x => !!x.enable);
+        let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Swift: ') + (index < 0 ? '' : commands[index].name));
         commands.forEach((x, i) => {
-            let item = new PopupMenu.PopupMenuItem(JSON.parse(x).name);
+            let item = new PopupMenu.PopupMenuItem(x.name);
             i == index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', () => {
                 item._getTopMenu().close();
                 gsettings.set_int(Fields.SCOMMAND, i);
-                gsettings.set_strv(Fields.SCOMMANDS, commands.map((c, j) => (n => {
-                    n.enable = i == j || undefined;
-                    return JSON.stringify(n, null, 0);
-                })(JSON.parse(c))));
+                gsettings.set_strv(Fields.SCOMMANDS, commands.map((x, j) =>
+                    JSON.stringify(Object.assign(x, { enable: i == j || undefined }), null, 0)));
             });
             scommand.menu.addMenuItem(item);
         });
@@ -701,7 +694,7 @@ const LightDict = GObject.registerClass({
     }
 
     set scommands(cmds) {
-        this._scmd = cmds.length ? JSON.parse((c => c || cmds[0])(cmds[this.scommand])) : null;
+        this._scmd = JSON.parse(cmds[this.scommand] || cmds[0] || 'null');
         if(this._button) this._button._updateMenu();
     }
 
@@ -710,18 +703,14 @@ const LightDict = GObject.registerClass({
     }
 
     get appid() {
-        try {
-            let app = Shell.WindowTracker.get_default().get_window_app(g_focus());
-            return app != null && !app.is_window_backed() ? app.get_id() : '';
-        } catch(e) {
-            return '';
-        }
+        return (v => v ? (w => w.is_window_backed() ? '' : w.get_id())
+                (Shell.WindowTracker.get_default().get_window_app(v)) : '')(g_focus());
     }
 
     set cursor(cursor) {
         let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor :
-            ((a, b) => [a[0], a[1], b, b])(g_pointer(), Meta.prefs_get_cursor_size());
-        this._cursor = !!cursor &&  w > 150;
+            ((a, b) => [a[0] - b / 2, a[1] - b / 2, b, b])(g_pointer(), Meta.prefs_get_cursor_size());
+        this._cursor = !!cursor && w > 150;
         this._cur.set_position(x, y);
         this._cur.set_size(w, h);
     }

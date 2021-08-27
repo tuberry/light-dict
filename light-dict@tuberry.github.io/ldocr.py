@@ -11,10 +11,11 @@ import numpy as np
 from gi.repository import Gio, GLib
 from tempfile import NamedTemporaryFile
 
-edge = 10 # FIXME: some screenshots with obvious edges lead to only 1 huge contour, e.g. Chrome
+DEBUG = False
+EDGE = 10 # FIXME: some windows (e.g. Chrome) with obvious edges lead to only 1 huge contour.
 
 def main():
-    args = parser().parse_args()
+    args = parser()
     result = mode_exe(args)
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)), '.Screenshot', '/Screenshot', '.Screenshot')
     if args.cursor: result.area = None
@@ -38,7 +39,7 @@ def parser():
                 help='flash the detected area')
     ap.add_argument('-v', '--verbose', default=True, action=argparse.BooleanOptionalAction,
                 help='report error messages')
-    return ap
+    return ap.parse_args()
 
 class Result:
     def __init__(self, text=None, area=None, error=None):
@@ -92,8 +93,8 @@ def bincount_img(img):
 
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
-    if trim: img = (lambda e, s: img[e:s[0]-e, e:s[1]-e])(edge, img.shape)
-    return img if not bincount_img(img) else cv2.bitwise_not(img)
+    if trim: img = (lambda e, s: img[e:s[0]-e, e:s[1]-e])(EDGE, img.shape)
+    return cv2.bitwise_not(img) if bincount_img(img) else img
 
 def find_rect(rects, point):
     pt_in_rect = lambda p, r: p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
@@ -107,10 +108,17 @@ def crop_img(img, point, kernel, iterations, blur=False):
     thr = cv2.threshold(blr, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
     dlt = cv2.dilate(thr, cv2.getStructuringElement(cv2.MORPH_RECT, kernel), iterations=iterations)
     cts = cv2.findContours(dlt, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    if DEBUG:
+        rts = list(map(cv2.boundingRect, cts))
+        for x in rts: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
+        # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
+        cv2.imshow('img', img)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
 def typeset_str(para):
-    return re.sub(r'([^\.\?:!; ] *)\n', r'\g<1> ', para.replace('\n\n', '\n')).replace('\n', '\r').replace('|', 'I').strip()
+    return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip()
 
 # @profile
 def ocr_word(lang, bttn=False, sz=(250, 50)):
@@ -131,7 +139,7 @@ def ocr_word(lang, bttn=False, sz=(250, 50)):
             dat = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, lang=lang)
             bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
             rct = find_rect(bxs, (w, h))
-            return Result(text=rct[-1].strip(string.punctuation).strip() or None,
+            return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
                           area=(rct[0] + ar[0], rct[1] + ar[1] - 5, rct[2], rct[3] + 10)) if rct else Result(error=' ')
 
 def ocr_area(lang):
@@ -144,16 +152,17 @@ def ocr_area(lang):
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
     if pt == None or fw == None: return Result(error='LD dbus error')
-    pt = [a - b - edge for (a, b) in zip(pt, fw)]
+    pt = [a - b - EDGE for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
-        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        # Related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
+        # Some windows (e.g. GNOME Software) include massive (> 50px) shadows, so `ScreenshotWindow` is deprecated here.
+        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
         if not ok: return Result(error='GS dbus error')
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
         return Result(text=typeset_str(pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang)) or None,
-                      area=(rct[0] + fw[0] + edge, rct[1] + fw[1] + edge, rct[2], rct[3])) if rct else Result(error=' ')
+                      area=(rct[0] + fw[0] + EDGE, rct[1] + fw[1] + EDGE, rct[2], rct[3])) if rct else Result(error=' ')
 
 def mode_exe(args):
     result = (lambda m : m[0](*m[1]))({

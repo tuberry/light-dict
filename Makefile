@@ -2,16 +2,12 @@
 # to increase version number automatically when manually installing
 
 EXTNUM = 2959
-
 UUID = $(shell ls | grep @)
 NAME = $(shell cat $(UUID)/metadata.json | grep gettext-domain | sed -e 's/.* "//; s/".*//')
 EGOURL = https://extensions.gnome.org/extension/$(EXTNUM)/$(subst gnome-shell-extension-,,$(NAME))/
 
-BUILD = _build
-
 # for translators: `make mergepo` or `make LANG=YOUR_LANG mergepo`
 # The envvar LANG is used to localize pot file.
-#
 LANGUAGE = $(shell echo $(LANG) | sed -e 's/\..*//')
 MSGDIR = $(UUID)/locale/$(LANGUAGE)/LC_MESSAGES
 MSGPOT = $(UUID)/locale/$(NAME).pot
@@ -26,13 +22,7 @@ else
 	INSTALLBASE = $(SHARE_PREFIX)/gnome-shell/extensions
 endif
 
-# The command line passed variable VERSION is used to set the version string
-# in the metadata and in the generated zip-file. If no VERSION is passed, the
-# max version on E.G.O plus 1 is used. (It could take some time to visit)
-#
-ifndef VERSION
-	VERSION = $(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1)
-endif
+BUILD = _build
 
 all: $(BUILD)
 
@@ -40,6 +30,9 @@ clean:
 	rm -rf $(BUILD)
 	rm -f *.zip
 
+# The command line passed variable VERSION is used to set the version string
+# in the metadata and in the generated zip-file. If no VERSION is passed, the
+# max version on E.G.O plus 1 is used. (It could take some time to visit E.G.O)
 $(BUILD):
 	mkdir -p $(BUILD)
 	cp -r $(UUID)/* $(BUILD)
@@ -47,13 +40,12 @@ $(BUILD):
 	rm -f $(BUILD)/locale/*/LC_MESSAGES/*po
 	glib-compile-schemas $(BUILD)/schemas/
 	rm -f $(BUILD)/schemas/*xml
-ifneq ($(VERSION),)
-	sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json;
-else
-	$(warning VERSION is empty)
+ifndef VERSION
+	$(eval VERSION=$(shell curl -s $(EGOURL) 2>&1 | grep data-svm | sed -e 's/.*: //; s/}}"//' | xargs -I{} expr {} + 1))
 endif
+	$(if $(strip $(VERSION)), sed -i 's/"version": [[:digit:]]\+/"version": $(VERSION)/' $(BUILD)/metadata.json, $(warning VERSION is empty))
 
-pack: $(BUILD)
+zip: $(BUILD)
 	cd $(BUILD); \
 		zip -qr "$(NAME)_v$(shell cat $(BUILD)/metadata.json | grep \"version\" | sed -e 's/[^0-9]*//').zip" .
 	mv $(BUILD)/*.zip ./
@@ -77,7 +69,7 @@ $(MSGAIM):
 
 $(MSGPOT):
 	cd $(UUID); \
-		xgettext --keyword=_ --from-code=utf-8 --package-name="$(NAME)" --package-version=$(VERSION) --add-comments='Translators:' --output locale/$(NAME).pot *js
+		xgettext --keyword=_ --from-code=utf-8 --package-name="$(NAME)" --add-comments='Translators:' --output locale/$(NAME).pot *js
 
 mergepo: $(MSGPOT) $(MSGAIM)
 	msgmerge -U $(MSGAIM) $(MSGPOT)

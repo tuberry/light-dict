@@ -442,7 +442,7 @@ class LightDictBasic extends UI.Box {
         this._field_hide_title     = new Gtk.Switch();
         this._field_page_size      = new UI.Spin(1, 10, 1);
         this._field_auto_hide      = new UI.Spin(500, 10000, 250);
-        this._field_enable_ocr     = new UI.Check(_('Enable OCR'));
+        this._field_enable_ocr     = new UI.Check(_('Enable'));
         this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
         this._field_app_list       = new AppsBox(_('Click the app icon to remove'));
         this._field_list_type      = new UI.Combo([_('Allowlist'), _('Blocklist')]);
@@ -563,9 +563,7 @@ class LightDictJSON extends UI.Box {
     }
 
     _onNameChanged(widget, index, name) {
-        let conf = JSON.parse(this._cmds[index]);
-        conf.name = name;
-        this._cmds[index] = JSON.stringify(conf, null, 0);
+        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { name: name }), null, 0);
         this._saveCommands()
     }
 
@@ -600,15 +598,10 @@ class LightDictJSON extends UI.Box {
 
     _onEnableToggled(widget, index, enable) {
         if(this._swift) {
-            this._cmds = this._cmds.map((c, i) => (n => {
-                n.enable = (enable && i == index) || undefined
-                if(n.enable) this._saveCommand(index);
-                return JSON.stringify(n, null, 0);
-            })(JSON.parse(c)));
+            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: (enable && i == index) || undefined }), null, 0));
+            if(enable && this._cmds[index]) this._saveCommand(index);
         } else {
-            let conf = JSON.parse(this._cmds[index]);
-            conf.enable = enable || undefined;
-            this._cmds[index] = JSON.stringify(conf, null, 0);
+            this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { enable: enable || undefined }), null, 0);
         }
         this._saveCommands();
     }
@@ -616,10 +609,7 @@ class LightDictJSON extends UI.Box {
     _onValueChanged(widget, prop) {
         let index = this._side.selected;
         if(!this._cmds[index]) return;
-        let [key, value] = Object.entries(prop)[0];
-        let conf = JSON.parse(this._cmds[index]);
-        conf[key] = value || undefined;
-        this._cmds[index] = JSON.stringify(conf, null, 0);
+        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), prop), null, 0);
         this._saveCommands();
     }
 
