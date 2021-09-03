@@ -10,14 +10,25 @@ Lightweight extension for instant action to primary selection, especially optimi
 
 ## Installation
 
+### Recommended
+
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
-Or manually:
+## Manual
+
+The latest and supported version should only work on the the most current stable version of GNOME Shell.
 
 ```bash
-git clone https://github.com/tuberry/light-dict.git
-cd light-dict && make install
+git clone https://github.com/tuberry/light-dict.git && cd light-dict
+make && make install
 # make mergepo # for translation
+```
+
+For older versions, it's necessary to switch the git tag before `make`:
+
+```bash
+# git tag # to see available versions
+git checkout your_gnome_shell_version
 ```
 
 ## Features
@@ -26,6 +37,7 @@ cd light-dict && make install
 
 * Scroll on the iconbar to flip pages;
 * Scroll on the systray to toggle types;
+* Middle click on the panel to copy its content;
 
 ### DBus
 
@@ -51,7 +63,7 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 * [python-pytesseract]
 * [python-googletrans]: (optional) specify the DEST (e.g. `-d zh-cn`) to enable
 
-```bash
+ ```bash
 yay -S python-opencv python-pytesseract # use the package manager of your distro
 ```
 

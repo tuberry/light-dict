@@ -1,5 +1,5 @@
 // vim:fdm=syntax
-// by: tuberry@github
+// by tuberry
 var Fields = {
     APPLIST:     'app-list',
     LISTTYPE:    'list-type',

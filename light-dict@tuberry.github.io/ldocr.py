@@ -93,8 +93,14 @@ def bincount_img(img):
 
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
-    if trim: img = (lambda e, s: img[e:s[0]-e, e:s[1]-e])(EDGE, img.shape)
-    return cv2.bitwise_not(img) if bincount_img(img) else img
+    if trim:
+        # Related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
+        msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+        edg = next((x for x in range(min(*msk.shape[0:2])) if msk[x][x][3] == 255), 0) + EDGE
+        img = img[edg:img.shape[0]-edg, edg:img.shape[1]-edg]
+        return cv2.bitwise_not(img) if bincount_img(img) else img
+    else:
+        return cv2.bitwise_not(img) if bincount_img(img) else img
 
 def find_rect(rects, point):
     pt_in_rect = lambda p, r: p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
@@ -112,6 +118,7 @@ def crop_img(img, point, kernel, iterations, blur=False):
         rts = list(map(cv2.boundingRect, cts))
         for x in rts: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
         # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
+        cv2.circle(img, point, 20,(240, 80, 40))
         cv2.imshow('img', img)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -154,9 +161,8 @@ def ocr_prln(lang, line=False):
     if pt == None or fw == None: return Result(error='LD dbus error')
     pt = [a - b - EDGE for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
-        # Related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
-        # Some windows (e.g. GNOME Software) include massive (> 50px) shadows, so `ScreenshotWindow` is deprecated here.
-        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
         if not ok: return Result(error='GS dbus error')
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)

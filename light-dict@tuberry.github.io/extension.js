@@ -1,5 +1,5 @@
 // vim:fdm=syntax
-// by: tuberry@gtihub
+// by tuberry
 'use strict';
 
 const Main = imports.ui.main;
@@ -15,11 +15,11 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.fields.Fields;
+const _ = ExtensionUtils.gettext;
 
 const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
 const g_focus = () => global.display.focus_window;
-const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
@@ -114,7 +114,7 @@ const DictBar = GObject.registerClass({
 
     set pcommands(commands) {
         this._index = 1;
-        this._box.remove_all_children();
+        this._box.destroy_all_children();
         commands.forEach(x => this._iconMaker(x));
     }
 
@@ -157,7 +157,7 @@ const DictBar = GObject.registerClass({
         if(this._index === this._pages && icons.length % this.pagesize) {
             icons.forEach((x, i) => { x.visible = i >= icons.length - this.pagesize && i < icons.length; });
         } else {
-            icons.forEach((x, i) => { x.visible = i >= (this._index - 1)*this.pagesize && i < this._index*this.pagesize; });
+            icons.forEach((x, i) => { x.visible = i >= (this._index - 1) * this.pagesize && i < this._index * this.pagesize; });
         }
     }
 
@@ -196,7 +196,7 @@ const DictBar = GObject.registerClass({
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide / 2, () => {
                 if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
                 this._tooltip.set_position(g_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                this._tooltip.set_text(x.tooltip || (x.icon || 'tooltip'));
+                this._tooltip.set_text(x.tooltip || x.icon || 'tooltip');
                 this._tooltip.show();
                 return GLib.SOURCE_REMOVE;
             });
@@ -417,11 +417,11 @@ const DictAct = GObject.registerClass({
     }
 
     _release(keyname) {
-        this._keyboard.notify_keyval(Clutter.get_current_event_time(), Gdk.keyval_from_name(keyname), Clutter.KeyState.RELEASED);
+        this._keyboard.notify_keyval(Clutter.get_current_event_time() * 1000, Gdk.keyval_from_name(keyname), Clutter.KeyState.RELEASED);
     }
 
     _press(keyname) {
-        this._keyboard.notify_keyval(Clutter.get_current_event_time(), Gdk.keyval_from_name(keyname), Clutter.KeyState.PRESSED);
+        this._keyboard.notify_keyval(Clutter.get_current_event_time() * 1000, Gdk.keyval_from_name(keyname), Clutter.KeyState.PRESSED);
     }
 
     stroke(keystring) {
@@ -603,7 +603,7 @@ const DictBtn = GObject.registerClass({
 
     _menuSwitchMaker(text, active, callback) {
         let item = new PopupMenu.PopupSwitchMenuItem(text, active, { style_class: 'light-dict-item popup-menu-item' });
-        item.connect('toggled', callback);
+        item.connect('activate', callback);
 
         return item;
     }
@@ -618,8 +618,8 @@ const DictBtn = GObject.registerClass({
     _updateMenu() {
         if(!this._inited) return;
         this.menu.removeAll();
-        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), this._passive == 1, (item, active) => {
-            item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, active ? 1 : 0); }));
+        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, () => {
+            this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
@@ -644,7 +644,7 @@ const LightDict = GObject.registerClass({
 }, class LightDict extends GObject.Object {
     _init() {
         super._init();
-        this._cur = new St.Widget({ opacity: 0 });
+        this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
 
         this._selection = '';
@@ -710,7 +710,7 @@ const LightDict = GObject.registerClass({
     set cursor(cursor) {
         let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor :
             ((a, b) => [a[0] - b / 2, a[1] - b / 2, b, b])(g_pointer(), Meta.prefs_get_cursor_size());
-        this._cursor = !!cursor && w > 150;
+        this._cursor = !!cursor && w > 250;
         this._cur.set_position(x, y);
         this._cur.set_size(w, h);
     }

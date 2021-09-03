@@ -1,12 +1,12 @@
 // vim:fdm=syntax
-// by: tuberry@github
+// by tuberry
 'use strict';
 
 const { Clutter, GLib, Gtk, GObject, Gio } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
-const _ = imports.gettext.domain(Me.metadata['gettext-domain']).gettext;
+const _ = ExtensionUtils.gettext;
 const _GTK = imports.gettext.domain('gtk40').gettext;
 const Fields = Me.imports.fields.Fields;
 const UI = Me.imports.ui;
