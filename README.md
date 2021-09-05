@@ -14,7 +14,7 @@ Lightweight extension for instant action to primary selection, especially optimi
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
-## Manual
+### Manual
 
 The latest and supported version should only work on the the most current stable version of GNOME Shell.
 

@@ -8,10 +8,10 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
 const Keyboard = imports.ui.status.keyboard;
+const ExtensionUtils = imports.misc.extensionUtils;
 const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
 
 const InputSources = Keyboard.getInputSourceManager();
-const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.fields.Fields;
@@ -25,7 +25,7 @@ const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').ge
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Selection: 3, Line: 4, Button: 5 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
-const DBUSINTERFACE = `
+const LD_DBUS_IFACE = `
 <node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Block"/>
@@ -49,6 +49,8 @@ const DBUSINTERFACE = `
         <property name="FocusWindow" type="au" access="read"/>
     </interface>
 </node>`;
+
+Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async', 'communicate_utf8_finish');
 
 const DictBar = GObject.registerClass({
     Properties: {
@@ -410,10 +412,19 @@ const DictAct = GObject.registerClass({
         }
     }
 
+    set screenshot(screenshot) {
+        if(global.context?.unsafe_mode ?? true) return;
+        let checker = Main.shellDBusService._screenshotService._senderChecker;
+        checker._isSenderAllowed = screenshot ? () => true :
+            sender => [...checker._allowlistMap.values()].includes(sender);
+    }
+
     _invokeOCR() {
+        this.screenshot = true;
         let cmd = Me.dir.get_child('ldocr.py').get_path();
         let params = this.ocr_params + ' -m ' + this._ocr_mode;
-        Util.spawnCommandLine(cmd + ' ' + params);
+        this.execute(['python', cmd, params].join(' ')).then(null).catch(null)
+            .finally(() => { this.screenshot = false; });
     }
 
     _release(keyname) {
@@ -452,29 +463,20 @@ const DictAct = GObject.registerClass({
         St.Clipboard.get_default().set_text(St.ClipboardType.PRIMARY, string);
     }
 
-    execute(cmd) {
-        return new Promise((resolve, reject) => {
-            try {
-                let proc = new Gio.Subprocess({
-                    argv: GLib.shell_parse_argv(cmd)[1],
-                    flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-                });
-                proc.init(null);
-                proc.communicate_utf8_async(null, null, (proc, res) => {
-                    try {
-                        let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                        proc.get_exit_status() ? reject(stderr.trim()) : resolve(stdout.trim());
-                    } catch(e) {
-                        reject(e.message);
-                    }
-                });
-            } catch(e) {
-                reject(e.message);
-            }
+    async execute(cmd) {
+        let proc = new Gio.Subprocess({
+            argv: GLib.shell_parse_argv(cmd)[1],
+            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
         });
+        proc.init(null);
+        let [stdout, stderr] = await proc.communicate_utf8_async(null, null);
+        if(proc.get_exit_status()) throw new Error(stderr.trim());
+
+        return stdout.trim();
     }
 
     destroy() {
+        this.screenshot = false;
         this.enable_ocr = false;
         delete this._keyboard;
     }
@@ -565,7 +567,7 @@ const DictBtn = GObject.registerClass({
         let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Swift: ') + (index < 0 ? '' : commands[index].name));
         commands.forEach((x, i) => {
             let item = new PopupMenu.PopupMenuItem(x.name);
-            i == index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', () => {
+            i == index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', item => {
                 item._getTopMenu().close();
                 gsettings.set_int(Fields.SCOMMAND, i);
                 gsettings.set_strv(Fields.SCOMMANDS, commands.map((x, j) =>
@@ -582,7 +584,7 @@ const DictBtn = GObject.registerClass({
         Object.keys(Trigger).forEach(x => {
             let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
             item.setOrnament(this._trigger == Trigger[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-            item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, Trigger[x]); });
+            item.connect('activate', item => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, Trigger[x]); });
             trigger.menu.addMenuItem(item);
         });
 
@@ -618,8 +620,8 @@ const DictBtn = GObject.registerClass({
     _updateMenu() {
         if(!this._inited) return;
         this.menu.removeAll();
-        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, () => {
-            this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
+        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, item => {
+            item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
@@ -672,7 +674,7 @@ const LightDict = GObject.registerClass({
         this._box = new DictBox();
         this._bar = new DictBar();
 
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(DBUSINTERFACE, this);
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS_IFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
 
         this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._exeCmd(cmd); });
@@ -754,7 +756,7 @@ const LightDict = GObject.registerClass({
                 if(cmt) this._act.commit(scc);
                 if(pop) this._display(scc);
             }).catch(err => {
-                this._display(err);
+                this._display(err.message);
             });
         } else {
             Util.spawnCommandLine(rcmd);
@@ -811,47 +813,38 @@ const LightDict = GObject.registerClass({
         this._box._show(info, this._selection);
     }
 
-    _fetch() {
-        return new Promise((resolve, reject) => {
-            try {
-                St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) =>  { text ? resolve(text) : reject(); });
-            } catch(e) {
-                reject(e.message)
-            }
-        });
-    }
-
     _store(text) {
-        return new Promise((resolve, reject) => {
-            let selection = this.text_strip ? text.replace(/\n\s*\n/g, '\r') : text;
-            if(!selection) reject();
-            this._selection = selection.replace(/\n/g, '\r'); // shell args
-            resolve();
-        });
+        let selection = this.text_strip ? text.replace(/\n\s*\n/g, '\r') : text;
+        if(!selection) throw new Error('Empty string');
+        this._selection = selection.replace(/\n/g, '\r'); // shell args
     }
 
-    _run(type, text, info, cursor) {
+    async _fetch() {
+        return await new Promise(resolve => St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => {
+                               if(text) resolve(text); else throw new Error('Empty string'); }));
+    }
+
+    async _run(type, text, info, cursor) {
         this.cursor = cursor;
         if(type === undefined) {
-            this._fetch().then(this._store.bind(this)).then(() => {
-                if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
-                this.trigger ? this._popup() : this._swift();
-            });
+            this._store(await this._fetch());
+            if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
+            this.trigger ? this._popup() : this._swift();
         } else {
             switch(type == 'auto' ? (this.trigger ? 'swift' : 'popup') : type) {
-            case 'swift': (text ? this._store(text) : this._fetch().then(x => this._store(x))).then(() => this._swift()); break;
-            case 'popup': (text ? this._store(text) : this._fetch().then(x => this._store(x))).then(() => this._popup()); break;
-            default: this._store(text).then(() => { this._display(info.trim() || '_(:з」∠)_'); }); break;
+            case 'swift': this._store(text || await this._fetch()); this._swift(); break;
+            case 'popup': this._store(text || await this._fetch()); this._popup(); break;
+            default: this._store(text || 'Void'); this._display(info.trim() || '_(:з」∠)_'); break;
             }
         }
     }
 
-    Run(type, text, info) {
-        this._run(type, text, info);
+    async Run(type, text, info) {
+        await this._run(type, text, info);
     }
 
-    RunAt(type, text, info, x, y, w, h) {
-        this._run(type, text, info, [x, y, w, h])
+    async RunAt(type, text, info, x, y, w, h) {
+        await this._run(type, text, info, [x, y, w, h]);
     }
 
     Toggle() {

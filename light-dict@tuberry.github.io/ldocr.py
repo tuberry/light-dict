@@ -78,7 +78,10 @@ def gs_dbus_call(method_name, parameters, name='', object_path='', interface_nam
     param = parameters and GLib.Variant(*parameters)
     proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
-    return proxy.call_sync(method_name, param, Gio.DBusCallFlags.NONE, -1, None).unpack()
+    try:
+        return proxy.call_sync(method_name, param, Gio.DBusCallFlags.NONE, -1, None).unpack()
+    except Exception as e:
+        return False, str(e)
 
 def ld_dbus_get(*property_names):
     proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell',
@@ -98,9 +101,7 @@ def read_img(filename, trim=False):
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
         edg = next((x for x in range(min(*msk.shape[0:2])) if msk[x][x][3] == 255), 0) + EDGE
         img = img[edg:img.shape[0]-edg, edg:img.shape[1]-edg]
-        return cv2.bitwise_not(img) if bincount_img(img) else img
-    else:
-        return cv2.bitwise_not(img) if bincount_img(img) else img
+    return cv2.bitwise_not(img) if bincount_img(img) else img
 
 def find_rect(rects, point):
     pt_in_rect = lambda p, r: p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
