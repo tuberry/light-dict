@@ -12,11 +12,12 @@ from gi.repository import Gio, GLib
 from tempfile import NamedTemporaryFile
 
 DEBUG = False
-EDGE = 10 # FIXME: some windows (e.g. Chrome) with obvious edges lead to only 1 huge contour.
+EDGE = 10 # FIXME: some windows (e.g. Chrome) with obvious edges lead to only 1 huge contour
 
 def main():
     args = parser()
-    result = mode_exe(args)
+    result = exe_mode(args)
+    if result.cancel: return
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)), '.Screenshot', '/Screenshot', '.Screenshot')
     if args.cursor: result.area = None
     if args.dest: result.tran_text(args.dest)
@@ -30,9 +31,11 @@ def parser():
     ap.add_argument('-s', '--style', default='swift', choices = ['swift', 'popup', 'display', 'auto'],
                 help='specify the LD style: [%(choices)s] (default: %(default)s)')
     ap.add_argument('-l', '--lang', default='eng',
-                help='specify language(s) used by tesseract OCR (default: %(default)s)')
+                help='specify language(s) used by Tesseract OCR (default: %(default)s)')
     ap.add_argument('-d', '--dest', default='',
-                help='specify the dest language used by python-googletrans (default: %(default)s)')
+                help='specify the dest language used by py-googletrans (default: %(default)s)')
+    ap.add_argument('-n', '--name', default='',
+                help='specify the LD swift style name (default: %(default)s)')
     ap.add_argument('-c', '--cursor', default=False, action=argparse.BooleanOptionalAction,
                 help='invoke the LD around the cursor')
     ap.add_argument('-f', '--flash', default=False, action=argparse.BooleanOptionalAction,
@@ -42,15 +45,12 @@ def parser():
     return ap.parse_args()
 
 class Result:
-    def __init__(self, text=None, area=None, error=None):
-        self.text = text
-        self.area = area
-        self.tran = None
-        self.error = error
-        self.style = 'swift'
+    def __init__(self, text=None, area=None, error=None, cancel=None):
+        self.text, self.area, self.error, self.cancel = text, area, error, cancel
+        self.tran, self.style = None, 'swift'
 
-    def set_style(self, style):
-        self.style = style
+    def set_style(self, style, name):
+        self.style = style + ':' + name if name else style
 
     def tran_text(self, dest):
         if not self.text: return
@@ -67,11 +67,15 @@ class Result:
             self.style = 'display'
 
     def set_verbose(self, verbose):
-        if not verbose and self.error: self.error = ' '
+        if not verbose and self.is_error: self.cancel = True
+
+    @property
+    def is_error(self):
+        return self.error or self.text is None
 
     @property
     def param(self):
-        style, text, info = ['display', 'error', self.error] if self.error or self.text == None else [self.style, self.text, self.tran or '']
+        style, text, info = ['display', 'ERROR', self.error or ''] if self.is_error else [self.style, self.text, self.tran or '']
         return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
 def gs_dbus_call(method_name, parameters, name='', object_path='', interface_name=''):
@@ -97,7 +101,7 @@ def bincount_img(img):
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
     if trim:
-        # Related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
+        # shadows issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
         edg = next((x for x in range(min(*msk.shape[0:2])) if msk[x][x][3] == 255), 0) + EDGE
         img = img[edg:img.shape[0]-edg, edg:img.shape[1]-edg]
@@ -116,22 +120,32 @@ def crop_img(img, point, kernel, iterations, blur=False):
     dlt = cv2.dilate(thr, cv2.getStructuringElement(cv2.MORPH_RECT, kernel), iterations=iterations)
     cts = cv2.findContours(dlt, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
     if DEBUG:
+        # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
         rts = list(map(cv2.boundingRect, cts))
         for x in rts: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
-        # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
         cv2.circle(img, point, 20,(240, 80, 40))
-        cv2.imshow('img', img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        show_img(img)
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
+def scale_img(image, rect=None, factor=2):
+    img = image if rect is None else image[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+    return img if factor == 1 else cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
+
+def show_img(image, title='img'):
+    cv2.imshow(title, image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
 def typeset_str(para):
+    # CJK spaces issue: https://github.com/tesseract-ocr/tesseract/issues/991
     return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip()
 
-# @profile
+def detect_cjk(lang):
+    return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
+
 def ocr_word(lang, bttn=False, sz=(250, 50)):
     pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
-    if pt == None or sc == None: return Result(error='LD dbus error')
+    if pt is None or sc is None: return Result(error='LD dbus error')
     w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
     if w < 5 or h < 5: return Result(error='too small to screenshot')
     ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
@@ -141,7 +155,7 @@ def ocr_word(lang, bttn=False, sz=(250, 50)):
         img = read_img(fn)
         if bttn:
             rct = crop_img(img, (w, h), (3, 3), 1)
-            return Result(text=pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang).strip() or None,
+            return Result(text=pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang).strip() or None,
                           area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3])) if rct else Result(error=' ')
         else:
             dat = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, lang=lang)
@@ -152,14 +166,16 @@ def ocr_word(lang, bttn=False, sz=(250, 50)):
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
+    if area[0] is False: return Result(cancel=True) if 'cancel' in area[1] else Result(error='GS dbus error')
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        return Result(text=typeset_str(pytesseract.image_to_string(read_img(fn), lang=lang)) or None,
+        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
                       area=area) if ok else Result(error='GS dbus error')
 
+# @profile
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
-    if pt == None or fw == None: return Result(error='LD dbus error')
+    if pt is None or fw is None: return Result(error='LD dbus error')
     pt = [a - b - EDGE for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
@@ -168,11 +184,11 @@ def ocr_prln(lang, line=False):
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
-        return Result(text=typeset_str(pytesseract.image_to_string(img[rct[1]:rct[1]+rct[3], rct[0]:rct[0]+rct[2]], lang=lang)) or None,
+        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
                       area=(rct[0] + fw[0] + EDGE, rct[1] + fw[1] + EDGE, rct[2], rct[3])) if rct else Result(error=' ')
 
-def mode_exe(args):
-    result = (lambda m : m[0](*m[1]))({
+def exe_mode(args):
+    result = (lambda m: m[0](*m[1]))({
         'word': (ocr_word, (args.lang,)),
         'button': (ocr_word, (args.lang, True)),
         'paragraph': (ocr_prln, (args.lang,)),
@@ -180,7 +196,7 @@ def mode_exe(args):
         'area': (ocr_area, (args.lang,)),
         'selection': (lambda: Result(text=''), ())
     }[args.mode]);
-    result.set_style(args.style)
+    result.set_style(args.style, args.name)
     result.set_verbose(args.verbose)
     return result
 

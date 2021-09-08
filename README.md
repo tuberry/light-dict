@@ -36,7 +36,7 @@ git checkout your_gnome_shell_version
 ### Basic
 
 * Scroll on the iconbar to flip pages;
-* Scroll on the systray to toggle types;
+* Scroll on the systray to toggle triggers;
 * Middle click on the panel to copy its content;
 
 ### DBus
@@ -51,7 +51,8 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 #### Arguments
 
-* type: `'swift'` | `'popup'` | `'display'` (fallback) | `'auto'` (follow the trigger setting)
+* temp: `a string` (temporary parameters for OCR)
+* type: `'^swift(:.+)?$'` | `'popup'` | `'display'` (fallback) | `'auto'` (follow the trigger)
 * text: `a string` | `''` (for primary selection)
 * info: `a string` (for the `'display'` type) | `''` (for the other types)
 

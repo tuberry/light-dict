@@ -30,6 +30,9 @@ const LD_DBUS_IFACE = `
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Block"/>
         <method name="Toggle"/>
+        <method name="OCR">
+            <arg type="s" direction="in" name="temp"/>
+        </method>
         <method name="Run">
             <arg type="s" direction="in" name="type"/>
             <arg type="s" direction="in" name="text"/>
@@ -385,6 +388,7 @@ const DictAct = GObject.registerClass({
         'ocr-mode':   GObject.ParamSpec.uint('ocr-mode', 'ocr-mode', 'ocr mode', GObject.ParamFlags.READWRITE, 0, 5, 0),
         'ocr-params': GObject.ParamSpec.string('ocr-params', 'ocr-params', 'ocr params', GObject.ParamFlags.READWRITE, ''),
         'enable-ocr': GObject.ParamSpec.boolean('enable-ocr', 'enable-ocr', 'enable ocr', GObject.ParamFlags.WRITABLE, false),
+        'scommand':   GObject.ParamSpec.int('scommand', 'scommand', 'swift command', GObject.ParamFlags.READWRITE, -1, 2000, 0),
     },
 }, class DictAct extends GObject.Object {
     _init() {
@@ -392,12 +396,24 @@ const DictAct = GObject.registerClass({
         this._bindSettings();
         let seat = Clutter.get_default_backend().get_default_seat();
         this._keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        this.ocr_cmd = 'python ' + Me.dir.get_child('ldocr.py').get_path() + ' ';
     }
 
     _bindSettings() {
         gsettings.bind(Fields.ENABLEOCR, this, 'enable-ocr', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRMODE,   this, 'ocr-mode',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRPARAMS, this, 'ocr-params', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.SCOMMAND,  this, 'scommand',   Gio.SettingsBindFlags.GET);
+        this.scommands = gsettings.get_strv(Fields.SCOMMANDS);
+        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
+    }
+
+    set scommands(cmds) {
+        this._scmds = cmds.map(c => JSON.parse(c));
+    }
+
+    getCmd(name) {
+        return this._scmds[this._scmds.findIndex(x => x.name === name)] || this._scmds[this.scommand] || this._scmds[0] || null;
     }
 
     set ocr_mode(mode) {
@@ -405,8 +421,9 @@ const DictAct = GObject.registerClass({
     }
 
     set enable_ocr(enable) {
+        this._enable_ocr = enable;
         if(enable) {
-            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, this._invokeOCR.bind(this));
+            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () =>  this._invokeOCR());
         } else {
             Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
         }
@@ -419,12 +436,11 @@ const DictAct = GObject.registerClass({
             sender => [...checker._allowlistMap.values()].includes(sender);
     }
 
-    _invokeOCR() {
+    _invokeOCR(params) {
+        if(!this._enable_ocr) return;
         this.screenshot = true;
-        let cmd = Me.dir.get_child('ldocr.py').get_path();
-        let params = this.ocr_params + ' -m ' + this._ocr_mode;
-        this.execute(['python', cmd, params].join(' ')).then(null).catch(null)
-            .finally(() => { this.screenshot = false; });
+        this.execute(this.ocr_cmd + (params || [this.ocr_params, '-m', this._ocr_mode].join(' ')))
+            .then(null).catch(null).finally(() => { this.screenshot = false; });
     }
 
     _release(keyname) {
@@ -440,7 +456,7 @@ const DictAct = GObject.registerClass({
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, i * 100, () => {
                 let keyarray = keys.split('+');
                 keyarray.forEach(key => this._press(key));
-                keyarray.slice().reverse().forEach(key => this._release(key));
+                keyarray.reverse().forEach(key => this._release(key));
                 return GLib.SOURCE_REMOVE;
             });
         }); // NOTE: Modifier keys aren't working on Wayland (input area)
@@ -476,6 +492,9 @@ const DictAct = GObject.registerClass({
     }
 
     destroy() {
+        if(this.scommandsId)
+            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
+
         this.screenshot = false;
         this.enable_ocr = false;
         delete this._keyboard;
@@ -510,6 +529,7 @@ const DictBtn = GObject.registerClass({
         gsettings.bind(Fields.PASSIVE,   this, 'passive',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TRIGGER,   this, 'trigger',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRMODE,   this, 'ocr-mode',   Gio.SettingsBindFlags.GET);
+        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, this._updateMenu.bind(this));
         this._inited = true;
         this._updateMenu();
     }
@@ -630,6 +650,13 @@ const DictBtn = GObject.registerClass({
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._menuItemMaker(_('Settings'), () => { ExtensionUtils.openPrefs(); }));
     }
+
+    destroy() {
+        if(this.scommandsId)
+            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
+
+        super.destroy();
+    }
 });
 
 const LightDict = GObject.registerClass({
@@ -641,7 +668,6 @@ const LightDict = GObject.registerClass({
         'trigger':    GObject.ParamSpec.uint('trigger', 'trigger', 'trigger', GObject.ParamFlags.READWRITE, 0, 2, 1),
         'list-type':  GObject.ParamSpec.uint('list-type', 'list-type', 'list type', GObject.ParamFlags.READWRITE, 0, 1, 1),
         'text-strip': GObject.ParamSpec.boolean('text-strip', 'text-strip', 'strip text', GObject.ParamFlags.READWRITE, true),
-        'scommand':   GObject.ParamSpec.int('scommand', 'scommand', 'swift command', GObject.ParamFlags.READWRITE, -1, 2000, 0),
     },
 }, class LightDict extends GObject.Object {
     _init() {
@@ -664,9 +690,6 @@ const LightDict = GObject.registerClass({
         gsettings.bind(Fields.LISTTYPE,  this, 'list-type',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PASSIVE,   this, 'passive',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TEXTSTRIP, this, 'text-strip', Gio.SettingsBindFlags.GET);
-        gsettings.bind(Fields.SCOMMAND,  this, 'scommand',   Gio.SettingsBindFlags.GET);
-        this.scommands = gsettings.get_strv(Fields.SCOMMANDS);
-        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
     }
 
     _buildWidgets() {
@@ -676,7 +699,6 @@ const LightDict = GObject.registerClass({
 
         this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS_IFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-
         this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._exeCmd(cmd); });
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
@@ -693,11 +715,6 @@ const LightDict = GObject.registerClass({
             this._button.destroy();
             delete this._button;
         }
-    }
-
-    set scommands(cmds) {
-        this._scmd = JSON.parse(cmds[this.scommand] || cmds[0] || 'null');
-        if(this._button) this._button._updateMenu();
     }
 
     get _allow() {
@@ -727,7 +744,7 @@ const LightDict = GObject.registerClass({
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
-        if(this._block) { this._block = undefined; return; }
+        if(this._block) { delete this._block; return; }
         if(!this._allow || this.trigger == Trigger.Disable) return;
         let initModifier = g_pointer()[2];
         if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
@@ -794,11 +811,12 @@ const LightDict = GObject.registerClass({
         this._act.select(x);
     }
 
-    _swift() {
-        if(!this._scmd) return;
-        if(this._scmd.apps && !this._scmd.apps.includes(this._app)) return;
-        if(this._scmd.regexp && !RegExp(this._scmd.regexp).test(this._selection)) return;
-        this._exeCmd(this._scmd);
+    _swift(name) {
+        let cmd = this._act.getCmd(name);
+        if(!cmd) return;
+        if(cmd.apps && !cmd.apps.includes(this._app)) return;
+        if(cmd.regexp && !RegExp(cmd.regexp).test(this._selection)) return;
+        this._exeCmd(cmd);
     }
 
     _popup() {
@@ -820,8 +838,8 @@ const LightDict = GObject.registerClass({
     }
 
     async _fetch() {
-        return await new Promise(resolve => St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => {
-                               if(text) resolve(text); else throw new Error('Empty string'); }));
+        return await new Promise((resolve, reject) =>
+                                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY,(clip, text) => { text ? resolve(text) : reject(); }));
     }
 
     async _run(type, text, info, cursor) {
@@ -831,10 +849,11 @@ const LightDict = GObject.registerClass({
             if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
             this.trigger ? this._popup() : this._swift();
         } else {
-            switch(type == 'auto' ? (this.trigger ? 'swift' : 'popup') : type) {
-            case 'swift': this._store(text || await this._fetch()); this._swift(); break;
+            let [ty, pe] = type.split(':');
+            switch(ty == 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
+            case 'swift': this._store(text || await this._fetch()); this._swift(pe); break;
             case 'popup': this._store(text || await this._fetch()); this._popup(); break;
-            default: this._store(text || 'Void'); this._display(info.trim() || '_(:з」∠)_'); break;
+            case 'display': this._store(text || '¯\\_(ツ)_/¯'); this._display(info.trim() || '_(:з」∠)_'); break;
             }
         }
     }
@@ -845,6 +864,10 @@ const LightDict = GObject.registerClass({
 
     async RunAt(type, text, info, x, y, w, h) {
         await this._run(type, text, info, [x, y, w, h]);
+    }
+
+    OCR(temp) {
+        this._act._invokeOCR(temp);
     }
 
     Toggle() {
@@ -877,8 +900,6 @@ const LightDict = GObject.registerClass({
     }
 
     destroy() {
-        if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
         if(this._onWindowChangedId)
