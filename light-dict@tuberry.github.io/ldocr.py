@@ -26,7 +26,7 @@ def main():
 
 def parser():
     ap = argparse.ArgumentParser()
-    ap.add_argument('-m', '--mode', default='word', choices = ['word', 'paragraph', 'line', 'area', 'selection', 'button'],
+    ap.add_argument('-m', '--mode', default='word', choices = ['word', 'paragraph', 'area', 'line'],
                 help='specify the work mode: [%(choices)s] (default: %(default)s)')
     ap.add_argument('-s', '--style', default='swift', choices = ['swift', 'popup', 'display', 'auto'],
                 help='specify the LD style: [%(choices)s] (default: %(default)s)')
@@ -103,7 +103,7 @@ def read_img(filename, trim=False):
     if trim:
         # shadows issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
-        edg = next((x for x in range(min(*msk.shape[0:2])) if msk[x][x][3] == 255), 0) + EDGE
+        edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0) + EDGE
         img = img[edg:img.shape[0]-edg, edg:img.shape[1]-edg]
     return cv2.bitwise_not(img) if bincount_img(img) else img
 
@@ -123,7 +123,7 @@ def crop_img(img, point, kernel, iterations, blur=False):
         # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
         rts = list(map(cv2.boundingRect, cts))
         for x in rts: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
-        cv2.circle(img, point, 20,(240, 80, 40))
+        cv2.circle(img, point, 20, (240, 80, 40))
         show_img(img)
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
@@ -138,12 +138,12 @@ def show_img(image, title='img'):
 
 def typeset_str(para):
     # CJK spaces issue: https://github.com/tesseract-ocr/tesseract/issues/991
-    return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip()
+    return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip(string.whitespace + '“”‘’')
 
 def detect_cjk(lang):
     return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
 
-def ocr_word(lang, bttn=False, sz=(250, 50)):
+def ocr_word(lang, bttn=False, sz=(250, 80)):
     pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
     if pt is None or sc is None: return Result(error='LD dbus error')
     w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
@@ -190,11 +190,9 @@ def ocr_prln(lang, line=False):
 def exe_mode(args):
     result = (lambda m: m[0](*m[1]))({
         'word': (ocr_word, (args.lang,)),
-        'button': (ocr_word, (args.lang, True)),
+        'area': (ocr_area, (args.lang,)),
         'paragraph': (ocr_prln, (args.lang,)),
         'line': (ocr_prln, (args.lang, True)),
-        'area': (ocr_area, (args.lang,)),
-        'selection': (lambda: Result(text=''), ())
     }[args.mode]);
     result.set_style(args.style, args.name)
     result.set_verbose(args.verbose)

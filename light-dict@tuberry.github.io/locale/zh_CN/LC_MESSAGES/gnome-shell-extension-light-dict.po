@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-08-26 23:38+0800\n"
+"POT-Creation-Date: 2021-09-10 17:23+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,31 +17,31 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:565
+#: extension.js:587
 msgid "Swift: "
 msgstr "即时："
 
-#: extension.js:581
+#: extension.js:603
 msgid "Trigger: "
 msgstr "触发："
 
-#: extension.js:593
+#: extension.js:615
 msgid "OCR: "
 msgstr "OCR："
 
-#: extension.js:621
+#: extension.js:643
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:627
+#: extension.js:649
 msgid "Add/remove current app"
 msgstr "添加/移除当前应用"
 
-#: extension.js:629
+#: extension.js:651
 msgid "Settings"
 msgstr "设置"
 
-#: extension.js:859
+#: extension.js:875
 #, javascript-format
 msgid "Switch to %s style"
 msgstr "切换至%s方式"
@@ -211,16 +211,8 @@ msgid "Area"
 msgstr "区域"
 
 #: prefs.js:454
-msgid "Selection"
-msgstr "选取"
-
-#: prefs.js:454
 msgid "Line"
 msgstr "单行"
-
-#: prefs.js:454
-msgid "Button"
-msgstr "按钮"
 
 #: prefs.js:455
 msgid "Right click to run and hide panel"

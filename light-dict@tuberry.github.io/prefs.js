@@ -451,7 +451,7 @@ class LightDictBasic extends UI.Box {
         this._field_ocr_shortcut   = new UI.Shortcut(gsettings.get_strv(Fields.OCRSHORTCUT), _('Shortcut'));
         this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, });
         this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
-        this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Selection'), _('Line'), _('Button')]);
+        this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Line')]);
         this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
         this._field_ocr_params     = new UI.Entry('-d zh-cn', _('Depends on python-opencv, python-pytesseract and python-googletrans (optional)'));
     }

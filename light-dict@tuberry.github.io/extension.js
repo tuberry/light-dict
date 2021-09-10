@@ -23,7 +23,7 @@ const g_focus = () => global.display.focus_window;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
-const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Selection: 3, Line: 4, Button: 5 };
+const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
 const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
 const LD_DBUS_IFACE = `
 <node>
@@ -423,7 +423,7 @@ const DictAct = GObject.registerClass({
     set enable_ocr(enable) {
         this._enable_ocr = enable;
         if(enable) {
-            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () =>  this._invokeOCR());
+            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
         } else {
             Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
         }
@@ -588,7 +588,7 @@ const DictBtn = GObject.registerClass({
         commands.forEach((x, i) => {
             let item = new PopupMenu.PopupMenuItem(x.name);
             i == index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', item => {
-                item._getTopMenu().close();
+                this.menu.close();
                 gsettings.set_int(Fields.SCOMMAND, i);
                 gsettings.set_strv(Fields.SCOMMANDS, commands.map((x, j) =>
                     JSON.stringify(Object.assign(x, { enable: i == j || undefined }), null, 0)));
@@ -604,7 +604,7 @@ const DictBtn = GObject.registerClass({
         Object.keys(Trigger).forEach(x => {
             let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
             item.setOrnament(this._trigger == Trigger[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-            item.connect('activate', item => { item._getTopMenu().close(); gsettings.set_uint(Fields.TRIGGER, Trigger[x]); });
+            item.connect('activate', () => { this.menu.close(); gsettings.set_uint(Fields.TRIGGER, Trigger[x]); });
             trigger.menu.addMenuItem(item);
         });
 
@@ -616,7 +616,7 @@ const DictBtn = GObject.registerClass({
         Object.keys(OCRMode).forEach(x => {
             let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
             item.setOrnament(this._ocr_mode == OCRMode[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
-            item.connect('activate', () => { item._getTopMenu().close(); gsettings.set_uint(Fields.OCRMODE, OCRMode[x]); });
+            item.connect('activate', () => { this.menu.close(); gsettings.set_uint(Fields.OCRMODE, OCRMode[x]); });
             ocr_mode.menu.addMenuItem(item);
         });
 
@@ -641,7 +641,7 @@ const DictBtn = GObject.registerClass({
         if(!this._inited) return;
         this.menu.removeAll();
         this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, item => {
-            item._getTopMenu().close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
+            this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
@@ -722,7 +722,7 @@ const LightDict = GObject.registerClass({
     }
 
     get appid() {
-        return (v => v ? (w => w.is_window_backed() ? '' : w.get_id())
+        return (v => v ? (w => !w || w.is_window_backed() ? '' : w.get_id())
                 (Shell.WindowTracker.get_default().get_window_app(v)) : '')(g_focus());
     }
 

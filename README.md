@@ -74,11 +74,14 @@ Enable OCR and fill in parameters (click the button for details) as you wish:
 
 ![ocr](https://user-images.githubusercontent.com/17917040/130025814-1b847b34-0373-46a1-a65e-5546f1687ba5.png)
 
+*Note* that OCR here is subject to factors such as font, color, and background, which says that any unexpected results are expected, but usually the simpler the scene the better the results.
+
 #### Screencast
 
 https://user-images.githubusercontent.com/17917040/130017649-ca978f47-7c63-4d31-8d32-99d78ecb8907.mp4
 
 ## Note
+
 
 * This extension doesn't offer any additional icons or dictionaries.
 * If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
