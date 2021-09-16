@@ -1,0 +1,278 @@
+# Dutch translations for gnome-shell-extension-light-dict package.
+# Copyright (C) 2021 THE gnome-shell-extension-light-dict'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-light-dict package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-light-dict\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2021-09-15 20:01+0200\n"
+"PO-Revision-Date: 2021-09-15 20:14+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: none\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=ASCII\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: extension.js:587
+msgid "Swift: "
+msgstr "Swift: "
+
+#: extension.js:603
+msgid "Trigger: "
+msgstr "Aanroeping: "
+
+#: extension.js:615
+msgid "OCR: "
+msgstr "OCR: "
+
+#: extension.js:643
+msgid "Passive mode"
+msgstr "Passieve modus"
+
+#: extension.js:649
+msgid "Add/remove current app"
+msgstr "Huidige toepassing toevoegen/verwijderen"
+
+#: extension.js:651
+msgid "Settings"
+msgstr "Voorkeuren"
+
+#: extension.js:875
+#, javascript-format
+msgid "Switch to %s style"
+msgstr "Overschakelen naar %s"
+
+#: prefs.js:27
+msgid "Basic"
+msgstr "Eenvoudig"
+
+#: prefs.js:28 prefs.js:449
+msgid "Swift"
+msgstr "Swift"
+
+#: prefs.js:29 prefs.js:449 prefs.js:479
+msgid "Popup"
+msgstr "Pop-up"
+
+#: prefs.js:30
+msgid "About"
+msgstr "Over"
+
+#: prefs.js:276 prefs.js:447
+msgid "Click the app icon to remove"
+msgstr "Klik op een toepassingspictogram om te verwijderen"
+
+#: prefs.js:276 prefs.js:448
+msgid "Allowlist"
+msgstr "Witte lijst"
+
+#: prefs.js:281 prefs.js:348
+msgid "Run command"
+msgstr "Opdracht uitvoeren"
+
+#: prefs.js:282 prefs.js:350
+msgid "Command type"
+msgstr "Soort opdracht"
+
+#: prefs.js:283 prefs.js:351
+msgid "Show result"
+msgstr "Resultaat tonen"
+
+#: prefs.js:284 prefs.js:352
+msgid "Copy result"
+msgstr "Resultaat kopiëren"
+
+#: prefs.js:285 prefs.js:353
+msgid "Select result"
+msgstr "Resultaat selecteren"
+
+#: prefs.js:286 prefs.js:354
+msgid "Commit result"
+msgstr "Resultaat vastleggen"
+
+#: prefs.js:289 prefs.js:357 prefs.js:465
+msgid "Application list"
+msgstr "Toepassingenlijst"
+
+#: prefs.js:290 prefs.js:358
+msgid "RegExp matcher"
+msgstr "RegExp-overeenkomst"
+
+#: prefs.js:292
+msgid "Only one item can be enabled in swift style.\n"
+msgstr "In de swift-stijl kan er slechts één item worden ingeschakeld.\n"
+
+#: prefs.js:293
+msgid "The first one will be used by default if none is enabled.\n"
+msgstr "Als er niks is ingeschakeld, wordt de eerste op de lijst gebruikt.\n"
+
+#: prefs.js:294
+msgid "Double click a list item on the left to change the name."
+msgstr "Dubbelklik op een lijstitem om de naam ervan te wijzigen."
+
+#: prefs.js:349
+msgid "Icon name"
+msgstr "Pictogramnaam"
+
+#: prefs.js:359
+msgid "Icon tooltip"
+msgstr "Pictogram-hulpballon"
+
+#: prefs.js:393
+#, javascript-format
+msgid "Version %d"
+msgstr "Versie %d"
+
+#: prefs.js:394
+msgid "Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup."
+msgstr "Een lichte uitbreiding voor het uitvoeren van directie acties op selecties, gericht op woordenboekopzoekingen."
+
+#: prefs.js:403
+msgid "Leave RegExp/application list blank for no restriction"
+msgstr "Laat de lijsten leeg om geen beperkingen in te voeren"
+
+#: prefs.js:404
+msgid "Middle click the panel to copy the result to clipboard"
+msgstr "Middelklik op het paneel om het resultaat te kopiëren"
+
+#: prefs.js:405
+msgid "Substitute <b>LDWORD</b> for the selected text in the command"
+msgstr "Vervang <b>LDWORD</b> in de geselecteerde tekst in de opdracht"
+
+#: prefs.js:406
+msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+msgstr "Voeg het pictogram toe aan <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+
+#: prefs.js:407
+msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
+msgstr "Simuleer toetsenbordinvoer in de JS-opdracht <i>key(\"Control_L+c\")</i>"
+
+#: prefs.js:408
+msgid "Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>"
+msgstr "Houd <b>Alt/Shift</b> ingedrukt om uit te voeren tijdens markeren in de <b>passieve modus</b>"
+
+#: prefs.js:412
+msgid "Tips"
+msgstr "Tips"
+
+#: prefs.js:445
+msgid "Enable"
+msgstr "Inschakelen"
+
+#: prefs.js:448
+msgid "Blocklist"
+msgstr "Zwarte lijst"
+
+#: prefs.js:449
+msgid "Disable"
+msgstr "Uitschakelen"
+
+#: prefs.js:450
+msgid "Left click to run"
+msgstr "Linksklikken om uit te voeren"
+
+#: prefs.js:451
+msgid "Shortcut"
+msgstr "Sneltoets"
+
+#: prefs.js:452
+msgid "Parameters"
+msgstr "Aanvullende opties"
+
+#: prefs.js:453
+msgid "Proactive"
+msgstr "Pro-actief"
+
+#: prefs.js:453
+msgid "Passive"
+msgstr "Passief"
+
+#: prefs.js:453
+msgid "Need modifier to trigger or not"
+msgstr "Of er een sneltoets moet worden gebruikt bij deze aanroeping"
+
+#: prefs.js:454
+msgid "Word"
+msgstr "Woord"
+
+#: prefs.js:454
+msgid "Paragraph"
+msgstr "Paragraaf"
+
+#: prefs.js:454
+msgid "Area"
+msgstr "Gebied"
+
+#: prefs.js:454
+msgid "Line"
+msgstr "Regel"
+
+#: prefs.js:455
+msgid "Right click to run and hide panel"
+msgstr "Rechtsklikken om uit te voeren en paneel te verbergen"
+
+#: prefs.js:456
+msgid "Depends on python-opencv, python-pytesseract and python-googletrans (optional)"
+msgstr "Afhankelijkheden: python-opencv, python-pytesseract en python-googletrans (optioneel)"
+
+#: prefs.js:461
+msgid "Enable systray"
+msgstr "Systeemvakpictogram tonen"
+
+#: prefs.js:462
+msgid "Trim blank lines"
+msgstr "Aantal witregels beperken"
+
+#: prefs.js:463
+msgid "Autohide interval"
+msgstr "Automatisch verbergen na"
+
+#: prefs.js:464
+msgid "Trigger style"
+msgstr "Aanroepingsstijl"
+
+#: prefs.js:466
+msgid "RegExp filter"
+msgstr "RegExp-filter"
+
+#: prefs.js:468
+msgid "Hide title"
+msgstr "Naam verbergen"
+
+#: prefs.js:469
+msgid "Right command"
+msgstr "Rechteropdracht"
+
+#: prefs.js:470
+msgid "Left command"
+msgstr "Linkeropdracht"
+
+#: prefs.js:472
+msgid "Enable tooltip"
+msgstr "Hulpballon tonen"
+
+#: prefs.js:473
+msgid "Page size"
+msgstr "Paginagrootte"
+
+#: prefs.js:476
+msgid "Work mode"
+msgstr "Werkmodus"
+
+#: prefs.js:479
+msgid "Common"
+msgstr "Algemeen"
+
+#: prefs.js:479
+msgid "Panel"
+msgstr "Paneel"
+
+#: prefs.js:479
+msgid "OCR"
+msgstr "OCR"
+
