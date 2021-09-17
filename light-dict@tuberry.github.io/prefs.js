@@ -44,8 +44,8 @@ const CenterLabel = GObject.registerClass(
 class CenterLabel extends Gtk.Label {
     _init(label) {
         super._init({
+            label,
             wrap: true,
-            label: label,
             use_markup: true,
             justify: Gtk.Justification.CENTER,
         });
@@ -160,7 +160,7 @@ const SideBar = GObject.registerClass({
         let model = new Gtk.ListStore();
         model.set_column_types([GObject.TYPE_BOOLEAN, GObject.TYPE_STRING]);
         cmds.forEach(x => { model.set(model.append(), [0, 1], x); });
-        this._list = new Gtk.TreeView({ model: model, headers_visible: false, vexpand: true });
+        this._list = new Gtk.TreeView({ model, headers_visible: false, vexpand: true });
         this._list.get_selection().connect('changed', this._onSelectChanged.bind(this));
 
         let enable = new Gtk.CellRendererToggle({ radio: this._swift }); // type
@@ -563,7 +563,7 @@ class LightDictJSON extends UI.Box {
     }
 
     _onNameChanged(widget, index, name) {
-        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { name: name }), null, 0);
+        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { name }), null, 0);
         this._saveCommands()
     }
 

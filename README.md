@@ -21,7 +21,7 @@ The latest and supported version should only work on the the most current stable
 ```bash
 git clone https://github.com/tuberry/light-dict.git && cd light-dict
 make && make install
-# make mergepo # for translation
+# make LANG=your_language_code mergepo # for translation
 ```
 
 For older versions, it's necessary to switch the git tag before `make`:
@@ -74,7 +74,7 @@ Enable OCR and fill in parameters (click the button for details) as you wish:
 
 ![ocr](https://user-images.githubusercontent.com/17917040/130025814-1b847b34-0373-46a1-a65e-5546f1687ba5.png)
 
-*Note* that OCR here is subject to factors such as font, color, and background, which says that any unexpected results are expected, but usually the simpler the scene the better the results.
+*Note* OCR here is subject to factors such as font, color, and background, which says any unexpected results are expected, but usually the simpler the scene the better the results.
 
 #### Screencast
 

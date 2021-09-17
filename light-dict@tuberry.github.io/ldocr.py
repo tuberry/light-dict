@@ -28,7 +28,7 @@ def parser():
     ap = argparse.ArgumentParser()
     ap.add_argument('-m', '--mode', default='word', choices = ['word', 'paragraph', 'area', 'line'],
                 help='specify the work mode: [%(choices)s] (default: %(default)s)')
-    ap.add_argument('-s', '--style', default='swift', choices = ['swift', 'popup', 'display', 'auto'],
+    ap.add_argument('-s', '--style', default='auto', choices = ['auto', 'swift', 'popup'],
                 help='specify the LD style: [%(choices)s] (default: %(default)s)')
     ap.add_argument('-l', '--lang', default='eng',
                 help='specify language(s) used by Tesseract OCR (default: %(default)s)')
@@ -61,7 +61,7 @@ class Result:
                 self.error = 'googletrans/http2 is available'
             except ImportError:
                 self.tran = Translator(http2=False).translate(self.text, dest=dest).text
-        except ImportError:
+        except:
             self.error = 'python-googletrans is missing'
         finally:
             self.style = 'display'
@@ -162,7 +162,7 @@ def ocr_word(lang, bttn=False, sz=(250, 80)):
             bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
             rct = find_rect(bxs, (w, h))
             return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                          area=(rct[0] + ar[0], rct[1] + ar[1] - 5, rct[2], rct[3] + 10)) if rct else Result(error=' ')
+                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=' ')
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
