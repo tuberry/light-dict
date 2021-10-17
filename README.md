@@ -16,7 +16,7 @@ Lightweight extension for instant action to primary selection, especially optimi
 
 ### Manual
 
-The latest and supported version should only work on the the most current stable version of GNOME Shell.
+The latest and supported version should only work on the most current stable version of GNOME Shell.
 
 ```bash
 git clone https://github.com/tuberry/light-dict.git && cd light-dict
@@ -37,7 +37,6 @@ git checkout your_gnome_shell_version
 
 * Scroll on the iconbar to flip pages;
 * Scroll on the systray to toggle triggers;
-* Middle click on the panel to copy its content;
 
 ### DBus
 
@@ -70,15 +69,15 @@ yay -S python-opencv python-pytesseract # use the package manager of your distro
 
 #### Usage
 
-Enable OCR and fill in parameters (click the button for details) as you wish:
+Click the <kbd>Parameters</kbd> to see details of the OCR, which's available after enabled via the DBus, shortcut, or dwelling:
 
-![ocr](https://user-images.githubusercontent.com/17917040/130025814-1b847b34-0373-46a1-a65e-5546f1687ba5.png)
+![ldocr](https://user-images.githubusercontent.com/17917040/137623073-5b231712-398c-4632-a1b1-1c407ea483d2.png)
 
-*Note* OCR here is subject to factors such as font, color, and background, which says any unexpected results are expected, but usually the simpler the scene the better the results.
+*Note* OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
 
 #### Screencast
 
-https://user-images.githubusercontent.com/17917040/130017649-ca978f47-7c63-4d31-8d32-99d78ecb8907.mp4
+https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4
 
 ## Note
 

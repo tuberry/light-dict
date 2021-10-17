@@ -2,6 +2,8 @@
 // by tuberry
 var Fields = {
     APPLIST:     'app-list',
+    DWELLOCR:    'dwell-ocr',
+    SHORTOCR:    'short-ocr',
     LISTTYPE:    'list-type',
     ENABLEOCR:   'enable-ocr',
     HIDETITLE:   'hide-title',

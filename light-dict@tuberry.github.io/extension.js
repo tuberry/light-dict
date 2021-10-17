@@ -21,6 +21,8 @@ const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
 const g_focus = () => global.display.focus_window;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
+const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
+const pointEq = (u, v) => u[0] == v[0] && u[1] == v[1];
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
@@ -71,10 +73,6 @@ const DictBar = GObject.registerClass({
         this.visible = false;
         this.style_class = 'light-dict-bar-boxpointer candidate-popup-boxpointer';
         Main.layoutManager.addTopChrome(this);
-
-        this._pages = 1;
-        this._index = 1;
-
         this._buildWidgets();
         this._bindSettings();
     }
@@ -129,8 +127,8 @@ const DictBar = GObject.registerClass({
 
     _onScroll(actor, event) {
         if(this._tooltip) this._tooltip.hide();
-        this._icons.forEach(x => x.entered = false);
-        switch (event.get_scroll_direction()) {
+        this._icons.forEach(x => x._entered = false);
+        switch(event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP: this._index--; break;
         case Clutter.ScrollDirection.DOWN: this._index++; break;
         }
@@ -138,17 +136,15 @@ const DictBar = GObject.registerClass({
     }
 
     _onEnter() {
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
+        this._removeTimer();
         this._box.visible = true;
     }
 
     _onLeave(actor) {
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
+        this._removeTimer();
         this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, actor ? this.autohide / 10 : this.autohide, () => {
+            delete this._delayId;
             this._hide();
-            this._delayId = 0;
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -168,11 +164,11 @@ const DictBar = GObject.registerClass({
 
     _updateVisible(app, text) {
         this._icons.forEach(x => {
-            switch((!!x.apps << 1) + !!x.regexp) {
+            switch((!!x._apps << 1) + !!x._regexp) {
             case 0: x._visible = true; break;
-            case 1: x._visible = RegExp(x.regexp).test(text); break;
-            case 2: x._visible = x.apps.includes(app); break;
-            case 3: x._visible = x.apps.includes(app) && RegExp(x.regexp).test(text); break;
+            case 1: x._visible = RegExp(x._regexp).test(text); break;
+            case 2: x._visible = x._apps.includes(app); break;
+            case 3: x._visible = x._apps.includes(app) && RegExp(x._regexp).test(text); break;
             }
         });
         this._updatePages();
@@ -182,37 +178,42 @@ const DictBar = GObject.registerClass({
         let x = JSON.parse(cmd);
         if(!x.enable) return;
         let btn = new St.Button({
+            label: x.name || 'name',
             style_class: 'light-dict-button candidate-box',
         });
-        btn.child = new St.Icon({
-            icon_name: x.icon || 'help',
+        if(x.icon) btn.child = new St.Icon({
+            icon_name: x.icon,
             fallback_icon_name: 'help',
             style_class: 'light-dict-button-icon candidate-label',
         });
-        Object.assign(btn, x);
-        btn.connect('clicked', (actor, event) => {
+        Object.assign(btn, { _regexp: x.regexp, _apps: x.apps });
+        btn.connect('clicked', () => {
             this._hide();
             this.emit('dict-bar-clicked', x);
             return Clutter.EVENT_STOP;
         });
         btn.connect('enter-event', () => {
             if(!this._tooltip) return;
-            btn.entered = true;
+            btn._entered = true;
             GLib.timeout_add(GLib.PRIORITY_DEFAULT, this.autohide / 2, () => {
-                if(!btn.entered || !this._box.visible) return GLib.SOURCE_REMOVE;
+                if(!btn._entered || !this._box.visible) return GLib.SOURCE_REMOVE;
                 this._tooltip.set_position(g_pointer()[0], this.get_position()[1] + this.get_size()[1] + 5);
-                this._tooltip.set_text(x.tooltip || x.icon || 'tooltip');
+                this._tooltip.set_text(x.tooltip || x.name || 'tooltip');
                 this._tooltip.show();
                 return GLib.SOURCE_REMOVE;
             });
         });
         btn.connect('leave-event', () => {
             if(!this._tooltip) return;
-            btn.entered = false;
+            btn._entered = false;
             this._tooltip.hide();
         });
         btn._visible = true;
         this._box.add_child(btn);
+    }
+
+    _removeTimer() {
+        if(this._delayId) GLib.source_remove(this._delayId), delete this._delayId;
     }
 
     _show(fw, text) {
@@ -224,24 +225,21 @@ const DictBar = GObject.registerClass({
             this.open(BoxPointer.PopupAnimation.NONE);
             this.get_parent().set_child_above_sibling(this, null);
         }
-
         this._onLeave();
     }
 
     _hide() {
         if(!this._box.visible) return;
-
+        this._removeTimer();
         this._box.visible = false;
         this.close(BoxPointer.PopupAnimation.NONE);
         if(this._tooltip) this._tooltip.hide();
     }
 
     destroy() {
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
         if(this.pcommandsId)
-            gsettings.disconnect(this.pcommandsId), this.pcommandsId = 0;
-
+            gsettings.disconnect(this.pcommandsId), delete this.pcommandsId;
+        this._removeTimer();
         this.tooltips = false;
         super.destroy();
     }
@@ -259,8 +257,7 @@ const DictBox = GObject.registerClass({
         this.visible = false;
         this.style_class = 'light-dict-box-boxpointer candidate-popup-boxpointer';
         Main.layoutManager.addTopChrome(this);
-
-        this._selection = '';
+        this._rect0 = this._rect = [0, 0, 0, 0];
         this._bindSettings();
         this._buildWidgets();
     }
@@ -272,23 +269,19 @@ const DictBox = GObject.registerClass({
             style_class: 'light-dict-scroll',
             hscrollbar_policy: St.PolicyType.NEVER,
         });
-
         this._box = new St.BoxLayout({
             reactive: true,
             vertical: true,
             style_class: 'light-dict-content',
         });
-
         this._text = new St.Label({ style_class: 'light-dict-text' });
         this._text.clutter_text.line_wrap = true;
         this._info = new St.Label({ style_class: 'light-dict-info' });
         this._info.clutter_text.line_wrap = true;
-
         this._box.add_child(this._text);
         this._box.add_child(this._info);
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
-
         this._box.connect('leave-event', this._onLeave.bind(this));
         this._box.connect('enter-event', this._onEnter.bind(this));
         this._box.connect('button-press-event', this._onClick.bind(this));
@@ -310,8 +303,9 @@ const DictBox = GObject.registerClass({
     }
 
     _onEnter() {
+        this._entered = true;
         this._view.visible = true;
-        if(this._delayId) GLib.source_remove(this._delayId), this._delayId = 0;
+        this._removeTimer();
     }
 
     _onClick(actor, event) {
@@ -323,34 +317,33 @@ const DictBox = GObject.registerClass({
     }
 
     _onLeave(actor) {
-        let [mx, my] = g_pointer();
-        let [wt, ht] = this.get_transformed_size();
-        let [px, py] = this.get_transformed_position();
+        this._rect = [...this.get_transformed_position(), ...this.get_transformed_size()];
         let duration = actor === undefined ? this.autohide : this.autohide / 10;
-        let callback = mx < px || my < py || mx > px + wt || my > py + ht ? () => {
-            this._delayId = 0;
-            this._hide();
-            return GLib.SOURCE_REMOVE;
+        let callback = outOf(this._rect, g_pointer()) ? () => {
+            delete this._delayId; this._hide(); return GLib.SOURCE_REMOVE;
         } : () => { return this._onLeave(true); }
-
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
+        this._removeTimer();
         this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, duration, callback);
 
         return GLib.SOURCE_REMOVE;
     }
 
+    _removeTimer() {
+        if(this._delayId) GLib.source_remove(this._delayId), delete this._delayId;
+    }
+
     _hide() {
         if(!this._view.visible) return;
-
+        this._removeTimer();
         this._view.visible = false;
         this._info.set_text('ヽ(ー_ー)ノ');
         this.close(BoxPointer.PopupAnimation.NONE);
+        this._rect0 = this._entered ? this._rect : [0, 0, 0, 0];
+        delete this._entered;
     }
 
     _show(info, text) {
         this._selection = text;
-
         try {
             Pango.parse_markup(info, -1, '');
             this._info.clutter_text.set_markup(info || 'Σ(ʘωʘﾉ)ﾉ');
@@ -358,27 +351,22 @@ const DictBox = GObject.registerClass({
             this._info.set_text(info || 'o(T^T)o');
         }
         if(this._text.visible) this._text.set_text(text);
-
         if(this._scrollable) {
             this._view.vscrollbar_policy = St.PolicyType.AUTOMATIC;
             this._view.vscroll.get_adjustment().set_value(0);
         } else {
             this._view.vscrollbar_policy = St.PolicyType.NEVER;
         }
-
         if(!this._view.visible) {
             this._view.visible = true;
             this.open(BoxPointer.PopupAnimation.NONE);
             this.get_parent().set_child_above_sibling(this, null);
         }
-
         this._onLeave();
     }
 
     destroy() {
-        if(this._delayId)
-            GLib.source_remove(this._delayId), this._delayId = 0;
-
+        this._removeTimer();
         super.destroy();
     }
 });
@@ -387,8 +375,13 @@ const DictAct = GObject.registerClass({
     Properties: {
         'ocr-mode':   GObject.ParamSpec.uint('ocr-mode', 'ocr-mode', 'ocr mode', GObject.ParamFlags.READWRITE, 0, 5, 0),
         'ocr-params': GObject.ParamSpec.string('ocr-params', 'ocr-params', 'ocr params', GObject.ParamFlags.READWRITE, ''),
+        'dwell-ocr':  GObject.ParamSpec.boolean('dwell-ocr', 'dwell-ocr', 'dwell-ocr', GObject.ParamFlags.WRITABLE, false),
+        'short-ocr':  GObject.ParamSpec.boolean('short-ocr', 'short-ocr', 'short-ocr', GObject.ParamFlags.WRITABLE, false),
         'enable-ocr': GObject.ParamSpec.boolean('enable-ocr', 'enable-ocr', 'enable ocr', GObject.ParamFlags.WRITABLE, false),
         'scommand':   GObject.ParamSpec.int('scommand', 'scommand', 'swift command', GObject.ParamFlags.READWRITE, -1, 2000, 0),
+    },
+    Signals: {
+        'dict-act-dwelled': { param_types: [GObject.TYPE_JSOBJECT, GObject.TYPE_JSOBJECT] },
     },
 }, class DictAct extends GObject.Object {
     _init() {
@@ -404,6 +397,8 @@ const DictAct = GObject.registerClass({
         gsettings.bind(Fields.OCRMODE,   this, 'ocr-mode',   Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRPARAMS, this, 'ocr-params', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.SCOMMAND,  this, 'scommand',   Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.DWELLOCR,  this, 'dwell-ocr',  Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.SHORTOCR,  this, 'short-ocr',  Gio.SettingsBindFlags.GET);
         this.scommands = gsettings.get_strv(Fields.SCOMMANDS);
         this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
     }
@@ -416,17 +411,34 @@ const DictAct = GObject.registerClass({
         return this._scmds[this._scmds.findIndex(x => x.name === name)] || this._scmds[this.scommand] || this._scmds[0] || null;
     }
 
+    set dwell_ocr(dwell) {
+        this._ptt = this._pt = dwell ? g_pointer() : undefined;
+        if(this._dwellId) GLib.source_remove(this._dwellId);
+        this._dwellId = (this._dwell_ocr = dwell) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+            let pt = g_pointer();
+            if(!pointEq(this._ptt, this._pt) && pointEq(this._pt, pt)) this.emit('dict-act-dwelled', this._ptt, pt);
+            [this._ptt, this._pt] = [this._pt, pt];
+            return GLib.SOURCE_CONTINUE;
+        }) : 0;
+    }
+
+    set short_ocr(short) {
+        if((this._short_ocr = short) && this._enable_ocr) {
+            this._shortId = Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
+        } else {
+            if(this._shortId !== undefined) Main.wm.removeKeybinding(Fields.OCRSHORTCUT), delete this._shortId;
+        }
+    }
+
     set ocr_mode(mode) {
         this._ocr_mode = Object.keys(OCRMode)[mode].toLowerCase();
     }
 
     set enable_ocr(enable) {
         this._enable_ocr = enable;
-        if(enable) {
-            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
-        } else {
-            Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
-        }
+        if([this._short_ocr, this._dwell_ocr].some(x => x === undefined)) return;
+        this.short_ocr = this._short_ocr;
+        this.dwell_ocr = this._dwell_ocr;
     }
 
     set screenshot(screenshot) {
@@ -436,10 +448,10 @@ const DictAct = GObject.registerClass({
             sender => [...checker._allowlistMap.values()].includes(sender);
     }
 
-    _invokeOCR(params) {
+    _invokeOCR(params = '', attach = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this.ocr_cmd + (params || [this.ocr_params, '-m', this._ocr_mode].join(' ')))
+        this.execute(this.ocr_cmd + (params || [this.ocr_params, attach, '-m', this._ocr_mode].join(' ')))
             .then(null).catch(null).finally(() => { this.screenshot = false; });
     }
 
@@ -493,8 +505,8 @@ const DictAct = GObject.registerClass({
 
     destroy() {
         if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
-
+            gsettings.disconnect(this.scommandsId), delete this.scommandsId;
+        this.dwell_ocr = false;
         this.screenshot = false;
         this.enable_ocr = false;
         delete this._keyboard;
@@ -506,15 +518,15 @@ const DictBtn = GObject.registerClass({
         'passive':    GObject.ParamSpec.uint('passive', 'passive', 'passive', GObject.ParamFlags.READWRITE, 0, 1, 0),
         'trigger':    GObject.ParamSpec.uint('trigger', 'trigger', 'trigger', GObject.ParamFlags.READWRITE, 0, 2, 1),
         'ocr-mode':   GObject.ParamSpec.uint('ocr-mode', 'ocr-mode', 'ocr mode', GObject.ParamFlags.READWRITE, 0, 5, 0),
+        'dwell-ocr':  GObject.ParamSpec.boolean('dwell-ocr', 'dwell-ocr', 'dwell-ocr', GObject.ParamFlags.WRITABLE, false),
         'enable-ocr': GObject.ParamSpec.boolean('enable-ocr', 'enable-ocr', 'enable ocr', GObject.ParamFlags.WRITABLE, false),
     },
     Signals: {
-        'add-or-remove-app': {},
+        'dict-app-toggled': {},
     },
 }, class DictBtn extends PanelMenu.Button {
     _init(params) {
         super._init(params);
-
         this._buildWidgets();
         this._bindSettings();
     }
@@ -526,12 +538,11 @@ const DictBtn = GObject.registerClass({
 
     _bindSettings() {
         gsettings.bind(Fields.ENABLEOCR, this, 'enable-ocr', Gio.SettingsBindFlags.GET);
+        gsettings.bind(Fields.DWELLOCR,  this, 'dwell-ocr',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.PASSIVE,   this, 'passive',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TRIGGER,   this, 'trigger',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRMODE,   this, 'ocr-mode',   Gio.SettingsBindFlags.GET);
         this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, this._updateMenu.bind(this));
-        this._inited = true;
-        this._updateMenu();
     }
 
     set passive(passive) {
@@ -545,7 +556,6 @@ const DictBtn = GObject.registerClass({
     }
 
     set ocr_mode(ocr_mode) {
-        if(!this._enable_ocr) return;
         this._ocr_mode = ocr_mode;
         this._updateMenu();
     }
@@ -555,11 +565,16 @@ const DictBtn = GObject.registerClass({
         this._updateMenu();
     }
 
+    set dwell_ocr(dwell) {
+        this._dwell_ocr = dwell;
+        this._updateMenu();
+    }
+
     get _icon_name() {
         switch(this._trigger) {
-        case Trigger.Popup: return this._passive == 1 ? 'popup-passive' : 'popup-proactive';
-        case Trigger.Swift: return this._passive == 1 ? 'swift-passive' : 'swift-proactive';
-        default: return this._passive == 1 ? 'disable-passive' : 'disable-proactive';
+        case Trigger.Popup: return this._passive ? 'popup-passive' : 'popup-proactive';
+        case Trigger.Swift: return this._passive ? 'swift-passive' : 'swift-proactive';
+        default: return this._passive ? 'disable-passive' : 'disable-proactive';
         }
     }
 
@@ -572,7 +587,7 @@ const DictBtn = GObject.registerClass({
     };
 
     _setIcon() {
-        if(this._trigger === undefined || this._passive === undefined) return;
+        if([this._trigger, this._passive].some(x => x === undefined)) return;
         this._icon.set_gicon(new Gio.FileIcon({ file: Gio.File.new_for_path(getIcon(this._icon_name)) }));
         this._updateMenu();
     }
@@ -638,23 +653,24 @@ const DictBtn = GObject.registerClass({
     }
 
     _updateMenu() {
-        if(!this._inited) return;
+        if([this._enable_ocr, this._dwell_ocr, this._ocr_mode, this._trigger, this._passive].some(x => x === undefined)) return;
         this.menu.removeAll();
+        if(this._enable_ocr) this.menu.addMenuItem(this._menuSwitchMaker(_('Dwell OCR'), !!this._dwell_ocr, item => {
+            this.menu.close(); gsettings.set_boolean(Fields.DWELLOCR, !this._dwell_ocr); }));
         this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, item => {
             this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
         if(this._enable_ocr) this.menu.addMenuItem(this._OCRModeMenu());
-        this.menu.addMenuItem(this._menuItemMaker(_('Add/remove current app'), () => { this.emit('add-or-remove-app'); }));
+        this.menu.addMenuItem(this._menuItemMaker(_('Add/remove current app'), () => { this.emit('dict-app-toggled'); }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._menuItemMaker(_('Settings'), () => { ExtensionUtils.openPrefs(); }));
     }
 
     destroy() {
         if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), this.scommandsId = 0;
-
+            gsettings.disconnect(this.scommandsId), delete this.scommandsId;
         super.destroy();
     }
 });
@@ -674,10 +690,8 @@ const LightDict = GObject.registerClass({
         super._init();
         this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
-
-        this._selection = '';
         this._app = this.appid;
-
+        this._selection = '';
         this._bindSettings();
         this._buildWidgets();
     }
@@ -696,10 +710,13 @@ const LightDict = GObject.registerClass({
         this._act = new DictAct();
         this._box = new DictBox();
         this._bar = new DictBar();
-
         this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS_IFACE, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._exeCmd(cmd); });
+        this._act.connect('dict-act-dwelled', (actor, pt0, pt) => {
+            if(!this.passive || pt[2] & MODIFIERS && outOf(this._box._rect0, pt0)
+               && outOf(this._box._rect, pt)) this._act._invokeOCR('', '--no-verbose');
+        });
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
     }
@@ -708,7 +725,7 @@ const LightDict = GObject.registerClass({
         if(systray) {
             if(this._button) return;
             this._button = new DictBtn(null, Me.metadata.uuid);
-            this._button.connect('add-or-remove-app', this.Block.bind(this));
+            this._button.connect('dict-app-toggled', this.Block.bind(this));
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
             if(!this._button) return;
@@ -743,18 +760,16 @@ const LightDict = GObject.registerClass({
     _onSelectChanged(sel, type, src) {
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseReleasedId)
-            GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
+            GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
         if(this._block) { delete this._block; return; }
         if(!this._allow || this.trigger == Trigger.Disable) return;
         let initModifier = g_pointer()[2];
-        if(this.passive == 1 && (initModifier & MODIFIERS) == 0) return;
+        if(this.passive && !(initModifier & MODIFIERS)) return;
         if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
                 let tmpModifier = g_pointer()[2];
                 if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
-                    this._mouseReleasedId = 0;
-                    this._run();
-                    return GLib.SOURCE_REMOVE;
+                    delete this._mouseReleasedId; this._run(); return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
                 }
@@ -839,14 +854,14 @@ const LightDict = GObject.registerClass({
 
     async _fetch() {
         return await new Promise((resolve, reject) =>
-                                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY,(clip, text) => { text ? resolve(text) : reject(); }));
+                                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => { text ? resolve(text) : reject(); }));
     }
 
     async _run(type, text, info, cursor) {
         this.cursor = cursor;
         if(type === undefined) {
             this._store(await this._fetch());
-            if(this.passive == 0 && this.filter && !RegExp(this.filter).test(this._selection)) return;
+            if(!this.passive && this.filter && !RegExp(this.filter).test(this._selection)) return;
             this.trigger ? this._popup() : this._swift();
         } else {
             let [ty, pe] = type.split(':');
@@ -901,12 +916,11 @@ const LightDict = GObject.registerClass({
 
     destroy() {
         if(this._mouseReleasedId)
-            GLib.source_remove(this._mouseReleasedId), this._mouseReleasedId = 0;
+            GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
         if(this._onWindowChangedId)
-            global.display.disconnect(this._onWindowChangedId), this._onWindowChangedId = 0;
+            global.display.disconnect(this._onWindowChangedId), delete this._onWindowChangedId;
         if(this._onSelectChangedId)
-            global.display.get_selection().disconnect(this._onSelectChangedId), this._onSelectChangedId = 0;
-
+            global.display.get_selection().disconnect(this._onSelectChangedId), delete this._onSelectChangedId;
         this.systray = false;
         this._dbus.flush();
         this._dbus.unexport();

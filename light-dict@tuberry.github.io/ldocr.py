@@ -143,7 +143,7 @@ def typeset_str(para):
 def detect_cjk(lang):
     return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
 
-def ocr_word(lang, bttn=False, sz=(250, 80)):
+def ocr_word(lang, sz=(250, 50)):
     pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
     if pt is None or sc is None: return Result(error='LD dbus error')
     w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
@@ -152,17 +152,11 @@ def ocr_word(lang, bttn=False, sz=(250, 80)):
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
         if not ok: return Result(error='GS dbus error')
-        img = read_img(fn)
-        if bttn:
-            rct = crop_img(img, (w, h), (3, 3), 1)
-            return Result(text=pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang).strip() or None,
-                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3])) if rct else Result(error=' ')
-        else:
-            dat = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT, lang=lang)
-            bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
-            rct = find_rect(bxs, (w, h))
-            return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=' ')
+        dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
+        bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
+        rct = find_rect(bxs, (w, h))
+        return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
+                      area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=' ')
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
@@ -172,7 +166,6 @@ def ocr_area(lang):
         return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
                       area=area) if ok else Result(error='GS dbus error')
 
-# @profile
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
     if pt is None or fw is None: return Result(error='LD dbus error')

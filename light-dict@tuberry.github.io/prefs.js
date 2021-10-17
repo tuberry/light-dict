@@ -297,14 +297,14 @@ const SwiftBox = GObject.registerClass({
     }
 
     _bindValues() {
-        this._popup.connect('state-set', (widget, state) => { this._emitChanged({ popup: state }); });
-        this._commit.connect('state-set', (widget, state) => { this._emitChanged({ commit: state }); });
-        this._select.connect('state-set', (widget, state) => { this._emitChanged({ select: state }); });
-        this._copy.connect('state-set', (widget, state) => { this._emitChanged({ copy: state }); });
-        this._apps.connect('changed', widget => { this._emitChanged({ apps: widget.get_apps() }); });
-        this._type.connect('changed', widget => { this._emitChanged({ type: widget.get_active() }); });
-        this._regexp.connect('changed', widget => { this._emitChanged({ regexp: widget.get_text() }); });
-        this._command.connect('changed', widget => { this._emitChanged({ command: widget.get_text() }); });
+        this._popup.connect('state-set', (widget, state) => { this._emitChanged({ popup: state || undefined }); });
+        this._commit.connect('state-set', (widget, state) => { this._emitChanged({ commit: state || undefined }); });
+        this._select.connect('state-set', (widget, state) => { this._emitChanged({ select: state || undefined }); });
+        this._copy.connect('state-set', (widget, state) => { this._emitChanged({ copy: state || undefined }); });
+        this._apps.connect('changed', widget => { this._emitChanged({ apps: widget.get_apps() || undefined }); });
+        this._type.connect('changed', widget => { this._emitChanged({ type: widget.get_active() || undefined }); });
+        this._regexp.connect('changed', widget => { this._emitChanged({ regexp: widget.get_text() || undefined }); });
+        this._command.connect('changed', widget => { this._emitChanged({ command: widget.get_text() || undefined }); });
     }
 
     _emitChanged(prama) {
@@ -340,7 +340,7 @@ class PopupBox extends SwiftBox {
     _buildWidgets() {
         super._buildWidgets();
         this._tooltip = new UI.Entry('Open URL with gio open');
-        this._icon    = new UI.Entry('face-cool-symbolic', '', true);
+        this._icon    = new UI.Entry('face-cool-symbolic', _('Leave it empty to display the name'), true);
     }
 
     _buildUI() {
@@ -362,8 +362,8 @@ class PopupBox extends SwiftBox {
 
     _bindValues() {
         super._bindValues();
-        this._icon.connect('changed', widget => { this._emitChanged({ icon: widget.get_text() }); });
-        this._tooltip.connect('changed', widget => { this._emitChanged({ tooltip: widget.get_text() }); });
+        this._icon.connect('changed', widget => { this._emitChanged({ icon: widget.get_text() || undefined }); });
+        this._tooltip.connect('changed', widget => { this._emitChanged({ tooltip: widget.get_text() || undefined }); });
     }
 });
 
@@ -436,22 +436,24 @@ class LightDictBasic extends UI.Box {
     }
 
     _buildWidgets() {
+        this._field_dwell_ocr      = new Gtk.Switch();
+        this._field_enable_ocr     = new Gtk.Switch();
         this._field_enable_strip   = new Gtk.Switch();
         this._field_enable_systray = new Gtk.Switch();
         this._field_enable_tooltip = new Gtk.Switch();
         this._field_hide_title     = new Gtk.Switch();
         this._field_page_size      = new UI.Spin(1, 10, 1);
+        this._field_short_ocr      = new UI.Check(_('Shortcut'));
         this._field_auto_hide      = new UI.Spin(500, 10000, 250);
-        this._field_enable_ocr     = new UI.Check(_('Enable'));
         this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
         this._field_app_list       = new AppsBox(_('Click the app icon to remove'));
         this._field_list_type      = new UI.Combo([_('Allowlist'), _('Blocklist')]);
         this._field_trigger_style  = new UI.Combo([_('Swift'), _('Popup'), _('Disable')]);
+        this._field_ocr_shortcut   = new UI.Shortcut(gsettings.get_strv(Fields.OCRSHORTCUT));
         this._field_left_command   = new UI.Entry('notify-send LDWORD', _('Left click to run'));
-        this._field_ocr_shortcut   = new UI.Shortcut(gsettings.get_strv(Fields.OCRSHORTCUT), _('Shortcut'));
+        this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Line')]);
         this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, });
         this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
-        this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Line')]);
         this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
         this._field_ocr_params     = new UI.Entry('-d zh-cn', _('Depends on python-opencv, python-pytesseract and python-googletrans (optional)'));
     }
@@ -472,7 +474,9 @@ class LightDictBasic extends UI.Box {
         popup._add(new UI.Label(_('Enable tooltip')), this._field_enable_tooltip);
         popup._add(new UI.Label(_('Page size')), this._field_page_size);
         let ocr = new UI.ListGrid();
-        ocr._add(this._field_enable_ocr, this._field_ocr_shortcut);
+        ocr._add(new UI.Label(_('Enable OCR')), this._field_enable_ocr);
+        ocr._add(new UI.Label(_('Dwell OCR')), this._field_dwell_ocr);
+        ocr._add(this._field_short_ocr, this._field_ocr_shortcut);
         ocr._add(new UI.Label(_('Work mode')), this._field_ocr_work_mode);
         ocr._att(this._ocr_help_button, this._field_ocr_params);
 
@@ -492,24 +496,21 @@ class LightDictBasic extends UI.Box {
         gsettings.bind(Fields.LISTTYPE,  this._field_list_type,      'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray, 'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.ENABLEOCR, this._field_enable_ocr,     'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.DWELLOCR,  this._field_dwell_ocr,      'active', Gio.SettingsBindFlags.DEFAULT);
+        gsettings.bind(Fields.SHORTOCR,  this._field_short_ocr,      'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.HIDETITLE, this._field_hide_title,     'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,   'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.TOOLTIP,   this._field_enable_tooltip, 'active', Gio.SettingsBindFlags.DEFAULT);
         gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
 
-        this._bindOCRHelpMessage();
+        this._bindOCRWidgets();
+        this._field_ocr_params._set_edit();
+        this._field_text_filter._set_edit();
         this._field_left_command._set_edit();
         this._field_right_command._set_edit();
-        this._field_text_filter._set_edit();
-        this._field_ocr_params._set_edit();
-        this._field_enable_ocr.bind_property('active', this._field_ocr_params, 'sensitive', GObject.BindingFlags.GET);
-        this._field_enable_ocr.bind_property('active', this._field_ocr_work_mode, 'sensitive', GObject.BindingFlags.GET);
-        this._field_ocr_params.set_sensitive(this._field_enable_ocr.active);
-        this._field_ocr_work_mode.set_sensitive(this._field_enable_ocr.active);
-        this._field_ocr_shortcut.connect('changed', (widget, keys) => { gsettings.set_strv(Fields.OCRSHORTCUT, [keys]); });
     }
 
-    _bindOCRHelpMessage() {
+    _bindOCRHelp() {
         let proc = new Gio.Subprocess({
             argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
             flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
@@ -525,13 +526,22 @@ class LightDictBasic extends UI.Box {
             }
         });
     }
+
+    _bindOCRWidgets() {
+        this._bindOCRHelp();
+        [this._field_dwell_ocr, this._field_short_ocr, this._ocr_help_button,
+            this._field_ocr_params, this._field_ocr_shortcut, this._field_ocr_work_mode].forEach(widget => {
+                this._field_enable_ocr.bind_property('active', widget, 'sensitive', GObject.BindingFlags.GET);
+                widget.set_sensitive(this._field_enable_ocr.active);
+            });
+        this._field_ocr_shortcut.connect('changed', (widget, keys) => { gsettings.set_strv(Fields.OCRSHORTCUT, [keys]); });
+    }
 });
 
 const LightDictJSON = GObject.registerClass(
 class LightDictJSON extends UI.Box {
     _init(key) {
         super._init();
-
         this._key = key;
         this._swift = key == Fields.SCOMMANDS;
         this._cmds = gsettings.get_strv(key);
@@ -540,12 +550,7 @@ class LightDictJSON extends UI.Box {
     }
 
     _buildWidgets() {
-        let cmds = this._cmds.map(x => {
-            let conf = JSON.parse(x);
-            return [!!conf.enable, conf.name];
-        });
-
-        this._side = new SideBar(cmds, this._swift);
+        this._side = new SideBar(this._cmds.map(x => (c => [!!c.enable, c.name])(JSON.parse(x))), this._swift);
         this._pane = this._swift ? new SwiftBox() : new PopupBox();
         this.append(new UI.Frame(new UI.Box().appendS([this._side, this._pane])));
     }
@@ -598,7 +603,7 @@ class LightDictJSON extends UI.Box {
 
     _onEnableToggled(widget, index, enable) {
         if(this._swift) {
-            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: (enable && i == index) || undefined }), null, 0));
+            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: enable && i == index || undefined }), null, 0));
             if(enable && this._cmds[index]) this._saveCommand(index);
         } else {
             this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { enable: enable || undefined }), null, 0);

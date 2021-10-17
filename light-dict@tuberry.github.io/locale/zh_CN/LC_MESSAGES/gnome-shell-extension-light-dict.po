@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-09-10 17:23+0800\n"
+"POT-Creation-Date: 2021-10-17 14:47+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,31 +17,35 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:587
+#: extension.js:620
 msgid "Swift: "
 msgstr "即时："
 
-#: extension.js:603
+#: extension.js:636
 msgid "Trigger: "
 msgstr "触发："
 
-#: extension.js:615
+#: extension.js:648
 msgid "OCR: "
 msgstr "OCR："
 
-#: extension.js:643
+#: extension.js:676 prefs.js:478
+msgid "Dwell OCR"
+msgstr "悬停取词"
+
+#: extension.js:678
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:649
+#: extension.js:684
 msgid "Add/remove current app"
 msgstr "添加/移除当前应用"
 
-#: extension.js:651
+#: extension.js:686
 msgid "Settings"
 msgstr "设置"
 
-#: extension.js:875
+#: extension.js:908
 #, javascript-format
 msgid "Switch to %s style"
 msgstr "切换至%s方式"
@@ -50,11 +54,11 @@ msgstr "切换至%s方式"
 msgid "Basic"
 msgstr "基本"
 
-#: prefs.js:28 prefs.js:449
+#: prefs.js:28 prefs.js:451
 msgid "Swift"
 msgstr "即时"
 
-#: prefs.js:29 prefs.js:449 prefs.js:479
+#: prefs.js:29 prefs.js:451 prefs.js:483
 msgid "Popup"
 msgstr "弹出"
 
@@ -62,11 +66,11 @@ msgstr "弹出"
 msgid "About"
 msgstr "关于"
 
-#: prefs.js:276 prefs.js:447
+#: prefs.js:276 prefs.js:449
 msgid "Click the app icon to remove"
 msgstr "点击应用图标移除"
 
-#: prefs.js:276 prefs.js:448
+#: prefs.js:276 prefs.js:450
 msgid "Allowlist"
 msgstr "白名单"
 
@@ -94,7 +98,7 @@ msgstr "选取结果"
 msgid "Commit result"
 msgstr "提交结果"
 
-#: prefs.js:289 prefs.js:357 prefs.js:465
+#: prefs.js:289 prefs.js:357 prefs.js:467
 msgid "Application list"
 msgstr "应用名单"
 
@@ -113,6 +117,10 @@ msgstr "若未启用默认使用第一项。\n"
 #: prefs.js:294
 msgid "Double click a list item on the left to change the name."
 msgstr "双击左侧列表项更改名称。"
+
+#: prefs.js:343
+msgid "Leave it empty to display the name"
+msgstr "留空则显示名称"
 
 #: prefs.js:349
 msgid "Icon name"
@@ -162,41 +170,21 @@ msgstr "<b>被动模式</b>高亮文本时需按住 <b>Alt/Shift</b> 来触发"
 msgid "Tips"
 msgstr "提示"
 
-#: prefs.js:445
-msgid "Enable"
-msgstr "启用"
-
-#: prefs.js:448
-msgid "Blocklist"
-msgstr "黑名单"
-
-#: prefs.js:449
-msgid "Disable"
-msgstr "禁用"
-
-#: prefs.js:450
-msgid "Left click to run"
-msgstr "左键运行"
-
-#: prefs.js:451
+#: prefs.js:446
 msgid "Shortcut"
 msgstr "快捷键"
 
-#: prefs.js:452
-msgid "Parameters"
-msgstr "参数"
+#: prefs.js:450
+msgid "Blocklist"
+msgstr "黑名单"
+
+#: prefs.js:451
+msgid "Disable"
+msgstr "禁用"
 
 #: prefs.js:453
-msgid "Proactive"
-msgstr "主动"
-
-#: prefs.js:453
-msgid "Passive"
-msgstr "被动"
-
-#: prefs.js:453
-msgid "Need modifier to trigger or not"
-msgstr "触发需修饰键与否"
+msgid "Left click to run"
+msgstr "左键运行"
 
 #: prefs.js:454
 msgid "Word"
@@ -215,67 +203,87 @@ msgid "Line"
 msgstr "单行"
 
 #: prefs.js:455
+msgid "Parameters"
+msgstr "参数"
+
+#: prefs.js:456
+msgid "Proactive"
+msgstr "主动"
+
+#: prefs.js:456
+msgid "Passive"
+msgstr "被动"
+
+#: prefs.js:456
+msgid "Need modifier to trigger or not"
+msgstr "触发需修饰键与否"
+
+#: prefs.js:457
 msgid "Right click to run and hide panel"
 msgstr "右键运行并关闭气泡"
 
-#: prefs.js:456
+#: prefs.js:458
 msgid ""
 "Depends on python-opencv, python-pytesseract and python-googletrans "
 "(optional)"
 msgstr "依赖于 python-opencv，python-pytesseract 和 python-googletrans（可选）"
 
-#: prefs.js:461
+#: prefs.js:463
 msgid "Enable systray"
 msgstr "托盘图标"
 
-#: prefs.js:462
+#: prefs.js:464
 msgid "Trim blank lines"
 msgstr "去除空行"
 
-#: prefs.js:463
+#: prefs.js:465
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: prefs.js:464
+#: prefs.js:466
 msgid "Trigger style"
 msgstr "触发方式"
 
-#: prefs.js:466
+#: prefs.js:468
 msgid "RegExp filter"
 msgstr "正则过滤"
 
-#: prefs.js:468
+#: prefs.js:470
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: prefs.js:469
+#: prefs.js:471
 msgid "Right command"
 msgstr "右键命令"
 
-#: prefs.js:470
+#: prefs.js:472
 msgid "Left command"
 msgstr "左键命令"
 
-#: prefs.js:472
+#: prefs.js:474
 msgid "Enable tooltip"
 msgstr "启用提示"
 
-#: prefs.js:473
+#: prefs.js:475
 msgid "Page size"
 msgstr "页面容量"
 
-#: prefs.js:476
+#: prefs.js:477
+msgid "Enable OCR"
+msgstr "启用取词"
+
+#: prefs.js:480
 msgid "Work mode"
 msgstr "工作模式"
 
-#: prefs.js:479
+#: prefs.js:483
 msgid "Common"
 msgstr "通用"
 
-#: prefs.js:479
+#: prefs.js:483
 msgid "Panel"
 msgstr "气泡"
 
-#: prefs.js:479
+#: prefs.js:483
 msgid "OCR"
 msgstr "OCR"
