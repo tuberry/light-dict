@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-10-17 14:47+0800\n"
+"POT-Creation-Date: 2021-10-19 14:42+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,35 +17,35 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:620
+#: extension.js:608
 msgid "Swift: "
 msgstr "即时："
 
-#: extension.js:636
+#: extension.js:624
 msgid "Trigger: "
 msgstr "触发："
 
-#: extension.js:648
+#: extension.js:636
 msgid "OCR: "
 msgstr "OCR："
 
-#: extension.js:676 prefs.js:478
+#: extension.js:664 prefs.js:478
 msgid "Dwell OCR"
 msgstr "悬停取词"
 
-#: extension.js:678
+#: extension.js:666
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:684
+#: extension.js:672
 msgid "Add/remove current app"
 msgstr "添加/移除当前应用"
 
-#: extension.js:686
+#: extension.js:674
 msgid "Settings"
 msgstr "设置"
 
-#: extension.js:908
+#: extension.js:894
 #, javascript-format
 msgid "Switch to %s style"
 msgstr "切换至%s方式"

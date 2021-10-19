@@ -18,7 +18,7 @@
         <summary>enable systray</summary>
     </key>
     <key type="b" name="enable-ocr">
-        <default>false</default>
+        <default>true</default>
         <summary>enable ocr</summary>
     </key>
     <key type="b" name="short-ocr">

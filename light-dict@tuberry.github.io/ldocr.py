@@ -96,7 +96,7 @@ def bincount_img(img):
     # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
     i1d = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
     rgb = np.unravel_index(np.bincount(i1d).argmax(), (256, 256, 256))[:3]
-    return colorsys.rgb_to_hls(*rgb)[1] < 50
+    return colorsys.rgb_to_hls(*[x / 255 for x in rgb])[1] < 0.5
 
 def read_img(filename, trim=False):
     img = cv2.imread(filename)

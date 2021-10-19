@@ -21,13 +21,14 @@ const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
 const g_focus = () => global.display.focus_window;
 const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
+const still = (u, v) => u[0] == v[0] && u[1] == v[1];
+const dwell = (u, v, w, m) => !still(u, v) << 1 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
-const pointEq = (u, v) => u[0] == v[0] && u[1] == v[1];
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
-const MODIFIERS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
-const LD_DBUS_IFACE = `
+const LD_MODS = Clutter.ModifierType.MOD1_MASK | Clutter.ModifierType.SHIFT_MASK;
+const LD_DBUS = `
 <node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Block"/>
@@ -85,7 +86,6 @@ const DictBar = GObject.registerClass({
             style_class: 'light-dict-iconbox candidate-popup-content',
         });
         this.bin.set_child(this._box);
-
         this._box.connect('leave-event', this._onLeave.bind(this));
         this._box.connect('enter-event', this._onEnter.bind(this));
         this._box.connect('scroll-event', this._onScroll.bind(this));
@@ -137,6 +137,7 @@ const DictBar = GObject.registerClass({
 
     _onEnter() {
         this._removeTimer();
+        this._entered = true;
         this._box.visible = true;
     }
 
@@ -164,10 +165,10 @@ const DictBar = GObject.registerClass({
 
     _updateVisible(app, text) {
         this._icons.forEach(x => {
-            switch((!!x._apps << 1) + !!x._regexp) {
+            switch(!!x._regexp << 1 | !!x._apps) {
             case 0: x._visible = true; break;
-            case 1: x._visible = RegExp(x._regexp).test(text); break;
-            case 2: x._visible = x._apps.includes(app); break;
+            case 1: x._visible = x._apps.includes(app); break;
+            case 2: x._visible = RegExp(x._regexp).test(text); break;
             case 3: x._visible = x._apps.includes(app) && RegExp(x._regexp).test(text); break;
             }
         });
@@ -234,6 +235,7 @@ const DictBar = GObject.registerClass({
         this._box.visible = false;
         this.close(BoxPointer.PopupAnimation.NONE);
         if(this._tooltip) this._tooltip.hide();
+        delete this._entered;
     }
 
     destroy() {
@@ -257,7 +259,6 @@ const DictBox = GObject.registerClass({
         this.visible = false;
         this.style_class = 'light-dict-box-boxpointer candidate-popup-boxpointer';
         Main.layoutManager.addTopChrome(this);
-        this._rect0 = this._rect = [0, 0, 0, 0];
         this._bindSettings();
         this._buildWidgets();
     }
@@ -296,10 +297,10 @@ const DictBox = GObject.registerClass({
 
     get _scrollable() {
         let [, height] = this._view.get_preferred_height(-1);
-        let maxHeight = this._view.get_theme_node().get_max_height();
-        if(maxHeight < 0) maxHeight = g_size()[1] * 15 / 32;
+        let limited = this._view.get_theme_node().get_max_height();
+        if(limited < 0) limited = g_size()[1] * 15 / 32;
 
-        return height >= maxHeight;
+        return height >= limited;
     }
 
     _onEnter() {
@@ -316,8 +317,11 @@ const DictBox = GObject.registerClass({
         }
     }
 
+    get _rect() {
+        return [...this.get_transformed_position(), ...this.get_transformed_size()];
+    }
+
     _onLeave(actor) {
-        this._rect = [...this.get_transformed_position(), ...this.get_transformed_size()];
         let duration = actor === undefined ? this.autohide : this.autohide / 10;
         let callback = outOf(this._rect, g_pointer()) ? () => {
             delete this._delayId; this._hide(); return GLib.SOURCE_REMOVE;
@@ -335,10 +339,10 @@ const DictBox = GObject.registerClass({
     _hide() {
         if(!this._view.visible) return;
         this._removeTimer();
+        this._rectt = this._rect;
         this._view.visible = false;
         this._info.set_text('ヽ(ー_ー)ノ');
         this.close(BoxPointer.PopupAnimation.NONE);
-        this._rect0 = this._entered ? this._rect : [0, 0, 0, 0];
         delete this._entered;
     }
 
@@ -381,7 +385,7 @@ const DictAct = GObject.registerClass({
         'scommand':   GObject.ParamSpec.int('scommand', 'scommand', 'swift command', GObject.ParamFlags.READWRITE, -1, 2000, 0),
     },
     Signals: {
-        'dict-act-dwelled': { param_types: [GObject.TYPE_JSOBJECT, GObject.TYPE_JSOBJECT] },
+        'dict-act-dwelled': { param_types: [GObject.TYPE_UINT, GObject.TYPE_JSOBJECT] },
     },
 }, class DictAct extends GObject.Object {
     _init() {
@@ -411,12 +415,13 @@ const DictAct = GObject.registerClass({
         return this._scmds[this._scmds.findIndex(x => x.name === name)] || this._scmds[this.scommand] || this._scmds[0] || null;
     }
 
-    set dwell_ocr(dwell) {
-        this._ptt = this._pt = dwell ? g_pointer() : undefined;
+    set dwell_ocr(dwell_ocr) {
+        this._ptt = this._pt = dwell_ocr ? g_pointer() : undefined;
         if(this._dwellId) GLib.source_remove(this._dwellId);
-        this._dwellId = (this._dwell_ocr = dwell) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+        this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
             let pt = g_pointer();
-            if(!pointEq(this._ptt, this._pt) && pointEq(this._pt, pt)) this.emit('dict-act-dwelled', this._ptt, pt);
+            if(still(this._pt, pt))
+                (dw => dw && this.emit('dict-act-dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODS));
             [this._ptt, this._pt] = [this._pt, pt];
             return GLib.SOURCE_CONTINUE;
         }) : 0;
@@ -583,6 +588,7 @@ const DictBtn = GObject.registerClass({
         case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
         case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); break;
         }
+
         return Clutter.EVENT_STOP;
     };
 
@@ -690,8 +696,6 @@ const LightDict = GObject.registerClass({
         super._init();
         this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
-        this._app = this.appid;
-        this._selection = '';
         this._bindSettings();
         this._buildWidgets();
     }
@@ -710,12 +714,13 @@ const LightDict = GObject.registerClass({
         this._act = new DictAct();
         this._box = new DictBox();
         this._bar = new DictBar();
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS_IFACE, this);
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._exeCmd(cmd); });
-        this._act.connect('dict-act-dwelled', (actor, pt0, pt) => {
-            if(!this.passive || pt[2] & MODIFIERS && outOf(this._box._rect0, pt0)
-               && outOf(this._box._rect, pt)) this._act._invokeOCR('', '--no-verbose');
+        this._act.connect('dict-act-dwelled', (actor, dw, ptt) => {
+            if(this._box._rectt && !outOf(this._box._rectt, ptt) ||
+               this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
+            if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--no-verbose');
         });
         this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
         this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
@@ -763,12 +768,11 @@ const LightDict = GObject.registerClass({
             GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
         if(this._block) { delete this._block; return; }
         if(!this._allow || this.trigger == Trigger.Disable) return;
-        let initModifier = g_pointer()[2];
-        if(this.passive && !(initModifier & MODIFIERS)) return;
-        if(initModifier & Clutter.ModifierType.BUTTON1_MASK) {
+        let mods = g_pointer()[2];
+        if(this.passive && !(mods & LD_MODS)) return;
+        if(mods & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                let tmpModifier = g_pointer()[2];
-                if((initModifier ^ tmpModifier) == Clutter.ModifierType.BUTTON1_MASK) {
+                if((mods ^ g_pointer()[2]) == Clutter.ModifierType.BUTTON1_MASK) {
                     delete this._mouseReleasedId; this._run(); return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;

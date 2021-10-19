@@ -437,12 +437,12 @@ class LightDictBasic extends UI.Box {
 
     _buildWidgets() {
         this._field_dwell_ocr      = new Gtk.Switch();
-        this._field_enable_ocr     = new Gtk.Switch();
         this._field_enable_strip   = new Gtk.Switch();
         this._field_enable_systray = new Gtk.Switch();
         this._field_enable_tooltip = new Gtk.Switch();
         this._field_hide_title     = new Gtk.Switch();
         this._field_page_size      = new UI.Spin(1, 10, 1);
+        this._field_ocr_params     = new UI.Entry('-d zh-cn');
         this._field_short_ocr      = new UI.Check(_('Shortcut'));
         this._field_auto_hide      = new UI.Spin(500, 10000, 250);
         this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
@@ -455,7 +455,7 @@ class LightDictBasic extends UI.Box {
         this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, });
         this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
         this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
-        this._field_ocr_params     = new UI.Entry('-d zh-cn', _('Depends on python-opencv, python-pytesseract and python-googletrans (optional)'));
+        this._field_enable_ocr     = new Gtk.Switch({ tooltip_text: _('Depends on python-opencv, python-pytesseract and python-googletrans (optional)') });
     }
 
     _buildUI() {
