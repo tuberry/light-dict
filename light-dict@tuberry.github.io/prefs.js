@@ -391,7 +391,7 @@ class LightDictAbout extends UI.Box {
         let info = [
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _('Version %d').format(Me.metadata.version),
-            _('Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup.'),
+            _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
             '<span><a href="' + Me.metadata.url + '">' + _GTK('Website') + '\n</a></span>',
         ];
 

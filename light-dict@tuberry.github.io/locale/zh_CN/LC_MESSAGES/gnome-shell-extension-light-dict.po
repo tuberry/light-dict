@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-10-19 14:42+0800\n"
+"POT-Creation-Date: 2021-10-27 13:02+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,31 +17,31 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension.js:608
+#: extension.js:607
 msgid "Swift: "
 msgstr "即时："
 
-#: extension.js:624
+#: extension.js:623
 msgid "Trigger: "
 msgstr "触发："
 
-#: extension.js:636
+#: extension.js:635
 msgid "OCR: "
 msgstr "OCR："
 
-#: extension.js:664 prefs.js:478
+#: extension.js:663 prefs.js:478
 msgid "Dwell OCR"
 msgstr "悬停取词"
 
-#: extension.js:666
+#: extension.js:665
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: extension.js:672
+#: extension.js:671
 msgid "Add/remove current app"
 msgstr "添加/移除当前应用"
 
-#: extension.js:674
+#: extension.js:673
 msgid "Settings"
 msgstr "设置"
 
@@ -137,8 +137,8 @@ msgstr "版本 %d"
 
 #: prefs.js:394
 msgid ""
-"Lightweight extension for instant action to primary selection, especially "
-"optimized for Dictionary lookup."
+"Lightweight extension for on-the-fly manipulation to primary selections, "
+"especially optimized for Dictionary lookups."
 msgstr "即时操作所选文本的轻量扩展，为查词而生。"
 
 #: prefs.js:403

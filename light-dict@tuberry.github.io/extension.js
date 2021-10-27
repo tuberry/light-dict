@@ -391,9 +391,8 @@ const DictAct = GObject.registerClass({
     _init() {
         super._init();
         this._bindSettings();
-        let seat = Clutter.get_default_backend().get_default_seat();
-        this._keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         this.ocr_cmd = 'python ' + Me.dir.get_child('ldocr.py').get_path() + ' ';
+        this._keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 
     _bindSettings() {
@@ -418,13 +417,13 @@ const DictAct = GObject.registerClass({
     set dwell_ocr(dwell_ocr) {
         this._ptt = this._pt = dwell_ocr ? g_pointer() : undefined;
         if(this._dwellId) GLib.source_remove(this._dwellId);
-        this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
+        this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 375, () => {
             let pt = g_pointer();
             if(still(this._pt, pt))
                 (dw => dw && this.emit('dict-act-dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODS));
             [this._ptt, this._pt] = [this._pt, pt];
             return GLib.SOURCE_CONTINUE;
-        }) : 0;
+        }) : undefined;
     }
 
     set short_ocr(short) {
@@ -716,8 +715,9 @@ const LightDict = GObject.registerClass({
         this._bar = new DictBar();
         this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-        this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._exeCmd(cmd); });
+        this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._dLock = true; this._exeCmd(cmd); });
         this._act.connect('dict-act-dwelled', (actor, dw, ptt) => {
+            if(this._dLock) { delete this._dLock; return; }
             if(this._box._rectt && !outOf(this._box._rectt, ptt) ||
                this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
             if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--no-verbose');
@@ -766,7 +766,7 @@ const LightDict = GObject.registerClass({
         if(type != St.ClipboardType.PRIMARY) return;
         if(this._mouseReleasedId)
             GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
-        if(this._block) { delete this._block; return; }
+        if(this._sLock) { delete this._sLock; return; }
         if(!this._allow || this.trigger == Trigger.Disable) return;
         let mods = g_pointer()[2];
         if(this.passive && !(mods & LD_MODS)) return;
@@ -826,7 +826,7 @@ const LightDict = GObject.registerClass({
     }
 
     _select(x) {
-        this._block = true;
+        this._sLock = true;
         this._act.select(x);
     }
 

@@ -1,6 +1,6 @@
 # Light Dict
 
-Lightweight extension for instant action to primary selection, especially optimized for Dictionary lookup.
+Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.
 
 >L, you know what? The Shinigami only eats apples. —— *Light Yagami*<br>
 [![license]](/LICENSE)
@@ -69,7 +69,7 @@ yay -S python-opencv python-pytesseract # use the package manager of your distro
 
 #### Usage
 
-Click the <kbd>Parameters</kbd> to see details of the OCR, which's available after enabled via the DBus, shortcut, or dwelling:
+Click the <kbd>Parameters</kbd> to see details of the OCR, which's available after enabled via the DBus, shortcut or dwelling:
 
 ![ldocr](https://user-images.githubusercontent.com/17917040/137623073-5b231712-398c-4632-a1b1-1c407ea483d2.png)
 
