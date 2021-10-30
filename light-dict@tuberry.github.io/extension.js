@@ -11,7 +11,7 @@ const Keyboard = imports.ui.status.keyboard;
 const ExtensionUtils = imports.misc.extensionUtils;
 const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
 
-const InputSources = Keyboard.getInputSourceManager();
+const InputScMgr = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const Fields = Me.imports.fields.Fields;
@@ -428,9 +428,9 @@ const DictAct = GObject.registerClass({
 
     set short_ocr(short) {
         if((this._short_ocr = short) && this._enable_ocr) {
-            this._shortId = Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
+            this._shortcutId = Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
         } else {
-            if(this._shortId !== undefined) Main.wm.removeKeybinding(Fields.OCRSHORTCUT), delete this._shortId;
+            if(this._shortcutId !== undefined) Main.wm.removeKeybinding(Fields.OCRSHORTCUT), delete this._shortcutId;
         }
     }
 
@@ -479,9 +479,9 @@ const DictAct = GObject.registerClass({
     }
 
     commit(string) {
-        if(InputSources.currentSource.type == Keyboard.INPUT_SOURCE_TYPE_IBUS) {
-            if(InputSources._ibusManager._panelService)
-                InputSources._ibusManager._panelService.commit_text(IBus.Text.new_from_string(string));
+        if(InputScMgr.currentSource.type == Keyboard.INPUT_SOURCE_TYPE_IBUS) {
+            if(InputScMgr._ibusManager._panelService)
+                InputScMgr._ibusManager._panelService.commit_text(IBus.Text.new_from_string(string));
         } else {
             Main.inputMethod.commit(string); // TODO: not tested
         }

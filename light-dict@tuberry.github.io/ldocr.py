@@ -18,7 +18,7 @@ def main():
     args = parser()
     result = exe_mode(args)
     if result.cancel: return
-    if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)), '.Screenshot', '/Screenshot', '.Screenshot')
+    if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
     if args.cursor: result.area = None
     if args.dest: result.tran_text(args.dest)
     # FIXME: better shortcut needs progress of https://gitlab.gnome.org/GNOME/mutter/-/issues/207
@@ -78,7 +78,7 @@ class Result:
         style, text, info = ['display', 'ERROR', self.error or ''] if self.is_error else [self.style, self.text, self.tran or '']
         return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
-def gs_dbus_call(method_name, parameters, name='', object_path='', interface_name=''):
+def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
     param = parameters and GLib.Variant(*parameters)
     proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
@@ -150,7 +150,7 @@ def ocr_word(lang, sz=(250, 50)):
     if w < 5 or h < 5: return Result(error='too small to screenshot')
     ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
     with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
         if not ok: return Result(error='GS dbus error')
         dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
         bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
@@ -159,10 +159,10 @@ def ocr_word(lang, sz=(250, 50)):
                       area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=' ')
 
 def ocr_area(lang):
-    area = gs_dbus_call('SelectArea', None, '.Screenshot', '/Screenshot', '.Screenshot')
+    area = gs_dbus_call('SelectArea', None)
     if area[0] is False: return Result(cancel=True) if 'cancel' in area[1] else Result(error='GS dbus error')
     with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
         return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
                       area=area) if ok else Result(error='GS dbus error')
 
@@ -171,8 +171,8 @@ def ocr_prln(lang, line=False):
     if pt is None or fw is None: return Result(error='LD dbus error')
     pt = [a - b - EDGE for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
-        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)), '.Screenshot', '/Screenshot', '.Screenshot')
+        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
+        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
         if not ok: return Result(error='GS dbus error')
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)
