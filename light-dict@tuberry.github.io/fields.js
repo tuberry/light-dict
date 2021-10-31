@@ -1,5 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported Fields */
+'use strict';
+
 var Fields = {
     APPLIST:     'app-list',
     DWELLOCR:    'dwell-ocr',

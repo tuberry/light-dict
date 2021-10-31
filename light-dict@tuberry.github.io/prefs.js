@@ -1,8 +1,9 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported init buildPrefsWidget */
 'use strict';
 
-const { Clutter, GLib, Gtk, GObject, Gio } = imports.gi;
+const { Gtk, GObject, Gio } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
@@ -22,7 +23,7 @@ function buildPrefsWidget() {
 const LightDictPrefs = GObject.registerClass(
 class LightDictPrefs extends Gtk.Stack {
     _init() {
-        super._init({ transition_type: Gtk.StackTransitionType.NONE, });
+        super._init({ transition_type: Gtk.StackTransitionType.NONE });
 
         this._add_tab(new LightDictBasic(), 'basic', _('Basic'));
         this._add_tab(new LightDictJSON(Fields.SCOMMANDS), 'swift', _('Swift'));
@@ -36,7 +37,7 @@ class LightDictPrefs extends Gtk.Stack {
     }
 
     _add_tab(tab, name, title) {
-        this.add_titled(new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: tab, }), name, title);
+        this.add_titled(new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: tab }), name, title);
     }
 });
 
@@ -64,11 +65,11 @@ const AppsBox = GObject.registerClass({
         super._init();
 
         this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '' });
-        this.appendS([this._box, this._addBtnMaker(tip2)])
+        this.appendS([this._box, this._addBtnMaker(tip2)]);
     }
 
     vfunc_snapshot(snapshot) {
-        //CREDIT: https://discourse.gnome.org/t/how-to-reuse-an-existing-gtk-widgets-style-class-in-a-custom-widget/5969/9?u=tuberry
+        // CREDIT: https://discourse.gnome.org/t/how-to-reuse-an-existing-gtk-widgets-style-class-in-a-custom-widget/5969/9?u=tuberry
         snapshot.render_background(new Gtk.Entry().get_style_context(), 0, 0, this.get_width(), this.get_height());
         super.vfunc_snapshot(snapshot);
     }
@@ -77,7 +78,7 @@ const AppsBox = GObject.registerClass({
         if(!this.apps) {
             let widgets = [];
             let children = this._box.observe_children();
-            for(let i = 0, x; !!(x = children.get_item(i)); i++) widgets.push(x);
+            for(let i = 0, x; (x = children.get_item(i)); i++) widgets.push(x);
             widgets.forEach(w => { this._box.remove(w); });
             apps.split(',').forEach(a => { this._appendApp(a); });
         }
@@ -99,17 +100,17 @@ const AppsBox = GObject.registerClass({
     }
 
     _onAddActivated(widget) {
-        let chooser = new Gtk.AppChooserDialog({ modal: true, transient_for: widget.get_root(), });
+        let chooser = new Gtk.AppChooserDialog({ modal: true, transient_for: widget.get_root() });
         let updateSensitivity = () => {
             let appInfo = chooser.get_widget().get_app_info();
             chooser.set_response_sensitive(Gtk.ResponseType.OK, appInfo && !this.apps.includes(appInfo.get_id()));
         };
         updateSensitivity();
-        chooser.get_widget().set({ show_all: true, show_other: true, });
+        chooser.get_widget().set({ show_all: true, show_other: true });
         chooser.get_widget().connect('application-selected', updateSensitivity);
-        chooser.connect('response', (widget, response) => {
-            if(response == Gtk.ResponseType.OK) {
-                let id = widget.get_widget().get_app_info().get_id();
+        chooser.connect('response', (wdg, res) => {
+            if(res === Gtk.ResponseType.OK) {
+                let id = wdg.get_widget().get_app_info().get_id();
                 this._appendApp(id);
                 this.apps = this.apps ? [this.apps, id].join(',') : id;
                 this.emit('changed', this._apps);
@@ -120,7 +121,7 @@ const AppsBox = GObject.registerClass({
     }
 
     _addBtnMaker(tips) {
-        let add = new Gtk.Button({ tooltip_text: tips || '', has_frame: false, });
+        let add = new Gtk.Button({ tooltip_text: tips || '', has_frame: false });
         add.set_child(new Gtk.Image({ icon_name: 'list-add-symbolic' }));
         add.connect('clicked', this._onAddActivated.bind(this));
 
@@ -131,7 +132,7 @@ const AppsBox = GObject.registerClass({
         let appInfo = Gio.DesktopAppInfo.new(id);
         if(!appInfo) return;
 
-        let app = new Gtk.Button({ tooltip_text: appInfo.get_display_name(), has_frame: false, });
+        let app = new Gtk.Button({ tooltip_text: appInfo.get_display_name(), has_frame: false });
         app.set_child(new Gtk.Image({ gicon: appInfo.get_icon() }));
         app.connect('clicked', widget => {
             this._box.remove(widget);
@@ -181,8 +182,8 @@ const SideBar = GObject.registerClass({
     }
 
     _buildTool() {
-        this._tool = new UI.Box({ spacing: 2, }).appends(['list-add', 'list-remove', 'go-down', 'go-up'].map(x => {
-            let btn = new Gtk.Button({ icon_name: x + '-symbolic', has_frame: false });
+        this._tool = new UI.Box({ spacing: 2 }).appends(['list-add', 'list-remove', 'go-down', 'go-up'].map(x => {
+            let btn = new Gtk.Button({ icon_name: '%s-symbolic'.format(x), has_frame: false });
             btn.connect('clicked', () => { this._onButtonClicked(x); });
             return btn;
         }));
@@ -193,7 +194,7 @@ const SideBar = GObject.registerClass({
     _onButtonClicked(btn) {
         let [ok, model, iter] = this._list.get_selection().get_selected();
         if(!ok) {
-            if(btn != 'list-add') return;
+            if(btn !== 'list-add') return;
             model.set(model.insert(0), [0, 1], [false, 'name']);
             this.emit('clicked', -1, btn);
             return;
@@ -201,11 +202,12 @@ const SideBar = GObject.registerClass({
         let [index] = model.get_path(iter).get_indices();
         switch(btn) {
         case 'go-up':
-        case 'go-down':
+        case 'go-down': {
             let tmp = iter.copy();
-            if(btn == 'go-up' ? !model.iter_previous(iter) : !model.iter_next(iter)) return;
+            if(btn === 'go-up' ? !model.iter_previous(iter) : !model.iter_next(iter)) return;
             model.swap(tmp, iter);
             break;
+        }
         case 'list-add':
             model.set(model.insert(index + 1), [0, 1], [false, 'name']);
             break;
@@ -222,7 +224,7 @@ const SideBar = GObject.registerClass({
 
     get selected() {
         let [ok, model, iter] = this._list.get_selection().get_selected();
-        return ok ? model.get_path(iter).get_indices()[0] : -1
+        return ok ? model.get_path(iter).get_indices()[0] : -1;
     }
 
     _onEnableToggled(widget, path) {
@@ -245,9 +247,8 @@ const SideBar = GObject.registerClass({
     _disableAll() {
         let [ok, iter] = this._list.model.get_iter_first();
         if(!ok) return;
-        do {
-            this._list.model.set(iter, [0], [false]);
-        } while(this._list.model.iter_next(iter));
+        do this._list.model.set(iter, [0], [false]);
+        while(this._list.model.iter_next(iter));
     }
 });
 
@@ -309,7 +310,7 @@ const SwiftBox = GObject.registerClass({
 
     _emitChanged(prama) {
         if(this._blocked) return;
-        this.emit('changed', prama)
+        this.emit('changed', prama);
     }
 
     set config(config) {
@@ -318,12 +319,12 @@ const SwiftBox = GObject.registerClass({
         Object.assign(temp, config);
         Object.keys(temp).forEach(x => {
             let prop = temp[x];
-            let widget = this['_' + x];
+            let widget = this['_%s'.format(x)];
             if(widget === undefined) return;
             switch(typeof prop) {
             case 'boolean': widget.set_state(prop); break;
             case 'number':  widget.set_active(prop); break;
-            case 'string':  x == 'apps' ? widget.set_apps(prop) : widget._set_text(prop); break;
+            case 'string':  x === 'apps' ? widget.set_apps(prop) : widget._set_text(prop); break;
             }
         });
         this._blocked = false;
@@ -378,11 +379,9 @@ class LightDictAbout extends UI.Box {
         let box = new UI.Box({ margins: [0, 0, 30] });
         box.set_halign(Gtk.Align.CENTER);
         let active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE));
-        if(active.length) {
-            box.appends(active.map(x => new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: JSON.parse(x)?.icon ?? 'help-symbolic', })));
-        } else {
-            box.append(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: 'accessories-dictionary-symbolic', }));
-        }
+        if(active.length) box.appends(active.map(x => new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: JSON.parse(x)?.icon ?? 'help-symbolic' })));
+        else box.append(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: 'accessories-dictionary-symbolic' }));
+
 
         return box;
     }
@@ -392,7 +391,7 @@ class LightDictAbout extends UI.Box {
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _('Version %d').format(Me.metadata.version),
             _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
-            '<span><a href="' + Me.metadata.url + '">' + _GTK('Website') + '\n</a></span>',
+            '<span><a href="%s">%s\n</a></span>'.format(Me.metadata.url, _GTK('Website')),
         ];
 
         return new CenterLabel(info.join('\n\n'));
@@ -406,7 +405,7 @@ class LightDictAbout extends UI.Box {
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
             _('Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>'),
-        ].map((msg, i) => new Gtk.Label({ halign: Gtk.Align.START , use_markup: true, label: i + '. ' + msg })));
+        ].map((msg, i) => new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: `${i}. ${msg}` })));
 
         return new Gtk.MenuButton({
             label: _('Tips'),
@@ -419,16 +418,16 @@ class LightDictAbout extends UI.Box {
     _buildLicense() {
         let gpl = 'https://www.gnu.org/licenses/gpl-3.0.html';
         let license  = _GTK('GNU General Public License, version 3 or later');
-        let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.'
+        let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
 
-        return new CenterLabel('<small>\n\n' + _GTK(statement).format(gpl, license) + '</small>');
+        return new CenterLabel('<small>\n\n%s</small>'.format(_GTK(statement).format(gpl, license)));
     }
 });
 
 const LightDictBasic = GObject.registerClass(
 class LightDictBasic extends UI.Box {
     _init() {
-        super._init({ vertical: true, margins: [0, 40], });
+        super._init({ vertical: true, margins: [0, 40] });
 
         this._buildWidgets();
         this._bindValues();
@@ -452,7 +451,7 @@ class LightDictBasic extends UI.Box {
         this._field_ocr_shortcut   = new UI.Shortcut(gsettings.get_strv(Fields.OCRSHORTCUT));
         this._field_left_command   = new UI.Entry('notify-send LDWORD', _('Left click to run'));
         this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Line')]);
-        this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, });
+        this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE });
         this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
         this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
         this._field_enable_ocr     = new Gtk.Switch({ tooltip_text: _('Depends on python-opencv, python-pytesseract and python-googletrans (optional)') });
@@ -513,13 +512,13 @@ class LightDictBasic extends UI.Box {
     _bindOCRHelp() {
         let proc = new Gio.Subprocess({
             argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
-            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE
+            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
         });
         proc.init(null);
-        proc.communicate_utf8_async(null, null, (proc, res) => {
+        proc.communicate_utf8_async(null, null, (prc, res) => {
             try {
-                let [, stdout, stderr] = proc.communicate_utf8_finish(res);
-                let label = proc.get_successful() ? stdout : stderr;
+                let [, stdout, stderr] = prc.communicate_utf8_finish(res);
+                let label = prc.get_successful() ? stdout : stderr;
                 this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: label.trim() }) }));
             } catch(e) {
                 this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: e.message }) }));
@@ -531,9 +530,9 @@ class LightDictBasic extends UI.Box {
         this._bindOCRHelp();
         [this._field_dwell_ocr, this._field_short_ocr, this._ocr_help_button,
             this._field_ocr_params, this._field_ocr_shortcut, this._field_ocr_work_mode].forEach(widget => {
-                this._field_enable_ocr.bind_property('active', widget, 'sensitive', GObject.BindingFlags.GET);
-                widget.set_sensitive(this._field_enable_ocr.active);
-            });
+            this._field_enable_ocr.bind_property('active', widget, 'sensitive', GObject.BindingFlags.GET);
+            widget.set_sensitive(this._field_enable_ocr.active);
+        });
         this._field_ocr_shortcut.connect('changed', (widget, keys) => { gsettings.set_strv(Fields.OCRSHORTCUT, [keys]); });
     }
 });
@@ -543,7 +542,7 @@ class LightDictJSON extends UI.Box {
     _init(key) {
         super._init();
         this._key = key;
-        this._swift = key == Fields.SCOMMANDS;
+        this._swift = key === Fields.SCOMMANDS;
         this._cmds = gsettings.get_strv(key);
         this._buildWidgets();
         this._bindValues();
@@ -569,7 +568,7 @@ class LightDictJSON extends UI.Box {
 
     _onNameChanged(widget, index, name) {
         this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { name }), null, 0);
-        this._saveCommands()
+        this._saveCommands();
     }
 
     get enable() {
@@ -580,17 +579,18 @@ class LightDictJSON extends UI.Box {
         let enable = this.enable;
         switch(button) {
         case 'go-up':
-        case 'go-down':
-            let swap = button == 'go-up' ? index - 1 : index + 1;
-            [this._cmds[index], this._cmds[swap]] = [this._cmds[swap], this._cmds[index]]
-            if(enable == swap || enable == index) this._saveCommand(enable == index ? swap : index);
+        case 'go-down': {
+            let swap = button === 'go-up' ? index - 1 : index + 1;
+            [this._cmds[index], this._cmds[swap]] = [this._cmds[swap], this._cmds[index]];
+            if(enable === swap || enable === index) this._saveCommand(enable === index ? swap : index);
             break;
+        }
         case 'list-remove':
             this._cmds.splice(index, 1);
-            if(enable >= index) this._saveCommand(enable == index ? -1 : enable - 1);
+            if(enable >= index) this._saveCommand(enable === index ? -1 : enable - 1);
             break;
         case 'list-add':
-            if(index == -1) {
+            if(index === -1) {
                 this._cmds.push('{"name":"name"}');
             } else {
                 this._cmds.splice(index + 1, 0, '{"name":"name"}');
@@ -603,7 +603,7 @@ class LightDictJSON extends UI.Box {
 
     _onEnableToggled(widget, index, enable) {
         if(this._swift) {
-            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: enable && i == index || undefined }), null, 0));
+            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: enable && i === index || undefined }), null, 0));
             if(enable && this._cmds[index]) this._saveCommand(index);
         } else {
             this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { enable: enable || undefined }), null, 0);

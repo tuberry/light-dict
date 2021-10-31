@@ -1,5 +1,6 @@
 // vim:fdm=syntax
 // by tuberry
+/* exported init */
 'use strict';
 
 const Main = imports.ui.main;
@@ -20,8 +21,8 @@ const _ = ExtensionUtils.gettext;
 const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
 const g_focus = () => global.display.focus_window;
-const getIcon = x => Me.dir.get_child('icons').get_child(x + '-symbolic.svg').get_path();
-const still = (u, v) => u[0] == v[0] && u[1] == v[1];
+const getIcon = x => Me.dir.get_child('icons').get_child('%s-symbolic.svg'.format(x)).get_path();
+const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const dwell = (u, v, w, m) => !still(u, v) << 1 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
 
@@ -97,7 +98,7 @@ const DictBar = GObject.registerClass({
         gsettings.bind(Fields.PAGESIZE, this, 'pagesize', Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.AUTOHIDE, this, 'autohide', Gio.SettingsBindFlags.GET);
         this.pcommands = gsettings.get_strv(Fields.PCOMMANDS);
-        this.pcommandsId = gsettings.connect('changed::' + Fields.PCOMMANDS, () => { this.pcommands = gsettings.get_strv(Fields.PCOMMANDS); });
+        this.pcommandsId = gsettings.connect('changed::%s'.format(Fields.PCOMMANDS), () => { this.pcommands = gsettings.get_strv(Fields.PCOMMANDS); });
     }
 
     set tooltips(tooltips) {
@@ -127,7 +128,7 @@ const DictBar = GObject.registerClass({
 
     _onScroll(actor, event) {
         if(this._tooltip) this._tooltip.hide();
-        this._icons.forEach(x => x._entered = false);
+        this._icons.forEach(x => { x._entered = false; });
         switch(event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP: this._index--; break;
         case Clutter.ScrollDirection.DOWN: this._index++; break;
@@ -151,16 +152,13 @@ const DictBar = GObject.registerClass({
     }
 
     _updatePages() {
-        this._icons.forEach(x => x.visible = x._visible);
+        this._icons.forEach(x => { x.visible = x._visible; });
         let icons = this._icons.filter(x => x._visible);
-        this._pages = (icons.length && this.pagesize) ? Math.ceil(icons.length / this.pagesize) : 0;
+        this._pages = icons.length && this.pagesize ? Math.ceil(icons.length / this.pagesize) : 0;
         if(this._pages < 2) return;
-        this._index = this._index < 1 ? this._pages : (this._index > this._pages ? 1 : this._index);
-        if(this._index === this._pages && icons.length % this.pagesize) {
-            icons.forEach((x, i) => { x.visible = i >= icons.length - this.pagesize && i < icons.length; });
-        } else {
-            icons.forEach((x, i) => { x.visible = i >= (this._index - 1) * this.pagesize && i < this._index * this.pagesize; });
-        }
+        this._index = this._index < 1 ? this._pages : this._index > this._pages ? 1 : this._index;
+        if(this._index === this._pages && icons.length % this.pagesize) icons.forEach((x, i) => { x.visible = i >= icons.length - this.pagesize && i < icons.length; });
+        else icons.forEach((x, i) => { x.visible = i >= (this._index - 1) * this.pagesize && i < this._index * this.pagesize; });
     }
 
     _updateVisible(app, text) {
@@ -182,11 +180,13 @@ const DictBar = GObject.registerClass({
             label: x.name || 'name',
             style_class: 'light-dict-button candidate-box',
         });
-        if(x.icon) btn.child = new St.Icon({
-            icon_name: x.icon,
-            fallback_icon_name: 'help',
-            style_class: 'light-dict-button-icon candidate-label',
-        });
+        if(x.icon) {
+            btn.child = new St.Icon({
+                icon_name: x.icon,
+                fallback_icon_name: 'help',
+                style_class: 'light-dict-button-icon candidate-label',
+            });
+        }
         Object.assign(btn, { _regexp: x.regexp, _apps: x.apps });
         btn.connect('clicked', () => {
             this._hide();
@@ -239,8 +239,7 @@ const DictBar = GObject.registerClass({
     }
 
     destroy() {
-        if(this.pcommandsId)
-            gsettings.disconnect(this.pcommandsId), delete this.pcommandsId;
+        if(this.pcommandsId) gsettings.disconnect(this.pcommandsId), delete this.pcommandsId;
         this._removeTimer();
         this.tooltips = false;
         super.destroy();
@@ -325,7 +324,7 @@ const DictBox = GObject.registerClass({
         let duration = actor === undefined ? this.autohide : this.autohide / 10;
         let callback = outOf(this._rect, g_pointer()) ? () => {
             delete this._delayId; this._hide(); return GLib.SOURCE_REMOVE;
-        } : () => { return this._onLeave(true); }
+        } : () => { return this._onLeave(true); };
         this._removeTimer();
         this._delayId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, duration, callback);
 
@@ -391,7 +390,7 @@ const DictAct = GObject.registerClass({
     _init() {
         super._init();
         this._bindSettings();
-        this.ocr_cmd = 'python ' + Me.dir.get_child('ldocr.py').get_path() + ' ';
+        this.ocr_cmd = 'python %s'.format(Me.dir.get_child('ldocr.py').get_path());
         this._keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 
@@ -403,7 +402,7 @@ const DictAct = GObject.registerClass({
         gsettings.bind(Fields.DWELLOCR,  this, 'dwell-ocr',  Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.SHORTOCR,  this, 'short-ocr',  Gio.SettingsBindFlags.GET);
         this.scommands = gsettings.get_strv(Fields.SCOMMANDS);
-        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
+        this.scommandsId = gsettings.connect('changed::%s'.format(Fields.SCOMMANDS), () => { this.scommands = gsettings.get_strv(Fields.SCOMMANDS); });
     }
 
     set scommands(cmds) {
@@ -419,19 +418,16 @@ const DictAct = GObject.registerClass({
         if(this._dwellId) GLib.source_remove(this._dwellId);
         this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr ? GLib.timeout_add(GLib.PRIORITY_DEFAULT, 375, () => {
             let pt = g_pointer();
-            if(still(this._pt, pt))
-                (dw => dw && this.emit('dict-act-dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODS));
+            if(still(this._pt, pt)) (dw => dw && this.emit('dict-act-dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODS));
             [this._ptt, this._pt] = [this._pt, pt];
             return GLib.SOURCE_CONTINUE;
         }) : undefined;
     }
 
     set short_ocr(short) {
-        if((this._short_ocr = short) && this._enable_ocr) {
-            this._shortcutId = Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
-        } else {
-            if(this._shortcutId !== undefined) Main.wm.removeKeybinding(Fields.OCRSHORTCUT), delete this._shortcutId;
-        }
+        if(this._shortcutId) Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
+        this._shortcutId = (this._short_ocr = short) && this._enable_ocr
+            ? Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR()) : undefined;
     }
 
     set ocr_mode(mode) {
@@ -448,8 +444,8 @@ const DictAct = GObject.registerClass({
     set screenshot(screenshot) {
         if(global.context?.unsafe_mode ?? true) return;
         let checker = Main.shellDBusService._screenshotService._senderChecker;
-        checker._isSenderAllowed = screenshot ? () => true :
-            sender => [...checker._allowlistMap.values()].includes(sender);
+        checker._isSenderAllowed = screenshot ? () => true
+            : sender => [...checker._allowlistMap.values()].includes(sender);
     }
 
     _invokeOCR(params = '', attach = '') {
@@ -479,9 +475,8 @@ const DictAct = GObject.registerClass({
     }
 
     commit(string) {
-        if(InputScMgr.currentSource.type == Keyboard.INPUT_SOURCE_TYPE_IBUS) {
-            if(InputScMgr._ibusManager._panelService)
-                InputScMgr._ibusManager._panelService.commit_text(IBus.Text.new_from_string(string));
+        if(InputScMgr.currentSource.type === Keyboard.INPUT_SOURCE_TYPE_IBUS) {
+            if(InputScMgr._ibusManager._panelService) InputScMgr._ibusManager._panelService.commit_text(IBus.Text.new_from_string(string));
         } else {
             Main.inputMethod.commit(string); // TODO: not tested
         }
@@ -508,8 +503,7 @@ const DictAct = GObject.registerClass({
     }
 
     destroy() {
-        if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), delete this.scommandsId;
+        if(this.scommandsId) gsettings.disconnect(this.scommandsId), delete this.scommandsId;
         this.dwell_ocr = false;
         this.screenshot = false;
         this.enable_ocr = false;
@@ -536,7 +530,7 @@ const DictBtn = GObject.registerClass({
     }
 
     _buildWidgets() {
-        this._icon = new St.Icon({ style_class: 'light-dict-systray system-status-icon', });
+        this._icon = new St.Icon({ style_class: 'light-dict-systray system-status-icon' });
         this.add_actor(this._icon);
     }
 
@@ -546,7 +540,7 @@ const DictBtn = GObject.registerClass({
         gsettings.bind(Fields.PASSIVE,   this, 'passive',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.TRIGGER,   this, 'trigger',    Gio.SettingsBindFlags.GET);
         gsettings.bind(Fields.OCRMODE,   this, 'ocr-mode',   Gio.SettingsBindFlags.GET);
-        this.scommandsId = gsettings.connect('changed::' + Fields.SCOMMANDS, this._updateMenu.bind(this));
+        this.scommandsId = gsettings.connect('changed::%s'.format(Fields.SCOMMANDS), this._updateMenu.bind(this));
     }
 
     set passive(passive) {
@@ -569,8 +563,8 @@ const DictBtn = GObject.registerClass({
         this._updateMenu();
     }
 
-    set dwell_ocr(dwell) {
-        this._dwell_ocr = dwell;
+    set dwell_ocr(dwl) {
+        this._dwell_ocr = dwl;
         this._updateMenu();
     }
 
@@ -589,7 +583,7 @@ const DictBtn = GObject.registerClass({
         }
 
         return Clutter.EVENT_STOP;
-    };
+    }
 
     _setIcon() {
         if([this._trigger, this._passive].some(x => x === undefined)) return;
@@ -607,11 +601,11 @@ const DictBtn = GObject.registerClass({
         let scommand = new PopupMenu.PopupSubMenuMenuItem(_('Swift: ') + (index < 0 ? '' : commands[index].name));
         commands.forEach((x, i) => {
             let item = new PopupMenu.PopupMenuItem(x.name);
-            i == index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', item => {
+            i === index ? item.setOrnament(PopupMenu.Ornament.DOT) : item.connect('activate', () => {
                 this.menu.close();
                 gsettings.set_int(Fields.SCOMMAND, i);
-                gsettings.set_strv(Fields.SCOMMANDS, commands.map((x, j) =>
-                    JSON.stringify(Object.assign(x, { enable: i == j || undefined }), null, 0)));
+                gsettings.set_strv(Fields.SCOMMANDS, commands.map((y, j) =>
+                    JSON.stringify(Object.assign(y, { enable: i === j || undefined }), null, 0)));
             });
             scommand.menu.addMenuItem(item);
         });
@@ -623,7 +617,7 @@ const DictBtn = GObject.registerClass({
         let trigger = new PopupMenu.PopupSubMenuMenuItem(_('Trigger: ') + _(Object.keys(Trigger)[this._trigger]));
         Object.keys(Trigger).forEach(x => {
             let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
-            item.setOrnament(this._trigger == Trigger[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+            item.setOrnament(this._trigger === Trigger[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
             item.connect('activate', () => { this.menu.close(); gsettings.set_uint(Fields.TRIGGER, Trigger[x]); });
             trigger.menu.addMenuItem(item);
         });
@@ -635,7 +629,7 @@ const DictBtn = GObject.registerClass({
         let ocr_mode = new PopupMenu.PopupSubMenuMenuItem(_('OCR: ') + _(Object.keys(OCRMode)[this._ocr_mode]));
         Object.keys(OCRMode).forEach(x => {
             let item = new PopupMenu.PopupMenuItem(_(x), { style_class: 'light-dict-item popup-menu-item' });
-            item.setOrnament(this._ocr_mode == OCRMode[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
+            item.setOrnament(this._ocr_mode === OCRMode[x] ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
             item.connect('activate', () => { this.menu.close(); gsettings.set_uint(Fields.OCRMODE, OCRMode[x]); });
             ocr_mode.menu.addMenuItem(item);
         });
@@ -660,10 +654,14 @@ const DictBtn = GObject.registerClass({
     _updateMenu() {
         if([this._enable_ocr, this._dwell_ocr, this._ocr_mode, this._trigger, this._passive].some(x => x === undefined)) return;
         this.menu.removeAll();
-        if(this._enable_ocr) this.menu.addMenuItem(this._menuSwitchMaker(_('Dwell OCR'), !!this._dwell_ocr, item => {
-            this.menu.close(); gsettings.set_boolean(Fields.DWELLOCR, !this._dwell_ocr); }));
-        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, item => {
-            this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive); }));
+        if(this._enable_ocr) {
+            this.menu.addMenuItem(this._menuSwitchMaker(_('Dwell OCR'), !!this._dwell_ocr, () => {
+                this.menu.close(); gsettings.set_boolean(Fields.DWELLOCR, !this._dwell_ocr);
+            }));
+        }
+        this.menu.addMenuItem(this._menuSwitchMaker(_('Passive mode'), !!this._passive, () => {
+            this.menu.close(); gsettings.set_uint(Fields.PASSIVE, !this._passive);
+        }));
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.menu.addMenuItem(this._triggerMenu());
         this.menu.addMenuItem(this._scommandsMenu());
@@ -674,8 +672,7 @@ const DictBtn = GObject.registerClass({
     }
 
     destroy() {
-        if(this.scommandsId)
-            gsettings.disconnect(this.scommandsId), delete this.scommandsId;
+        if(this.scommandsId) gsettings.disconnect(this.scommandsId), delete this.scommandsId;
         super.destroy();
     }
 });
@@ -722,8 +719,8 @@ const LightDict = GObject.registerClass({
                this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
             if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--no-verbose');
         });
-        this._onWindowChangedId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
-        this._onSelectChangedId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
+        this._windowId = global.display.connect('notify::focus-window', this._onWindowChanged.bind(this));
+        this._selectId = global.display.get_selection().connect('owner-changed', this._onSelectChanged.bind(this));
     }
 
     set systray(systray) {
@@ -744,13 +741,12 @@ const LightDict = GObject.registerClass({
     }
 
     get appid() {
-        return (v => v ? (w => !w || w.is_window_backed() ? '' : w.get_id())
-                (Shell.WindowTracker.get_default().get_window_app(v)) : '')(g_focus());
+        return (v => v ? (w => !w || w.is_window_backed() ? '' : w.get_id())(Shell.WindowTracker.get_default().get_window_app(v)) : '')(g_focus());
     }
 
     set cursor(cursor) {
-        let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor :
-            ((a, b) => [a[0] - b / 2, a[1] - b / 2, b, b])(g_pointer(), Meta.prefs_get_cursor_size());
+        let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor
+            : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b, b])(g_pointer(), Meta.prefs_get_cursor_size());
         this._cursor = !!cursor && w > 250;
         this._cur.set_position(x, y);
         this._cur.set_size(w, h);
@@ -762,18 +758,17 @@ const LightDict = GObject.registerClass({
         this._app = this.appid;
     }
 
-    _onSelectChanged(sel, type, src) {
-        if(type != St.ClipboardType.PRIMARY) return;
-        if(this._mouseReleasedId)
-            GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
+    _onSelectChanged(sel, type, _src) {
+        if(type !== St.ClipboardType.PRIMARY) return;
+        if(this._mouseId) GLib.source_remove(this._mouseId), delete this._mouseId;
         if(this._sLock) { delete this._sLock; return; }
-        if(!this._allow || this.trigger == Trigger.Disable) return;
+        if(!this._allow || this.trigger === Trigger.Disable) return;
         let mods = g_pointer()[2];
         if(this.passive && !(mods & LD_MODS)) return;
         if(mods & Clutter.ModifierType.BUTTON1_MASK) {
-            this._mouseReleasedId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                if((mods ^ g_pointer()[2]) == Clutter.ModifierType.BUTTON1_MASK) {
-                    delete this._mouseReleasedId; this._run(); return GLib.SOURCE_REMOVE;
+            this._mouseId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
+                if((mods ^ g_pointer()[2]) === Clutter.ModifierType.BUTTON1_MASK) {
+                    delete this._mouseId; this._run(); return GLib.SOURCE_REMOVE;
                 } else {
                     return GLib.SOURCE_CONTINUE;
                 }
@@ -785,7 +780,7 @@ const LightDict = GObject.registerClass({
 
     _exeSh(cmd, pop, cpy, cmt, sel) {
         let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/APPID/g, GLib.shell_quote(this._app));
-        if(pop|cpy|cmt|sel) {
+        if(pop | cpy | cmt | sel) {
             this._act.execute(rcmd).then(scc => {
                 if(sel) this._select(scc);
                 if(cpy) this._act.copy(scc);
@@ -800,18 +795,16 @@ const LightDict = GObject.registerClass({
     }
 
     _exeJS(cmd, pop, cpy, cmt, sel) {
+        /* eslint-disable no-unused-vars */
         try {
             let APPID = this._app;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
-            let copy = x => this._act.copy(x);
-            let select = x => this._select(x);
-            let commit = x => this._act.commit(x);
-            if(pop|cpy|cmt|sel) {
+            if(pop | cpy | cmt | sel) {
                 let result = eval(cmd).toString();
-                if(cpy) copy(result);
-                if(cmt) commit(result);
-                if(sel) select(result);
+                if(cpy) this._act.copy(result);
+                if(cmt) this._act.commit(result);
+                if(sel) this._select(result);
                 if(pop) this._display(result);
             } else {
                 eval(cmd);
@@ -857,8 +850,7 @@ const LightDict = GObject.registerClass({
     }
 
     async _fetch() {
-        return await new Promise((resolve, reject) =>
-                                 St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => { text ? resolve(text) : reject(); }));
+        return await new Promise(resolve => St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => resolve(text)));
     }
 
     async _run(type, text, info, cursor) {
@@ -869,7 +861,7 @@ const LightDict = GObject.registerClass({
             this.trigger ? this._popup() : this._swift();
         } else {
             let [ty, pe] = type.split(':');
-            switch(ty == 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
+            switch(ty === 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
             case 'swift': this._store(text || await this._fetch()); this._swift(pe); break;
             case 'popup': this._store(text || await this._fetch()); this._popup(); break;
             case 'display': this._store(text || '¯\\_(ツ)_/¯'); this._display(info.trim() || '_(:з」∠)_'); break;
@@ -919,12 +911,9 @@ const LightDict = GObject.registerClass({
     }
 
     destroy() {
-        if(this._mouseReleasedId)
-            GLib.source_remove(this._mouseReleasedId), delete this._mouseReleasedId;
-        if(this._onWindowChangedId)
-            global.display.disconnect(this._onWindowChangedId), delete this._onWindowChangedId;
-        if(this._onSelectChangedId)
-            global.display.get_selection().disconnect(this._onSelectChangedId), delete this._onSelectChangedId;
+        if(this._mouseId) GLib.source_remove(this._mouseId), delete this._mouseId;
+        if(this._windowId) global.display.disconnect(this._windowId), delete this._windowId;
+        if(this._selectId) global.display.get_selection().disconnect(this._selectId), delete this._selectId;
         this.systray = false;
         this._dbus.flush();
         this._dbus.unexport();
