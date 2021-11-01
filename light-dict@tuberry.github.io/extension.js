@@ -390,7 +390,7 @@ const DictAct = GObject.registerClass({
     _init() {
         super._init();
         this._bindSettings();
-        this.ocr_cmd = 'python %s'.format(Me.dir.get_child('ldocr.py').get_path());
+        this.ocr_cmd = 'python %s '.format(Me.dir.get_child('ldocr.py').get_path());
         this._keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 

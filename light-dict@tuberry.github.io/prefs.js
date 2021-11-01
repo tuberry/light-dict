@@ -405,7 +405,7 @@ class LightDictAbout extends UI.Box {
             _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
             _('Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>'),
-        ].map((msg, i) => new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: `${i}. ${msg}` })));
+        ].map((msg, i) => new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: '%d. %s'.format(i, msg) })));
 
         return new Gtk.MenuButton({
             label: _('Tips'),
