@@ -12,7 +12,6 @@ from gi.repository import Gio, GLib
 from tempfile import NamedTemporaryFile
 
 DEBUG = False
-EDGE = 10 # FIXME: some windows (e.g. Chrome) with obvious edges lead to only 1 huge contour
 
 def main():
     args = parser()
@@ -103,8 +102,8 @@ def read_img(filename, trim=False):
     if trim:
         # shadows issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
-        edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0) + EDGE
-        img = img[edg:img.shape[0]-edg, edg:img.shape[1]-edg]
+        edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0)
+        img = img[edg : img.shape[0] - edg, edg : img.shape[1] - edg]
     return cv2.bitwise_not(img) if bincount_img(img) else img
 
 def find_rect(rects, point):
@@ -128,7 +127,7 @@ def crop_img(img, point, kernel, iterations, blur=False):
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
 def scale_img(image, rect=None, factor=2):
-    img = image if rect is None else image[rect[1]:rect[1]+rect[3], rect[0]:rect[0]+rect[2]]
+    img = image if rect is None else image[rect[1] : rect[1] + rect[3], rect[0] : rect[0] + rect[2]]
     return img if factor == 1 else cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
 
 def show_img(image, title='img'):
@@ -169,7 +168,7 @@ def ocr_area(lang):
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
     if pt is None or fw is None: return Result(error='LD dbus error')
-    pt = [a - b - EDGE for (a, b) in zip(pt, fw)]
+    pt = [a - b for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
         # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
@@ -178,7 +177,7 @@ def ocr_prln(lang, line=False):
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
         return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
-                      area=(rct[0] + fw[0] + EDGE, rct[1] + fw[1] + EDGE, rct[2], rct[3])) if rct else Result(error=' ')
+                      area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=' ')
 
 def exe_mode(args):
     result = (lambda m: m[0](*m[1]))({
