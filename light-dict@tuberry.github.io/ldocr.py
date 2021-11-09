@@ -19,51 +19,33 @@ def main():
     if result.cancel: return
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
     if args.cursor: result.area = None
-    if args.dest: result.tran_text(args.dest)
     # FIXME: better shortcut needs progress of https://gitlab.gnome.org/GNOME/mutter/-/issues/207
     gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
 
 def parser():
     ap = argparse.ArgumentParser()
-    ap.add_argument('-m', '--mode', default='word', choices = ['word', 'paragraph', 'area', 'line'],
-                help='specify the work mode: [%(choices)s] (default: %(default)s)')
-    ap.add_argument('-s', '--style', default='auto', choices = ['auto', 'swift', 'popup'],
-                help='specify the LD style: [%(choices)s] (default: %(default)s)')
+    ap.add_argument('-m', '--mode', default='word', choices=['word', 'paragraph', 'area', 'line'],
+                    help='specify the work mode: [%(choices)s] (default: %(default)s)')
+    ap.add_argument('-s', '--style', default='auto', choices=['auto', 'swift', 'popup'],
+                    help='specify the LD style: [%(choices)s] (default: %(default)s)')
     ap.add_argument('-l', '--lang', default='eng',
-                help='specify language(s) used by Tesseract OCR (default: %(default)s)')
-    ap.add_argument('-d', '--dest', default='',
-                help='specify the dest language used by py-googletrans (default: %(default)s)')
+                    help='specify language(s) used by Tesseract OCR (default: %(default)s)')
     ap.add_argument('-n', '--name', default='',
-                help='specify the LD swift style name (default: %(default)s)')
+                    help='specify the LD swift style name (default: %(default)s)')
     ap.add_argument('-c', '--cursor', default=False, action=argparse.BooleanOptionalAction,
-                help='invoke the LD around the cursor')
+                    help='invoke the LD around the cursor')
     ap.add_argument('-f', '--flash', default=False, action=argparse.BooleanOptionalAction,
-                help='flash the detected area')
+                    help='flash the detected area')
     ap.add_argument('-v', '--verbose', default=True, action=argparse.BooleanOptionalAction,
-                help='report error messages')
+                    help='report error messages')
     return ap.parse_args()
 
 class Result:
     def __init__(self, text=None, area=None, error=None, cancel=None):
-        self.text, self.area, self.error, self.cancel = text, area, error, cancel
-        self.tran, self.style = None, 'swift'
+        self.text, self.area, self.error, self.cancel, self.style = text, area, error, cancel, 'swift'
 
     def set_style(self, style, name):
         self.style = style + ':' + name if name else style
-
-    def tran_text(self, dest):
-        if not self.text: return
-        try:
-            from googletrans import Translator
-            try:
-                self.tran = Translator(http2=True).translate(self.text, dest=dest).text
-                self.error = 'googletrans/http2 is available'
-            except ImportError:
-                self.tran = Translator(http2=False).translate(self.text, dest=dest).text
-        except:
-            self.error = 'python-googletrans is missing'
-        finally:
-            self.style = 'display'
 
     def set_verbose(self, verbose):
         if not verbose and self.is_error: self.cancel = True
@@ -74,7 +56,7 @@ class Result:
 
     @property
     def param(self):
-        style, text, info = ['display', 'ERROR', self.error or ''] if self.is_error else [self.style, self.text, self.tran or '']
+        style, text, info = ['display', 'ERROR', self.error or ''] if self.is_error else [self.style, self.text, '']
         return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
 def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
@@ -103,13 +85,14 @@ def read_img(filename, trim=False):
         # shadows issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
         edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0)
-        img = img[edg : img.shape[0] - edg, edg : img.shape[1] - edg]
+        img = img[edg: img.shape[0] - edg, edg: img.shape[1] - edg]
     return cv2.bitwise_not(img) if bincount_img(img) else img
 
-def find_rect(rects, point):
-    pt_in_rect = lambda p, r: p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
-    pt_rect_dis = lambda p, r: sum([max(a - b, 0, b - a - c) ** 2 for (b, a, c) in zip(p, r[0:2], r[2:4])])
-    return next((x for x in rects if pt_in_rect(point, x)), None) or min(rects, key=lambda x: pt_rect_dis(point, x)) if rects else None
+def pt_in_rect(p, r): return p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
+
+def pt_rect_dis(p, r): return sum([max(a - b, 0, b - a - c) ** 2 for (b, a, c) in zip(p, r[0:2], r[2:4])])
+
+def find_rect(rs, p): return next((x for x in rs if pt_in_rect(p, x)), None) or min(rs, key=lambda x: pt_rect_dis(p, x)) if rs else None
 
 def crop_img(img, point, kernel, iterations, blur=False):
     # Ref: https://stackoverflow.com/a/57262099
@@ -127,7 +110,7 @@ def crop_img(img, point, kernel, iterations, blur=False):
     return find_rect(list(map(cv2.boundingRect, cts)), point)
 
 def scale_img(image, rect=None, factor=2):
-    img = image if rect is None else image[rect[1] : rect[1] + rect[3], rect[0] : rect[0] + rect[2]]
+    img = image if rect is None else image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
     return img if factor == 1 else cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
 
 def show_img(image, title='img'):
@@ -135,12 +118,10 @@ def show_img(image, title='img'):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def typeset_str(para):
-    # CJK spaces issue: https://github.com/tesseract-ocr/tesseract/issues/991
-    return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip(string.whitespace + '“”‘’')
+# CJK spaces issue: https://github.com/tesseract-ocr/tesseract/issues/991
+def typeset_str(para): return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip(string.whitespace + '“”‘’')
 
-def detect_cjk(lang):
-    return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
+def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
 
 def ocr_word(lang, sz=(250, 50)):
     pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
@@ -185,7 +166,7 @@ def exe_mode(args):
         'area': (ocr_area, (args.lang,)),
         'paragraph': (ocr_prln, (args.lang,)),
         'line': (ocr_prln, (args.lang, True)),
-    }[args.mode]);
+    }[args.mode])
     result.set_style(args.style, args.name)
     result.set_verbose(args.verbose)
     return result

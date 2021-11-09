@@ -758,7 +758,7 @@ const LightDict = GObject.registerClass({
         this._app = this.appid;
     }
 
-    _onSelectChanged(sel, type, _src) {
+    _onSelectChanged(_sel, type, _src) {
         if(type !== St.ClipboardType.PRIMARY) return;
         if(this._mouseId) GLib.source_remove(this._mouseId), delete this._mouseId;
         if(this._sLock) { delete this._sLock; return; }
@@ -767,11 +767,8 @@ const LightDict = GObject.registerClass({
         if(this.passive && !(mods & LD_MODS)) return;
         if(mods & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, () => {
-                if((mods ^ g_pointer()[2]) === Clutter.ModifierType.BUTTON1_MASK) {
-                    delete this._mouseId; this._run(); return GLib.SOURCE_REMOVE;
-                } else {
-                    return GLib.SOURCE_CONTINUE;
-                }
+                if((mods ^ g_pointer()[2]) !== Clutter.ModifierType.BUTTON1_MASK) return GLib.SOURCE_CONTINUE;
+                delete this._mouseId; this._run(); return GLib.SOURCE_REMOVE;
             }); // NOTE: `owner-changed` is emitted every char in Gtk+ apps
         } else {
             this._run();
@@ -850,7 +847,7 @@ const LightDict = GObject.registerClass({
     }
 
     async _fetch() {
-        return await new Promise(resolve => St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (clip, text) => resolve(text)));
+        return await new Promise(resolve => St.Clipboard.get_default().get_text(St.ClipboardType.PRIMARY, (_clip, text) => resolve(text)));
     }
 
     async _run(type, text, info, cursor) {

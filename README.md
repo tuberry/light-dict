@@ -61,7 +61,6 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 * [python-opencv]
 * [python-pytesseract]
-* [python-googletrans]: (optional) specify the DEST (e.g. `-d zh-cn`) to enable
 
  ```bash
 yay -S python-opencv python-pytesseract # use the package manager of your distro
@@ -103,4 +102,3 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 [gsconnect]:https://github.com/andyholmes/gnome-shell-extension-gsconnect
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
 [python-pytesseract]:https://github.com/madmaze/pytesseract
-[python-googletrans]:https://github.com/ssut/py-googletrans

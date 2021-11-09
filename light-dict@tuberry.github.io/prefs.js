@@ -435,13 +435,13 @@ class LightDictBasic extends UI.Box {
     }
 
     _buildWidgets() {
+        this._field_ocr_params     = new UI.Entry();
         this._field_dwell_ocr      = new Gtk.Switch();
         this._field_enable_strip   = new Gtk.Switch();
         this._field_enable_systray = new Gtk.Switch();
         this._field_enable_tooltip = new Gtk.Switch();
         this._field_hide_title     = new Gtk.Switch();
         this._field_page_size      = new UI.Spin(1, 10, 1);
-        this._field_ocr_params     = new UI.Entry('-d zh-cn');
         this._field_short_ocr      = new UI.Check(_('Shortcut'));
         this._field_auto_hide      = new UI.Spin(500, 10000, 250);
         this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
