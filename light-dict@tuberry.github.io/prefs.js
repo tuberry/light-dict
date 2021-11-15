@@ -32,7 +32,7 @@ class LightDictPrefs extends Gtk.Stack {
 
         this.connect('realize', () => {
             this.get_root().get_titlebar().set_title_widget(new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, stack: this }));
-            this.get_root().set_default_size(650, 560);
+            this.get_root().set_default_size(650, 610);
         });
     }
 

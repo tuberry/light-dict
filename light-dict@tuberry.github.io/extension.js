@@ -20,7 +20,7 @@ const _ = ExtensionUtils.gettext;
 
 const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
-const g_focus = () => global.display.focus_window;
+const g_focus = () => global.display.get_focus_window();
 const getIcon = x => Me.dir.get_child('icons').get_child('%s-symbolic.svg'.format(x)).get_path();
 const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const dwell = (u, v, w, m) => !still(u, v) << 1 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
@@ -904,7 +904,7 @@ const LightDict = GObject.registerClass({
     }
 
     get FocusWindow() {
-        return (w => w ? (r => [r.x, r.y, r.width, r.height])(w.get_frame_rect()) : null)(g_focus());
+        return (r => r ? [r.x, r.y, r.width, r.height] : null)(g_focus()?.get_frame_rect?.());
     }
 
     destroy() {

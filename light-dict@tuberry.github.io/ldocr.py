@@ -131,7 +131,7 @@ def ocr_word(lang, sz=(250, 50)):
     ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
-        if not ok: return Result(error='GS dbus error')
+        if not ok: return Result(error=fn)
         dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
         bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
         rct = find_rect(bxs, (w, h))
@@ -140,20 +140,20 @@ def ocr_word(lang, sz=(250, 50)):
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None)
-    if area[0] is False: return Result(cancel=True) if 'cancel' in area[1] else Result(error='GS dbus error')
+    if area[0] is False: return Result(cancel=True) if 'cancel' in area[1] else Result(error=area[1])
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
         return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
-                      area=area) if ok else Result(error='GS dbus error')
+                      area=area) if ok else Result(error=fn)
 
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
-    if pt is None or fw is None: return Result(error='LD dbus error')
+    if pt is None or fw is None: return Result(error='LD DBus error')
     pt = [a - b for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
         # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
-        if not ok: return Result(error='GS dbus error')
+        if not ok: return Result(error=fn)
         kn, it = ((15, 3), 1) if line else ((9, 6), 3)
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
