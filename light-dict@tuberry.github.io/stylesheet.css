@@ -6,11 +6,10 @@
 }
 
 .light-dict-box-boxpointer {
-    -arrow-border-color: rgba(97, 97, 97, 1);
-    -arrow-background-color: rgba(97, 97, 97, 1);
+    /* -arrow-rize: 30px; */
 }
 
-.light-dict-scroll {
+.light-dict-scroll:scrolled {
     max-height: 30em !important; /* min height to scroll */
 }
 
@@ -25,12 +24,13 @@
 
 .light-dict-text {
     border-width: 0;
-    border-color: rgba(0, 0, 0, 0.38);
     border-style: dashed;
     border-bottom-width: 0.1em;
+    border-color: rgba(0, 0, 0, 0.38);
 }
 
-.light-dict-info {
+.light-dict-content:error {
+    color: rgba(255, 205, 205, 1);
 }
 
 .light-dict-iconbox {

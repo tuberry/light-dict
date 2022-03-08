@@ -66,11 +66,7 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 yay -S python-opencv python-pytesseract # use the package manager of your distro
 ```
 
-#### Usage
-
-Click the <kbd>Parameters</kbd> to see details of the OCR, which's available after enabled via the DBus, shortcut or dwelling:
-
-![ldocr](https://user-images.githubusercontent.com/17917040/137623073-5b231712-398c-4632-a1b1-1c407ea483d2.png)
+![ldpref](https://user-images.githubusercontent.com/17917040/155883276-cd24c42a-b78f-4893-a475-d980adb36f5f.png)
 
 *Note* OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
 
@@ -79,7 +75,6 @@ Click the <kbd>Parameters</kbd> to see details of the OCR, which's available aft
 https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4
 
 ## Note
-
 
 * This extension doesn't offer any additional icons or dictionaries.
 * If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].

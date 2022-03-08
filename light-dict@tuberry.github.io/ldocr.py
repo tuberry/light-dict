@@ -19,7 +19,7 @@ def main():
     if result.cancel: return
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
     if args.cursor: result.area = None
-    # FIXME: better shortcut needs progress of https://gitlab.gnome.org/GNOME/mutter/-/issues/207
+    # NOTE: better shortcut needs  https://gitlab.gnome.org/GNOME/mutter/-/issues/207
     gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
 
 def parser():
