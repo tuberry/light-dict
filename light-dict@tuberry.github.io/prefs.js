@@ -1,9 +1,9 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init buildPrefsWidget */
+/* exported init fillPreferencesWindow */
 'use strict';
 
-const { Gtk, GObject, Gio } = imports.gi;
+const { Adw, Gtk, GObject, Gio, GLib, Gdk } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
@@ -11,67 +11,111 @@ const _ = ExtensionUtils.gettext;
 const _GTK = imports.gettext.domain('gtk40').gettext;
 const Fields = Me.imports.fields.Fields;
 const UI = Me.imports.ui;
+const noop = () => {};
+const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
+
+Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
 function init() {
     ExtensionUtils.initTranslations();
 }
 
-function buildPrefsWidget() {
-    return new LightDictPrefs();
+function fillPreferencesWindow(win) {
+    [
+        new LightDictBasic({ title: _('Basic'), icon_name: 'face-smirk-symbolic' }),
+        new LightDictJSON({ title: _('Swift'), icon_name: 'face-smile-big-symbolic' }, Fields.SCOMMANDS),
+        new LightDictJSON({ title: _('Popup'), icon_name: 'face-devilish-symbolic' }, Fields.PCOMMANDS),
+        new LightDictAbout({ title: _('About'), icon_name: 'face-surprise-symbolic' }),
+    ].forEach(x => win.add(x));
 }
 
-const LightDictPrefs = GObject.registerClass(
-class LightDictPrefs extends Gtk.Stack {
-    _init() {
-        super._init({ transition_type: Gtk.StackTransitionType.NONE });
-
-        this._add_tab(new LightDictBasic(), 'basic', _('Basic'));
-        this._add_tab(new LightDictJSON(Fields.SCOMMANDS), 'swift', _('Swift'));
-        this._add_tab(new LightDictJSON(Fields.PCOMMANDS), 'popup', _('Popup'));
-        this._add_tab(new LightDictAbout(), 'about', _('About'));
-
-        this.connect('realize', () => {
-            this.get_root().get_titlebar().set_title_widget(new Gtk.StackSwitcher({ halign: Gtk.Align.CENTER, stack: this }));
-            this.get_root().set_default_size(650, 610);
-        });
+class PrefPage extends Adw.PreferencesPage {
+    static {
+        GObject.registerClass(this);
     }
 
-    _add_tab(tab, name, title) {
-        this.add_titled(new Gtk.ScrolledWindow({ hscrollbar_policy: Gtk.PolicyType.NEVER, child: tab }), name, title);
-    }
-});
-
-const CenterLabel = GObject.registerClass(
-class CenterLabel extends Gtk.Label {
-    _init(label) {
-        super._init({
-            label,
-            wrap: true,
-            use_markup: true,
-            justify: Gtk.Justification.CENTER,
-        });
-    }
-});
-
-const AppsBox = GObject.registerClass({
-    Properties: {
-        'apps': GObject.param_spec_string('apps', 'apps', 'apps', '', GObject.ParamFlags.READWRITE),
-    },
-    Signals: {
-        'changed':  { param_types: [GObject.TYPE_STRING] },
-    },
-}, class AppsBox extends UI.Box {
-    _init(tip1, tip2) {
-        super._init();
-
-        this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '' });
-        this.appendS([this._box, this._addBtnMaker(tip2)]);
+    constructor(params) {
+        super(params);
+        this._group = new Adw.PreferencesGroup();
+        this.add(this._group);
     }
 
-    vfunc_snapshot(snapshot) {
-        // CREDIT: https://discourse.gnome.org/t/how-to-reuse-an-existing-gtk-widgets-style-class-in-a-custom-widget/5969/9?u=tuberry
-        snapshot.render_background(new Gtk.Entry().get_style_context(), 0, 0, this.get_width(), this.get_height());
-        super.vfunc_snapshot(snapshot);
+    _add(widget) {
+        this._group.add(widget);
+    }
+}
+
+class IconBtn extends UI.File {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor() {
+        super({ filter: 'image/svg+xml' });
+    }
+
+    set_icon(icon) {
+        this.file = icon;
+    }
+
+    get file() {
+        return this._file ?? '';
+    }
+
+    _checkIcon(path) {
+        let name = GLib.basename(path).replace('.svg', '');
+        return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
+    }
+
+    set file(path) {
+        let file = Gio.File.new_for_path(path);
+        file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME,
+            Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null, (src, res) => {
+                let prev = this._file;
+                try {
+                    let info = src.query_info_finish(res);
+                    this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
+                    let icon = this._checkIcon(path);
+                    icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
+                    if(!this.file) this.chooser.set_file(file);
+                    this._file = path;
+                    this._icon.show();
+                } catch(e) {
+                    this._icon.hide();
+                    this._setLabel(null);
+                    this._file = null;
+                } finally {
+                    if(prev !== undefined && prev !== this.file) {
+                        this.notify('file');
+                        this.emit('changed', this.file);
+                    }
+                }
+            });
+    }
+}
+
+class AppsBox extends Gtk.Box {
+    static {
+        GObject.registerClass({
+            Properties: {
+                apps: genParam('string', 'apps', ''),
+            },
+            Signals: {
+                changed:  { param_types: [GObject.TYPE_STRING] },
+            },
+        }, this);
+    }
+
+    constructor(tip1, tip2) {
+        super({ valign: Gtk.Align.CENTER, hexpand: true, css_classes: ['linked'] });
+        this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '', css_name: 'entry', css_classes: ['linked'] });
+        this._btn = new Gtk.Button({ tooltip_text: tip2 || '', icon_name: 'list-add-symbolic' });
+        this._btn.connect('clicked', this._onAddActivated.bind(this));
+        [this._box, this._btn].forEach(x => this.append(x));
+    }
+
+    vfunc_mnemonic_activate() {
+        this._btn.activate();
     }
 
     set apps(apps) {
@@ -87,7 +131,7 @@ const AppsBox = GObject.registerClass({
     }
 
     get apps() {
-        return this?._apps ?? '';
+        return this._apps ?? '';
     }
 
     get_apps() {
@@ -120,20 +164,11 @@ const AppsBox = GObject.registerClass({
         chooser.show();
     }
 
-    _addBtnMaker(tips) {
-        let add = new Gtk.Button({ tooltip_text: tips || '', has_frame: false });
-        add.set_child(new Gtk.Image({ icon_name: 'list-add-symbolic' }));
-        add.connect('clicked', this._onAddActivated.bind(this));
-
-        return add;
-    }
-
     _appendApp(id) {
         let appInfo = Gio.DesktopAppInfo.new(id);
         if(!appInfo) return;
-
         let app = new Gtk.Button({ tooltip_text: appInfo.get_display_name(), has_frame: false });
-        app.set_child(new Gtk.Image({ gicon: appInfo.get_icon() }));
+        app.set_child(new Gtk.Image({ gicon: appInfo.get_icon(), css_classes: ['icon-dropshadow'] }));
         app.connect('clicked', widget => {
             this._box.remove(widget);
             this.apps = this.apps.split(',').filter(x => x !== id).join(',');
@@ -141,20 +176,25 @@ const AppsBox = GObject.registerClass({
         });
         this._box.append(app);
     }
-});
+}
 
-const SideBar = GObject.registerClass({
-    Signals: {
-        'selected': { param_types: [GObject.TYPE_INT] },
-        'clicked':  { param_types: [GObject.TYPE_INT, GObject.TYPE_STRING] },
-        'changed':  { param_types: [GObject.TYPE_INT, GObject.TYPE_STRING] },
-        'enabled':  { param_types: [GObject.TYPE_INT, GObject.TYPE_BOOLEAN] },
-    },
-}, class SideBar extends UI.Box {
-    _init(cmds, swift) {
-        super._init({ vertical: true });
+class SideBar extends Gtk.Box {
+    // TODO: Gtk.ColumnView? - https://blog.gtk.org/2020/09/21/gtkcolumnview/
+    static {
+        GObject.registerClass({
+            Signals: {
+                selected: { param_types: [GObject.TYPE_INT] },
+                clicked:  { param_types: [GObject.TYPE_INT, GObject.TYPE_STRING] },
+                changed:  { param_types: [GObject.TYPE_INT, GObject.TYPE_STRING] },
+                enabled:  { param_types: [GObject.TYPE_INT, GObject.TYPE_BOOLEAN] },
+            },
+        }, this);
+    }
+
+    constructor(cmds, swift) {
+        super({ orientation: Gtk.Orientation.VERTICAL, sensitive: !!cmds.length });
         this._swift = swift;
-        this.appendS([this._buildList(cmds), this._buildTool()]);
+        [this._buildList(cmds), new Gtk.Separator(), this._buildTool()].forEach(x => this.append(x));
     }
 
     _buildList(cmds) {
@@ -163,32 +203,30 @@ const SideBar = GObject.registerClass({
         cmds.forEach(x => { model.set(model.append(), [0, 1], x); });
         this._list = new Gtk.TreeView({ model, headers_visible: false, vexpand: true });
         this._list.get_selection().connect('changed', this._onSelectChanged.bind(this));
-
-        let enable = new Gtk.CellRendererToggle({ radio: this._swift }); // type
-        let status = new Gtk.TreeViewColumn();
-        status.pack_start(enable, true);
-        status.add_attribute(enable, 'active', 0);
-        enable.connect('toggled', this._onEnableToggled.bind(this));
-        this._list.append_column(status);
-
-        let text = new Gtk.CellRendererText({ editable: true });
-        let name = new Gtk.TreeViewColumn();
-        name.pack_start(text, true);
-        name.add_attribute(text, 'text', 1);
-        text.connect('edited', this._onNameChanged.bind(this));
-        this._list.append_column(name);
+        [[new Gtk.CellRendererToggle({ radio: this._swift }), 'active', 'toggled', this._onEnableToggled.bind(this)],
+            [new Gtk.CellRendererText({ editable: true }), 'text', 'edited', this._onNameChanged.bind(this)]]
+            .forEach((x, i) => this._list.append_column(this._column(i, ...x)));
 
         return this._list;
     }
 
+    _column(index, widget, key, signal, func) {
+        let column = new Gtk.TreeViewColumn();
+        column.pack_start(widget, true);
+        column.add_attribute(widget, key, index);
+        widget.connect(signal, func);
+        return column;
+    }
+
     _buildTool() {
-        this._tool = new UI.Box({ spacing: 2 }).appends(['list-add', 'list-remove', 'go-down', 'go-up'].map(x => {
+        let box = new Gtk.Box({ css_classes: ['linked'] });
+        ['list-add', 'list-remove', 'go-down', 'go-up'].map(x => {
             let btn = new Gtk.Button({ icon_name: '%s-symbolic'.format(x), has_frame: false });
             btn.connect('clicked', () => { this._onButtonClicked(x); });
             return btn;
-        }));
+        }).forEach(x => box.append(x));
 
-        return this._tool;
+        return box;
     }
 
     _onButtonClicked(btn) {
@@ -229,7 +267,7 @@ const SideBar = GObject.registerClass({
 
     _onEnableToggled(widget, path) {
         let active = widget.get_active();
-        let [ok, iter] = this._list.model.get_iter_from_string(path);
+        let [ok_, iter] = this._list.model.get_iter_from_string(path);
         let [index] = this._list.model.get_path(iter).get_indices();
         this.emit('enabled', index, !active);
         if(this._swift) this._disableAll();
@@ -238,7 +276,7 @@ const SideBar = GObject.registerClass({
 
     _onNameChanged(widget, path, text) {
         let name = text || 'name';
-        let [ok, iter] = this._list.model.get_iter_from_string(path);
+        let [ok_, iter] = this._list.model.get_iter_from_string(path);
         let [index] = this._list.model.get_path(iter).get_indices();
         this.emit('changed', index, name);
         this._list.model.set(iter, [1], [name]);
@@ -250,15 +288,32 @@ const SideBar = GObject.registerClass({
         do this._list.model.set(iter, [0], [false]);
         while(this._list.model.iter_next(iter));
     }
-});
 
-const SwiftBox = GObject.registerClass({
-    Signals: {
-        'changed':  { param_types: [GObject.TYPE_JSOBJECT] },
-    },
-}, class SwiftBox extends UI.Box {
-    _init() {
-        super._init({ vertical: true });
+    _grabFocus() {
+        let [ok, iter] = this._list.model.get_iter_first();
+        if(!ok) return;
+        this._list.set_cursor(this._list.model.get_path(iter), null, false);
+    }
+
+    _grabFocusNext() {
+        let [ok, model, iter] = this._list.get_selection().get_selected();
+        if(!ok) return;
+        this._list.model.iter_next(iter);
+        this._list.set_cursor(model.get_path(iter), null, false);
+    }
+}
+
+class SwiftBox extends Adw.PreferencesPage {
+    static {
+        GObject.registerClass({
+            Signals: {
+                changed:  { param_types: [GObject.TYPE_JSOBJECT] },
+            },
+        }, this);
+    }
+
+    constructor() {
+        super({ hexpand: true });
         this._temp = { type: 0, copy: false, commit: false, select: false, popup: false, apps: '', command: '', regexp: '' };
 
         this._buildWidgets();
@@ -267,34 +322,29 @@ const SwiftBox = GObject.registerClass({
     }
 
     _buildWidgets() {
-        this._popup   = new Gtk.Switch();
-        this._commit  = new Gtk.Switch();
-        this._copy    = new Gtk.Switch();
-        this._select  = new Gtk.Switch();
-        this._type    = new UI.Combo(['sh', 'JS']);
-        this._command = new UI.Entry('gio open LDWORD');
-        this._regexp  = new UI.Entry('(https?|ftp|file)://.*');
+        this._type    = new UI.Drop('sh', 'JS');
+        this._command = new UI.LazyEntry('gio open LDWORD');
+        this._regexp  = new UI.LazyEntry('(https?|ftp|file)://.*');
+        this._commit  = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._copy    = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._popup   = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._select  = new Gtk.Switch({ valign: Gtk.Align.CENTER });
         this._apps    = new AppsBox(_('Click the app icon to remove'), _('Allowlist'));
     }
 
     _buildUI() {
-        let details = new UI.ListGrid();
-        details._att(new UI.Label(_('Run command'), true), this._command);
-        details._add(new UI.Label(_('Command type')), this._type);
-        details._add(new UI.Label(_('Show result')), this._popup);
-        details._add(new UI.Label(_('Copy result')), this._copy);
-        details._add(new UI.Label(_('Select result')), this._select);
-        details._add(new UI.Label(_('Commit result')), this._commit);
-
-        let addition = new UI.ListGrid();
-        addition._att(new UI.Label(_('Application list'), true), this._apps);
-        addition._att(new UI.Label(_('RegExp matcher'), true), this._regexp);
-        let info = new UI.ListGrid();
-        info._att(new UI.Label(_('Only one item can be enabled in swift style.\n') +
-                               _('The first one will be used by default if none is enabled.\n') +
-                               _('Double click a list item on the left to change the name.')));
-
-        this.appendS([details, addition, info]);
+        let details = new Adw.PreferencesGroup();
+        [
+            [[_('Run command')], this._command],
+            [[_('Command type')], this._type],
+            [[_('Show result')], this._popup],
+            [[_('Copy result')], this._copy],
+            [[_('Select result')], this._select],
+            [[_('Commit result')], this._commit],
+            [[_('Application list')], this._apps],
+            [[_('RegExp matcher')], this._regexp],
+        ].forEach(xs => details.add(new UI.PrefRow(...xs)));
+        this.add(details);
     }
 
     _bindValues() {
@@ -303,115 +353,137 @@ const SwiftBox = GObject.registerClass({
         this._select.connect('state-set', (widget, state) => { this._emitChanged({ select: state || undefined }); });
         this._copy.connect('state-set', (widget, state) => { this._emitChanged({ copy: state || undefined }); });
         this._apps.connect('changed', widget => { this._emitChanged({ apps: widget.get_apps() || undefined }); });
-        this._type.connect('changed', widget => { this._emitChanged({ type: widget.get_active() || undefined }); });
+        this._type.connect('notify::selected', widget => { this._emitChanged({ type: widget.get_selected() || undefined }); });
         this._regexp.connect('changed', widget => { this._emitChanged({ regexp: widget.get_text() || undefined }); });
         this._command.connect('changed', widget => { this._emitChanged({ command: widget.get_text() || undefined }); });
     }
 
-    _emitChanged(prama) {
+    _emitChanged(param) {
         if(this._blocked) return;
-        this.emit('changed', prama);
+        log(JSON.stringify(param));
+        this.emit('changed', param);
     }
 
     set config(config) {
         this._blocked = true;
-        let temp = JSON.parse(JSON.stringify(this._temp));
-        Object.assign(temp, config);
+        let temp = { ...this._temp, ...config };
         Object.keys(temp).forEach(x => {
             let prop = temp[x];
             let widget = this['_%s'.format(x)];
             if(widget === undefined) return;
             switch(typeof prop) {
             case 'boolean': widget.set_state(prop); break;
-            case 'number':  widget.set_active(prop); break;
-            case 'string':  x === 'apps' ? widget.set_apps(prop) : widget._set_text(prop); break;
+            case 'number':  widget.set_selected(prop); break;
+            case 'string': switch(x) {
+            case 'apps': widget.set_apps(prop); break;
+            case 'icon': widget.set_icon(prop); break;
+            default: widget.set_text(prop); break;
+            } break;
             }
         });
         this._blocked = false;
     }
-});
+}
 
-const PopupBox = GObject.registerClass(
 class PopupBox extends SwiftBox {
-    _init() {
-        super._init();
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor() {
+        super();
         this._temp = { type: 0, copy: false, commit: false, select: false, popup: false, apps: '', command: '', regexp: '', tooltip: '', icon: '' };
     }
 
     _buildWidgets() {
         super._buildWidgets();
-        this._tooltip = new UI.Entry('Open URL with gio open');
-        this._icon    = new UI.Entry('face-cool-symbolic', _('Leave it empty to display the name'), true);
+        this._icon = new IconBtn();
+        this._tooltip = new UI.LazyEntry('Open URL');
     }
 
     _buildUI() {
-        let details = new UI.ListGrid();
-        details._att(new UI.Label(_('Run command'), true), this._command);
-        details._add(new UI.Label(_('Icon name')), this._icon);
-        details._add(new UI.Label(_('Command type')), this._type);
-        details._add(new UI.Label(_('Show result')), this._popup);
-        details._add(new UI.Label(_('Copy result')), this._copy);
-        details._add(new UI.Label(_('Select result')), this._select);
-        details._add(new UI.Label(_('Commit result')), this._commit);
-
-        let addition = new UI.ListGrid();
-        addition._att(new UI.Label(_('Application list'), true), this._apps);
-        addition._att(new UI.Label(_('RegExp matcher'), true), this._regexp);
-        addition._att(new UI.Label(_('Icon tooltip'), true), this._tooltip);
-        this.appendS([details, addition]);
+        let details = new Adw.PreferencesGroup();
+        [
+            [[_('Run command')], this._command],
+            [[_('Command type')], this._type],
+            [[_('Icon name')], this._icon],
+            [[_('Show result')], this._popup],
+            [[_('Copy result')], this._copy],
+            [[_('Select result')], this._select],
+            [[_('Commit result')], this._commit],
+            [[_('Application list')], this._apps],
+            [[_('RegExp matcher')], this._regexp],
+            [[_('Icon tooltip')], this._tooltip],
+        ].forEach(xs => details.add(new UI.PrefRow(...xs)));
+        this.add(details);
     }
 
     _bindValues() {
         super._bindValues();
-        this._icon.connect('changed', widget => { this._emitChanged({ icon: widget.get_text() || undefined }); });
+        this._icon.connect('changed', (widget, icon) => { this._emitChanged({ icon: icon || undefined }); });
         this._tooltip.connect('changed', widget => { this._emitChanged({ tooltip: widget.get_text() || undefined }); });
     }
-});
+}
 
-const LightDictAbout = GObject.registerClass(
-class LightDictAbout extends UI.Box {
-    _init() {
-        super._init({ vertical: true, margins: [30] });
-        this.appends([this._buildIcon(), this._buildInfo(), this._buildTips(), new Gtk.Box({ vexpand: true }), this._buildLicense()]);
+class LightDictAbout extends PrefPage {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(params) {
+        super(params);
+        let box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 30, margin_bottom: 30 });
+        [this._buildIcon(), this._buildInfo(), this._buildTips(), new Gtk.Box({ vexpand: true }), this._buildLicense()].forEach(x => box.append(x));
+        this._add(box);
     }
 
     _buildIcon() {
-        let box = new UI.Box({ margins: [0, 0, 30] });
-        box.set_halign(Gtk.Align.CENTER);
-        let active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE));
-        if(active.length) box.appends(active.map(x => new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: JSON.parse(x)?.icon ?? 'help-symbolic' })));
-        else box.append(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: 'accessories-dictionary-symbolic' }));
-
+        let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 });
+        let active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
+        if(active.length) {
+            active.forEach(x => {
+                let icon = this._checkIcon(x);
+                let img = new Gtk.Image({ icon_size: Gtk.IconSize.LARGE });
+                icon ? img.set_from_icon_name(icon) : img.set_from_gicon(Gio.Icon.new_for_string(x));
+                box.append(img);
+            });
+        } else { box.append(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: 'accessories-dictionary-symbolic' })); }
 
         return box;
     }
 
+    _checkIcon(path) {
+        let name = GLib.basename(path).replace('.svg', '');
+        return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
+    }
+
     _buildInfo() {
-        let info = [
+        return this._buildLabel([
             '<b><big>%s</big></b>'.format(Me.metadata.name),
             _('Version %d').format(Me.metadata.version),
             _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
             '<span><a href="%s">%s\n</a></span>'.format(Me.metadata.url, _GTK('Website')),
-        ];
+        ].join('\n\n'));
+    }
 
-        return new CenterLabel(info.join('\n\n'));
+    _buildLabel(label) {
+        return new Gtk.Label({ label, wrap: true, use_markup: true, justify: Gtk.Justification.CENTER });
     }
 
     _buildTips() {
-        let tips = new UI.Box({ vertical: true, margins: [5], spacing: 2 }).appends([
+        let box = new Gtk.Box({ spacing: 2, orientation: Gtk.Orientation.VERTICAL });
+        [
             _('Leave RegExp/application list blank for no restriction'),
             _('Middle click the panel to copy the result to clipboard'),
             _('Substitute <b>LDWORD</b> for the selected text in the command'),
-            _('Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
-            _('Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>'),
-        ].map((msg, i) => new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: '%d. %s'.format(i, msg) })));
+        ].forEach((x, i) => box.append(new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: '%d. %s'.format(i, x) })));
 
         return new Gtk.MenuButton({
             label: _('Tips'),
             halign: Gtk.Align.CENTER,
             direction: Gtk.ArrowType.NONE,
-            popover: new Gtk.Popover({ child: tips }),
+            popover: new Gtk.Popover({ child: box }),
         });
     }
 
@@ -420,127 +492,121 @@ class LightDictAbout extends UI.Box {
         let license  = _GTK('GNU General Public License, version 3 or later');
         let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
 
-        return new CenterLabel('<small>\n\n%s</small>'.format(_GTK(statement).format(gpl, license)));
+        return this._buildLabel('<small>\n\n%s</small>'.format(_GTK(statement).format(gpl, license)));
     }
-});
+}
 
-const LightDictBasic = GObject.registerClass(
-class LightDictBasic extends UI.Box {
-    _init() {
-        super._init({ vertical: true, margins: [0, 40] });
+class LightDictBasic extends PrefPage {
+    static {
+        GObject.registerClass(this);
+    }
 
+    constructor(params) {
+        super(params);
         this._buildWidgets();
         this._bindValues();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._field_ocr_params     = new UI.Entry();
-        this._field_dwell_ocr      = new Gtk.Switch();
-        this._field_enable_strip   = new Gtk.Switch();
-        this._field_enable_systray = new Gtk.Switch();
-        this._field_enable_tooltip = new Gtk.Switch();
-        this._field_hide_title     = new Gtk.Switch();
+        this._field_ocr_params     = new UI.LazyEntry();
         this._field_page_size      = new UI.Spin(1, 10, 1);
-        this._field_short_ocr      = new UI.Check(_('Shortcut'));
+        this._field_short_ocr      = new Gtk.CheckButton();
         this._field_auto_hide      = new UI.Spin(500, 10000, 250);
-        this._field_text_filter    = new UI.Entry('^[^\\n\\.\\t/:]{3,50}$');
+        this._field_left_command   = new UI.LazyEntry('notify-send LDWORD');
+        this._field_right_command  = new UI.LazyEntry('notify-send LDWORD');
+        this._field_text_filter    = new UI.LazyEntry('^[^\\n\\.\\t/:]{3,50}$');
+        this._field_passive_mode   = new UI.Drop(_('Proactive'), _('Passive'));
+        this._field_list_type      = new UI.Drop(_('Allowlist'), _('Blocklist'));
+        this._field_ocr_shortcut   = new UI.Short(gsettings, Fields.OCRSHORTCUT);
+        this._field_dwell_ocr      = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._field_enable_ocr     = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._field_enable_strip   = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._field_enable_systray = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._field_enable_tooltip = new Gtk.Switch({ valign: Gtk.Align.CENTER });
+        this._field_hide_title     = new Gtk.Switch({ valign: Gtk.Align.CENTER });
         this._field_app_list       = new AppsBox(_('Click the app icon to remove'));
-        this._field_list_type      = new UI.Combo([_('Allowlist'), _('Blocklist')]);
-        this._field_trigger_style  = new UI.Combo([_('Swift'), _('Popup'), _('Disable')]);
-        this._field_ocr_shortcut   = new UI.Shortcut(gsettings.get_strv(Fields.OCRSHORTCUT));
-        this._field_left_command   = new UI.Entry('notify-send LDWORD', _('Left click to run'));
-        this._field_ocr_work_mode  = new UI.Combo([_('Word'), _('Paragraph'), _('Area'), _('Line')]);
-        this._ocr_help_button      = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE });
-        this._field_passive_mode   = new UI.Combo([_('Proactive'), _('Passive')], _('Need modifier to trigger or not'));
-        this._field_enable_ocr     = new Gtk.Switch({ tooltip_text: _('Depends on python-opencv and python-pytesseract') });
-        this._field_right_command  = new UI.Entry('gio open https://www.google.com/search?q=LDWORD', _('Right click to run and hide panel'));
+        this._field_trigger_style  = new UI.Drop(_('Swift'), _('Popup'), _('Disable'));
+        this._field_ocr_work_mode  = new UI.Drop(_('Word'), _('Paragraph'), _('Area'), _('Line'));
+        this._ocr_help_button      = new Gtk.MenuButton({ label: _('Help'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
+        this._field_enable_ocr     = new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true });
     }
 
     _buildUI() {
-        let common = new UI.ListGrid();
-        common._add(new UI.Label(_('Enable systray')), this._field_enable_systray);
-        common._add(new UI.Label(_('Trim blank lines')), this._field_enable_strip);
-        common._add(new UI.Label(_('Autohide interval')), this._field_auto_hide);
-        common._add(new UI.Label(_('Trigger style')), this._field_passive_mode, this._field_trigger_style);
-        common._att(new UI.Label(_('Application list'), true), this._field_app_list, this._field_list_type);
-        common._att(new UI.Label(_('RegExp filter'), true), this._field_text_filter);
-        let panel = new UI.ListGrid();
-        panel._add(new UI.Label(_('Hide title')), this._field_hide_title);
-        panel._att(new UI.Label(_('Right command'), true), this._field_right_command);
-        panel._att(new UI.Label(_('Left command'), true), this._field_left_command);
-        let popup = new UI.ListGrid();
-        popup._add(new UI.Label(_('Enable tooltip')), this._field_enable_tooltip);
-        popup._add(new UI.Label(_('Page size')), this._field_page_size);
-        let ocr = new UI.ListGrid();
-        ocr._add(new UI.Label(_('Enable OCR')), this._field_enable_ocr);
-        ocr._add(new UI.Label(_('Dwell OCR')), this._field_dwell_ocr);
-        ocr._add(this._field_short_ocr, this._field_ocr_shortcut);
-        ocr._add(new UI.Label(_('Work mode')), this._field_ocr_work_mode);
-        ocr._att(this._ocr_help_button, this._field_ocr_params);
+        [
+            [[_('Enable systray')], this._field_enable_systray],
+            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._field_passive_mode, this._field_trigger_style],
+            [[_('Application list')], this._field_app_list, this._field_list_type],
+        ].forEach(xs => this._add(new UI.PrefRow(...xs)));
+        [
+            [this._field_short_ocr, [_('Shortcut')], this._field_ocr_shortcut],
+            [[_('Dwell OCR')], this._field_dwell_ocr],
+            [[_('Work mode')], this._field_ocr_work_mode],
+            [[_('Parameters')], this._field_ocr_params, this._ocr_help_button],
+        ].forEach(xs => this._field_enable_ocr.add_row(new UI.PrefRow(...xs)));
+        [this._buildList(_('Other'),
+            [[_('Trim blank lines')], this._field_enable_strip],
+            [[_('Autohide interval')], this._field_auto_hide],
+            [[_('RegExp filter')], this._field_text_filter]),
+        this._buildList(_('Panel'),
+            [[_('Hide title')], this._field_hide_title],
+            [[_('Right command'), _('Right click to run and hide panel')], this._field_right_command],
+            [[_('Left command'), _('Left click to run')], this._field_left_command]),
+        this._buildList(_('Popup'),
+            [[_('Enable tooltip')], this._field_enable_tooltip],
+            [[_('Page size')], this._field_page_size])].forEach(x => this._add(x));
+        this._add(this._field_enable_ocr);
+    }
 
-        this.appends([new UI.Frame(common, _('Common'), true), new UI.Frame(panel, _('Panel'), true), new UI.Frame(popup, _('Popup'), true), new UI.Frame(ocr, _('OCR'))]);
+    _buildList(title, ...list) {
+        let expander = new Adw.ExpanderRow({ title });
+        list.forEach(xs => expander.add_row(new UI.PrefRow(...xs)));
+        return expander;
     }
 
     _bindValues() {
-        gsettings.bind(Fields.TXTFILTER, this._field_text_filter,    'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.RCOMMAND,  this._field_right_command,  'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LCOMMAND,  this._field_left_command,   'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.OCRPARAMS, this._field_ocr_params,     'text',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.APPLIST,   this._field_app_list,       'apps',   Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.AUTOHIDE,  this._field_auto_hide,      'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PAGESIZE,  this._field_page_size,      'value',  Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TRIGGER,   this._field_trigger_style,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.OCRMODE,   this._field_ocr_work_mode,  'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.LISTTYPE,  this._field_list_type,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SYSTRAY,   this._field_enable_systray, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.ENABLEOCR, this._field_enable_ocr,     'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.DWELLOCR,  this._field_dwell_ocr,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.SHORTOCR,  this._field_short_ocr,      'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.HIDETITLE, this._field_hide_title,     'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TEXTSTRIP, this._field_enable_strip,   'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.TOOLTIP,   this._field_enable_tooltip, 'active', Gio.SettingsBindFlags.DEFAULT);
-        gsettings.bind(Fields.PASSIVE,   this._field_passive_mode,   'active', Gio.SettingsBindFlags.DEFAULT);
-
-        this._bindOCRWidgets();
-        this._field_ocr_params._set_edit();
-        this._field_text_filter._set_edit();
-        this._field_left_command._set_edit();
-        this._field_right_command._set_edit();
+        [
+            [Fields.TXTFILTER, this._field_text_filter,    'text'],
+            [Fields.RCOMMAND,  this._field_right_command,  'text'],
+            [Fields.LCOMMAND,  this._field_left_command,   'text'],
+            [Fields.OCRPARAMS, this._field_ocr_params,     'text'],
+            [Fields.APPLIST,   this._field_app_list,       'apps'],
+            [Fields.AUTOHIDE,  this._field_auto_hide,      'value'],
+            [Fields.PAGESIZE,  this._field_page_size,      'value'],
+            [Fields.TRIGGER,   this._field_trigger_style,  'selected'],
+            [Fields.OCRMODE,   this._field_ocr_work_mode,  'selected'],
+            [Fields.LISTTYPE,  this._field_list_type,      'selected'],
+            [Fields.SYSTRAY,   this._field_enable_systray, 'active'],
+            [Fields.ENABLEOCR, this._field_enable_ocr,     'enable-expansion'],
+            [Fields.DWELLOCR,  this._field_dwell_ocr,      'active'],
+            [Fields.SHORTOCR,  this._field_short_ocr,      'active'],
+            [Fields.HIDETITLE, this._field_hide_title,     'active'],
+            [Fields.TEXTSTRIP, this._field_enable_strip,   'active'],
+            [Fields.TOOLTIP,   this._field_enable_tooltip, 'active'],
+            [Fields.PASSIVE,   this._field_passive_mode,   'selected'],
+        ].forEach(xs => gsettings.bind(...xs, Gio.SettingsBindFlags.DEFAULT));
+        this._buildHelpPopver().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
     }
 
-    _bindOCRHelp() {
+    async _buildHelpPopver() {
         let proc = new Gio.Subprocess({
             argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
             flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
         });
         proc.init(null);
-        proc.communicate_utf8_async(null, null, (prc, res) => {
-            try {
-                let [, stdout, stderr] = prc.communicate_utf8_finish(res);
-                let label = prc.get_successful() ? stdout : stderr;
-                this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: label.trim() }) }));
-            } catch(e) {
-                this._ocr_help_button.set_popover(new Gtk.Popover({ child: new Gtk.Label({ label: e.message }) }));
-            }
-        });
+        let [stdout, stderr] = await proc.communicate_utf8_async(null, null);
+        let label = proc.get_successful() ? stdout : stderr;
+        return new Gtk.Popover({ child: new Gtk.Label({ label: label.trim() }) });
+    }
+}
+
+class LightDictJSON extends PrefPage {
+    static {
+        GObject.registerClass(this);
     }
 
-    _bindOCRWidgets() {
-        this._bindOCRHelp();
-        [this._field_dwell_ocr, this._field_short_ocr, this._ocr_help_button,
-            this._field_ocr_params, this._field_ocr_shortcut, this._field_ocr_work_mode].forEach(widget => {
-            this._field_enable_ocr.bind_property('active', widget, 'sensitive', GObject.BindingFlags.GET);
-            widget.set_sensitive(this._field_enable_ocr.active);
-        });
-        this._field_ocr_shortcut.connect('changed', (widget, keys) => { gsettings.set_strv(Fields.OCRSHORTCUT, [keys]); });
-    }
-});
-
-const LightDictJSON = GObject.registerClass(
-class LightDictJSON extends UI.Box {
-    _init(key) {
-        super._init();
+    constructor(params, key) {
+        super(params);
         this._key = key;
         this._swift = key === Fields.SCOMMANDS;
         this._cmds = gsettings.get_strv(key);
@@ -549,9 +615,18 @@ class LightDictJSON extends UI.Box {
     }
 
     _buildWidgets() {
-        this._side = new SideBar(this._cmds.map(x => (c => [!!c.enable, c.name])(JSON.parse(x))), this._swift);
-        this._pane = this._swift ? new SwiftBox() : new PopupBox();
-        this.append(new UI.Frame(new UI.Box().appendS([this._side, this._pane])));
+        let box = new Gtk.Box({ hexpand: true });
+        if(this._swift) {
+            this._pane = new SwiftBox();
+            let index = this.enabled;
+            this._side = new SideBar(this._cmds.map((x, i) => [i === index, JSON.parse(x).name]), true);
+        } else {
+            this._pane = new PopupBox();
+            this._side = new SideBar(this._cmds.map(x => (c => [!!c.enable, c.name])(JSON.parse(x))), false);
+        }
+        [this._side, new Gtk.Separator(), this._pane].forEach(x => box.append(x));
+        let frame = new Gtk.Frame({ child: box });
+        this._add(frame);
     }
 
     _bindValues() {
@@ -560,61 +635,68 @@ class LightDictJSON extends UI.Box {
         this._side.connect('changed', this._onNameChanged.bind(this));
         this._side.connect('enabled', this._onEnableToggled.bind(this));
         this._pane.connect('changed', this._onValueChanged.bind(this));
+        this._side._grabFocus();
     }
 
     _onSelectChanged(widget, index) {
-        this._pane.config = JSON.parse(this._cmds[index]);
+        this._pane.config = JSON.parse(this._cmds[index] || '{}');
     }
 
     _onNameChanged(widget, index, name) {
-        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { name }), null, 0);
+        this._cmds[index] = JSON.stringify({ ...JSON.parse(this._cmds[index]), name }, null, 0);
         this._saveCommands();
     }
 
-    get enable() {
-        return this._cmds.findIndex(c => !!JSON.parse(c).enable);
+    get enabled() {
+        return gsettings.get_int(Fields.SCOMMAND);
     }
 
     _onButtonClicked(widget, index, button) {
-        let enable = this.enable;
+        let enable = this.enabled, moved = null;
         switch(button) {
         case 'go-up':
         case 'go-down': {
             let swap = button === 'go-up' ? index - 1 : index + 1;
             [this._cmds[index], this._cmds[swap]] = [this._cmds[swap], this._cmds[index]];
-            if(enable === swap || enable === index) this._saveCommand(enable === index ? swap : index);
+            if(enable === swap || enable === index) moved = enable === index ? swap : index;
             break;
         }
         case 'list-remove':
             this._cmds.splice(index, 1);
-            if(enable >= index) this._saveCommand(enable === index ? -1 : enable - 1);
+            if(enable >= index) moved = enable === index ? -1 : enable - 1;
+            this._pane.config = JSON.parse(this._cmds[index] || this._cmds[index - 1] || '{}');
+            if(this._cmds.length > 0 ^ this._pane.sensitive) this._pane.set_sensitive(this._cmds.length > 0);
             break;
         case 'list-add':
-            if(index === -1) {
+            if(index < 0) {
                 this._cmds.push('{"name":"name"}');
+                this._pane.set_sensitive(true);
+                this._side._grabFocus();
             } else {
                 this._cmds.splice(index + 1, 0, '{"name":"name"}');
-                if(enable > index) this._saveCommand(enable + 1);
+                if(enable > index) moved = enable + 1;
+                this._side._grabFocusNext();
             }
             break;
         }
         this._saveCommands();
+        if(moved !== null) this._saveCommand(moved);
     }
 
     _onEnableToggled(widget, index, enable) {
         if(this._swift) {
-            this._cmds = this._cmds.map((c, i) => JSON.stringify(Object.assign(JSON.parse(c), { enable: enable && i === index || undefined }), null, 0));
             if(enable && this._cmds[index]) this._saveCommand(index);
         } else {
-            this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), { enable: enable || undefined }), null, 0);
+            this._cmds[index] = JSON.stringify({ ...JSON.parse(this._cmds[index]), enable: enable || undefined }, null, 0);
+            this._saveCommands();
         }
-        this._saveCommands();
     }
 
     _onValueChanged(widget, prop) {
         let index = this._side.selected;
+        log(index);
         if(!this._cmds[index]) return;
-        this._cmds[index] = JSON.stringify(Object.assign(JSON.parse(this._cmds[index]), prop), null, 0);
+        this._cmds[index] = JSON.stringify({ ...JSON.parse(this._cmds[index]), ...prop }, null, 0);
         this._saveCommands();
     }
 
@@ -625,5 +707,5 @@ class LightDictJSON extends UI.Box {
     _saveCommands() {
         gsettings.set_strv(this._key, this._cmds);
     }
-});
+}
 
