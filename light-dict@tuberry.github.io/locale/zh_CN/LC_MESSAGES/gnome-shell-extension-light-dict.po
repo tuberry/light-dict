@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2022-03-08 21:28+0800\n"
+"POT-Creation-Date: 2022-03-19 15:33+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -257,7 +257,7 @@ msgstr "启用提示"
 msgid "Page size"
 msgstr "页面容量"
 
-#: ui.js:56
+#: ui.js:30
 msgid "Clear"
 msgstr "清除"
 

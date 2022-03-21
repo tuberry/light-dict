@@ -123,8 +123,8 @@ class AppsBox extends Gtk.Box {
             let widgets = [];
             let children = this._box.observe_children();
             for(let i = 0, x; (x = children.get_item(i)); i++) widgets.push(x);
-            widgets.forEach(w => { this._box.remove(w); });
-            apps.split(',').forEach(a => { this._appendApp(a); });
+            widgets.forEach(w => this._box.remove(w));
+            apps.split(',').forEach(a => this._appendApp(a));
         }
         this._apps = apps;
         this.notify('apps');
@@ -200,7 +200,7 @@ class SideBar extends Gtk.Box {
     _buildList(cmds) {
         let model = new Gtk.ListStore();
         model.set_column_types([GObject.TYPE_BOOLEAN, GObject.TYPE_STRING]);
-        cmds.forEach(x => { model.set(model.append(), [0, 1], x); });
+        cmds.forEach(x => model.set(model.append(), [0, 1], x));
         this._list = new Gtk.TreeView({ model, headers_visible: false, vexpand: true });
         this._list.get_selection().connect('changed', this._onSelectChanged.bind(this));
         [[new Gtk.CellRendererToggle({ radio: this._swift }), 'active', 'toggled', this._onEnableToggled.bind(this)],
@@ -221,8 +221,8 @@ class SideBar extends Gtk.Box {
     _buildTool() {
         let box = new Gtk.Box({ css_classes: ['linked'] });
         ['list-add', 'list-remove', 'go-down', 'go-up'].map(x => {
-            let btn = new Gtk.Button({ icon_name: '%s-symbolic'.format(x), has_frame: false });
-            btn.connect('clicked', () => { this._onButtonClicked(x); });
+            let btn = new Gtk.Button({ icon_name: `${x}-symbolic`, has_frame: false });
+            btn.connect('clicked', () => this._onButtonClicked(x));
             return btn;
         }).forEach(x => box.append(x));
 
@@ -348,14 +348,14 @@ class SwiftBox extends Adw.PreferencesPage {
     }
 
     _bindValues() {
-        this._popup.connect('state-set', (widget, state) => { this._emitChanged({ popup: state || undefined }); });
-        this._commit.connect('state-set', (widget, state) => { this._emitChanged({ commit: state || undefined }); });
-        this._select.connect('state-set', (widget, state) => { this._emitChanged({ select: state || undefined }); });
-        this._copy.connect('state-set', (widget, state) => { this._emitChanged({ copy: state || undefined }); });
-        this._apps.connect('changed', widget => { this._emitChanged({ apps: widget.get_apps() || undefined }); });
-        this._type.connect('notify::selected', widget => { this._emitChanged({ type: widget.get_selected() || undefined }); });
-        this._regexp.connect('changed', widget => { this._emitChanged({ regexp: widget.get_text() || undefined }); });
-        this._command.connect('changed', widget => { this._emitChanged({ command: widget.get_text() || undefined }); });
+        this._popup.connect('state-set', (widget, state) => this._emitChanged({ popup: state || undefined }));
+        this._commit.connect('state-set', (widget, state) => this._emitChanged({ commit: state || undefined }));
+        this._select.connect('state-set', (widget, state) => this._emitChanged({ select: state || undefined }));
+        this._copy.connect('state-set', (widget, state) => this._emitChanged({ copy: state || undefined }));
+        this._apps.connect('changed', widget => this._emitChanged({ apps: widget.get_apps() || undefined }));
+        this._type.connect('notify::selected', widget => this._emitChanged({ type: widget.get_selected() || undefined }));
+        this._regexp.connect('changed', widget => this._emitChanged({ regexp: widget.get_text() || undefined }));
+        this._command.connect('changed', widget => this._emitChanged({ command: widget.get_text() || undefined }));
     }
 
     _emitChanged(param) {
@@ -369,7 +369,7 @@ class SwiftBox extends Adw.PreferencesPage {
         let temp = { ...this._temp, ...config };
         Object.keys(temp).forEach(x => {
             let prop = temp[x];
-            let widget = this['_%s'.format(x)];
+            let widget = this[`_${x}`];
             if(widget === undefined) return;
             switch(typeof prop) {
             case 'boolean': widget.set_state(prop); break;
@@ -420,8 +420,8 @@ class PopupBox extends SwiftBox {
 
     _bindValues() {
         super._bindValues();
-        this._icon.connect('changed', (widget, icon) => { this._emitChanged({ icon: icon || undefined }); });
-        this._tooltip.connect('changed', widget => { this._emitChanged({ tooltip: widget.get_text() || undefined }); });
+        this._icon.connect('changed', (widget, icon) => this._emitChanged({ icon: icon || undefined }));
+        this._tooltip.connect('changed', widget => this._emitChanged({ tooltip: widget.get_text() || undefined }));
     }
 }
 
@@ -459,10 +459,10 @@ class LightDictAbout extends PrefPage {
 
     _buildInfo() {
         return this._buildLabel([
-            '<b><big>%s</big></b>'.format(Me.metadata.name),
+            `<b><big>${Me.metadata.name}</big></b>`,
             _('Version %d').format(Me.metadata.version),
             _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
-            '<span><a href="%s">%s\n</a></span>'.format(Me.metadata.url, _GTK('Website')),
+            `<span><a href="${Me.metadata.url}">${_GTK('Website')}\n</a></span>`,
         ].join('\n\n'));
     }
 
@@ -477,7 +477,7 @@ class LightDictAbout extends PrefPage {
             _('Middle click the panel to copy the result to clipboard'),
             _('Substitute <b>LDWORD</b> for the selected text in the command'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
-        ].forEach((x, i) => box.append(new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: '%d. %s'.format(i, x) })));
+        ].forEach((x, i) => box.append(new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: `${i}. ${x}` })));
 
         return new Gtk.MenuButton({
             label: _('Tips'),
@@ -492,7 +492,7 @@ class LightDictAbout extends PrefPage {
         let license  = _GTK('GNU General Public License, version 3 or later');
         let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
 
-        return this._buildLabel('<small>\n\n%s</small>'.format(_GTK(statement).format(gpl, license)));
+        return this._buildLabel(`<small>\n\n${_GTK(statement).format(gpl, license)}</small>`);
     }
 }
 

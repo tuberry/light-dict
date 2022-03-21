@@ -23,9 +23,9 @@ const g_pointer = () => global.get_pointer();
 const g_size = () => global.display.get_size();
 const g_focus = () => global.display.get_focus_window();
 const still = (u, v) => u[0] === v[0] && u[1] === v[1];
-const dwell = (u, v, w, m) => !still(u, v) << 1 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
+const dwell = (u, v, w, m) => !still(u, v) * 2 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
-const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child('%s-symbolic.svg'.format(x)).get_path());
+const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
@@ -67,7 +67,7 @@ class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, params) {
         super(text, active, params);
-        this.connect('toggled', (x_, y) => { callback(y); });
+        this.connect('toggled', (x_, y) => callback(y));
     }
 }
 
@@ -95,7 +95,7 @@ class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
         super('');
         this._name = name;
         this._list = Object.keys(modes);
-        this._list.map((x, i) => new MenuItem(_(x), () => { callback(i); })).forEach(x => this.menu.addMenuItem(x));
+        this._list.map((x, i) => new MenuItem(_(x), () => callback(i))).forEach(x => this.menu.addMenuItem(x));
         this.setSelected(index);
     }
 
@@ -121,14 +121,14 @@ class DListItem extends PopupMenu.PopupSubMenuMenuItem {
 
     setSelected(index) {
         this._index = index;
-        this.label.set_text('%s%s'.format(this._name, this._list[this._index] ?? ''));
+        this.label.set_text(`${this._name}${this._list[this._index] ?? ''}`);
         this._items.forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 
     setList(list) {
         let items = this._items;
         let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => { this._call(items.length + a); }));
+        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._call(items.length + a)));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
         this._list = list;
         this._items.forEach((x, i) => x.setLabel(this._list[i]));
@@ -146,8 +146,8 @@ class DictPop extends St.Button {
 
     constructor(call1, call2) {
         super({ style_class: 'light-dict-button candidate-box' });
-        this.connect('clicked', () => { call1(this._index); });
-        this.connect('enter-event', () => { call2(this._index); });
+        this.connect('clicked', () => call1(this._index));
+        this.connect('enter-event', () => call2(this._index));
     }
 
     setButton({ icon = null, name: label }, index) {
@@ -196,7 +196,7 @@ class DictBar extends BoxPointer.BoxPointer {
         [[Fields.TOOLTIP, 'tooltip'], [Fields.PAGESIZE, 'size'], [Fields.AUTOHIDE, 'autohide']]
             .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
         this.setPcommands();
-        gsettings.connectObject('changed::%s'.format(Fields.PCOMMANDS), () => { this.setPcommands(); }, this);
+        gsettings.connectObject(`changed::${Fields.PCOMMANDS}`, this.setPcommands.bind(this), this);
         // gsettings.bind_with_mapping(Fields.PCOMMANDS, this, 'pcommands', Gio.SettingsBindFlags.GET); // NOTE: unavailable
     }
 
@@ -230,19 +230,19 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _updatePages() {
-        this._icons.forEach(x => { x.visible = x._visible; });
+        this._icons.forEach(x => (x.visible = x._visible));
         let icons = this._icons.filter(x => x.visible);
         this._pages = icons.length && this.size ? Math.ceil(icons.length / this.size) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
-        if(this._idx === this._pages && icons.length % this.size) icons.forEach((x, i) => { x.visible = i >= icons.length - this.size && i < icons.length; });
-        else icons.forEach((x, i) => { x.visible = i >= (this._idx - 1) * this.size && i < this._idx * this.size; });
+        if(this._idx === this._pages && icons.length % this.size) icons.forEach((x, i) => (x.visible = i >= icons.length - this.size && i < icons.length));
+        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.size && i < this._idx * this.size));
     }
 
     _updateViz(app, text) {
         let ics = this._icons;
         this._cmds.forEach(({ regexp, apps }, i) => {
-            switch(!!regexp << 1 | !!apps) {
+            switch(!!regexp * 2 | !!apps) {
             case 0: ics[i]._visible = true; break;
             case 1: ics[i]._visible = apps.includes(app); break;
             case 2: ics[i]._visible = RegExp(regexp).test(text); break;
@@ -341,7 +341,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _buildWidgets() {
         this._view = new St.ScrollView({
-            visible: false, overlay_scrollbars: true,
+            visible: false, overlay_scrollbars: true, clip_to_allocation: true,
             style_class: 'light-dict-scroll', hscrollbar_policy: St.PolicyType.NEVER,
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
@@ -380,7 +380,7 @@ class DictBox extends BoxPointer.BoxPointer {
     _onLeave(actor) {
         clearTimeout(this._delayId);
         this._delayId = setTimeout(outOf(this._rect, g_pointer()) ? this.dispel.bind(this)
-            : () => { this._onLeave(true); }, actor ? this.autohide / 10 : this.autohide);
+            : () => this._onLeave(true), actor ? this.autohide / 10 : this.autohide);
     }
 
     _onClick(actor, event) {
@@ -463,7 +463,7 @@ class DictAct extends GObject.Object {
     constructor() {
         super();
         this._bindSettings();
-        this._ocr_cmd = 'python %s '.format(Me.dir.get_child('ldocr.py').get_path());
+        this._ocr_cmd = `python ${Me.dir.get_child('ldocr.py').get_path()} `;
         this._keyboard = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
     }
 
@@ -477,7 +477,7 @@ class DictAct extends GObject.Object {
             [Fields.SHORTOCR,  'short_ocr'],
         ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
         this.setScommands();
-        gsettings.connectObject('changed::%s'.format(Fields.SCOMMANDS), this.setScommands.bind(this), this);
+        gsettings.connectObject(`changed::${Fields.SCOMMANDS}`, this.setScommands.bind(this), this);
     }
 
     setScommands() {
@@ -508,7 +508,7 @@ class DictAct extends GObject.Object {
     set short_ocr(short) {
         this._shortId && Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
         this._shortId = (this._short_ocr = short) && this._enable_ocr &&
-            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => { this._invokeOCR(); });
+            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
     }
 
     set ocr_mode(mode) {
@@ -525,7 +525,7 @@ class DictAct extends GObject.Object {
         if(!this._enable_ocr) return;
         this.screenshot = true;
         this.execute(this._ocr_cmd + (params || [this.ocr_params, attach, '-m', this._ocr_mode].join(' ')))
-            .catch(noop).finally(() => { this.screenshot = false; });
+            .catch(noop).finally(() => (this.screenshot = false));
     }
 
     _release(keyname) {
@@ -542,7 +542,7 @@ class DictAct extends GObject.Object {
             let keyarray = keys.split('+');
             keyarray.forEach(key => this._press(key));
             keyarray.reverse().forEach(key => this._release(key));
-        }, i * 100)); // NOTE: Modifier keys aren't working on Wayland (input area)
+        }, i * 100));
     }
 
     commit(string) {
@@ -614,7 +614,7 @@ class DictBtn extends PanelMenu.Button {
             [Fields.SCOMMAND,  'scommand'],
         ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
         this.setScommands();
-        gsettings.connectObject('changed::%s'.format(Fields.SCOMMANDS), this.setScommands.bind(this), this);
+        gsettings.connectObject(`changed::${Fields.SCOMMANDS}`, this.setScommands.bind(this), this);
     }
 
     setScommands() {
@@ -666,7 +666,7 @@ class DictBtn extends PanelMenu.Button {
 
     _updateIcon() {
         let style = Object.keys(Trigger)[this._trigger ?? 0].toLowerCase();
-        this._icon.set_gicon(genIcon('%s-%s'.format(style, this._passive ?? 0 ? 'passive' : 'proactive')));
+        this._icon.set_gicon(genIcon(`${style}-${this._passive ?? 0 ? 'passive' : 'proactive'}`));
     }
 
     _addMenuItems() {
@@ -678,7 +678,7 @@ class DictBtn extends PanelMenu.Button {
             scmds:    new DListItem(_('Swift: '), this._scmds, this._scmd, x => gsettings.set_int(Fields.SCOMMAND, x)),
             ocr:      new RadioItem(_('OCR: '), OCRMode, this._ocr_mode, x => gsettings.set_uint(Fields.OCRMODE, x)),
             sep2:     new PopupMenu.PopupSeparatorMenuItem(),
-            settings: new MenuItem(_('Settings'), () => { ExtensionUtils.openPrefs(); }),
+            settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
         for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
         this.enable_ocr = this._enable_ocr;
@@ -765,7 +765,7 @@ class LightDict extends GObject.Object {
 
     set cursor(cursor) {
         let [x, y, w, h] = cursor && cursor[3] < g_size()[1] / 2 ? cursor
-            : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b, b])(g_pointer(), Meta.prefs_get_cursor_size());
+            : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b * 1.15, b * 1.15])(g_pointer(), Meta.prefs_get_cursor_size());
         this._cursor = !!cursor && w > 250;
         this._cur.set_position(x, y);
         this._cur.set_size(w, h);
