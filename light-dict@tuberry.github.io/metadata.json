@@ -4,7 +4,7 @@
   "name": "Light Dict",
   "settings-schema": "org.gnome.shell.extensions.light-dict",
   "shell-version": [
-    "42"
+    "43"
   ],
   "url": "https://github.com/tuberry/light-dict",
   "uuid": "light-dict@tuberry.github.io",

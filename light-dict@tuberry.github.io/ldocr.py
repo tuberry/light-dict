@@ -19,7 +19,7 @@ def main():
     if result.cancel: return
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
     if args.cursor: result.area = None
-    # NOTE: better shortcut needs  https://gitlab.gnome.org/GNOME/mutter/-/issues/207
+    # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
     gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
 
 def parser():
@@ -82,7 +82,7 @@ def bincount_img(img):
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
     if trim:
-        # shadows issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
+        # ISSUE: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
         edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0)
         img = img[edg: img.shape[0] - edg, edg: img.shape[1] - edg]
@@ -118,7 +118,7 @@ def show_img(image, title='img'):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-# CJK spaces issue: https://github.com/tesseract-ocr/tesseract/issues/991
+# ISSUE: https://github.com/tesseract-ocr/tesseract/issues/991
 def typeset_str(para): return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para)).replace('|', 'I').strip(string.whitespace + '“”‘’')
 
 def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1

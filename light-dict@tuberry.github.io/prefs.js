@@ -9,7 +9,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const gsettings = ExtensionUtils.getSettings();
 const _ = ExtensionUtils.gettext;
 const _GTK = imports.gettext.domain('gtk40').gettext;
-const Fields = Me.imports.fields.Fields;
+const { Fields } = Me.imports.fields;
 const UI = Me.imports.ui;
 const noop = () => {};
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);

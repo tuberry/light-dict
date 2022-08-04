@@ -14,9 +14,8 @@ const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = impor
 
 const InputScMgr = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
-const Fields = Me.imports.fields.Fields;
+const { Fields } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
-let gsettings = null;
 
 const noop = () => {};
 const g_pointer = () => global.get_pointer();
@@ -26,7 +25,6 @@ const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const dwell = (u, v, w, m) => !still(u, v) * 2 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
 const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
-const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
@@ -59,6 +57,32 @@ const LD_DBUS =
 </node>`;
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
+
+class Field {
+    constructor(prop, gset, obj) {
+        this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
+        this.prop = prop;
+        this.bind(obj);
+    }
+
+    _get(x) {
+        return this.gset[`get_${this.prop[x][1]}`](this.prop[x][0]);
+    }
+
+    _set(x, y) {
+        this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
+    }
+
+    bind(a) {
+        let fs = Object.entries(this.prop);
+        fs.forEach(([x]) => { a[x] = this._get(x); });
+        this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
+    }
+
+    unbind(a) {
+        this.gset.disconnectObject(a);
+    }
+}
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
@@ -161,11 +185,6 @@ class DictPop extends St.Button {
 class DictBar extends BoxPointer.BoxPointer {
     static {
         GObject.registerClass({
-            Properties: {
-                size: genParam('uint', 'size', 1, 10, 5),
-                tooltip: genParam('boolean', 'tooltip', false),
-                autohide: genParam('uint', 'autohide', 500, 10000, 2500),
-            },
             Signals: {
                 dict_bar_clicked: { param_types: [GObject.TYPE_JSOBJECT] },
             },
@@ -193,15 +212,16 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _bindSettings() {
-        [[Fields.TOOLTIP, 'tooltip'], [Fields.PAGESIZE, 'size'], [Fields.AUTOHIDE, 'autohide']]
-            .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
-        this.setPcommands();
-        gsettings.connectObject(`changed::${Fields.PCOMMANDS}`, this.setPcommands.bind(this), this);
-        // gsettings.bind_with_mapping(Fields.PCOMMANDS, this, 'pcommands', Gio.SettingsBindFlags.GET); // NOTE: unavailable
+        this._field = new Field({
+            pgsize:    [Fields.PAGESIZE,  'uint'],
+            tooltip:   [Fields.TOOLTIP,   'boolean'],
+            autohide:  [Fields.AUTOHIDE,  'uint'],
+            pcommands: [Fields.PCOMMANDS, 'strv'],
+        }, ExtensionUtils.getSettings(), this);
     }
 
-    setPcommands() {
-        let cmds = gsettings.get_strv(Fields.PCOMMANDS).map(x => JSON.parse(x)).filter(x => x.enable);
+    set pcommands(pcmds) {
+        let cmds = pcmds.map(x => JSON.parse(x)).filter(x => x.enable);
         let pk = x => JSON.stringify(x.map(y => [y.icon, y.name]));
         if(pk(cmds) === pk(this._cmds ?? [])) { this._cmds = cmds; return; }
         let icons = this._icons;
@@ -232,11 +252,11 @@ class DictBar extends BoxPointer.BoxPointer {
     _updatePages() {
         this._icons.forEach(x => (x.visible = x._visible));
         let icons = this._icons.filter(x => x.visible);
-        this._pages = icons.length && this.size ? Math.ceil(icons.length / this.size) : 0;
+        this._pages = icons.length && this.pgsize ? Math.ceil(icons.length / this.pgsize) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
-        if(this._idx === this._pages && icons.length % this.size) icons.forEach((x, i) => (x.visible = i >= icons.length - this.size && i < icons.length));
-        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.size && i < this._idx * this.size));
+        if(this._idx === this._pages && icons.length % this.pgsize) icons.forEach((x, i) => (x.visible = i >= icons.length - this.pgsize && i < icons.length));
+        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.pgsize && i < this._idx * this.pgsize));
     }
 
     _updateViz(app, text) {
@@ -311,7 +331,7 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     destroy() {
-        gsettings.disconnectObject(this);
+        this._field.unbind(this);
         clearTimeout(this._tooltipId);
         clearTimeout(this._delayId);
         this.tooltips = false;
@@ -321,13 +341,7 @@ class DictBar extends BoxPointer.BoxPointer {
 
 class DictBox extends BoxPointer.BoxPointer {
     static {
-        GObject.registerClass({
-            Properties: {
-                lcommand: genParam('string', 'lcommand', ''),
-                rcommand: genParam('string', 'rcommand', ''),
-                autohide: genParam('uint', 'autohide', 500, 10000, 2500),
-            },
-        }, this);
+        GObject.registerClass(this);
     }
 
     constructor() {
@@ -345,7 +359,7 @@ class DictBox extends BoxPointer.BoxPointer {
             style_class: 'light-dict-scroll', hscrollbar_policy: St.PolicyType.NEVER,
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
-        this._text = new St.Label({ style_class: 'light-dict-text' });
+        this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
         this._text.clutter_text.line_wrap = true; // FIXME: incompatible with ScrollView AUTOMATIC policy / GNOME 42
         this._info.clutter_text.line_wrap = true;
@@ -354,13 +368,16 @@ class DictBox extends BoxPointer.BoxPointer {
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
-            'button-press-event', this._onClick.bind(this), this); // FIXME: missing `leave-event` signals on Wayland / GNOME 42
-        gsettings.bind(Fields.HIDETITLE, this._text, 'visible', Gio.SettingsBindFlags.INVERT_BOOLEAN);
+            'button-press-event', this._onClick.bind(this), this);
     }
 
     _bindSettings() {
-        [[Fields.AUTOHIDE, 'autohide'], [Fields.LCOMMAND, 'lcommand'], [Fields.RCOMMAND, 'rcommand']]
-            .forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this._field = new Field({
+            lcommand:   [Fields.LCOMMAND,  'string'],
+            rcommand:   [Fields.RCOMMAND,  'string'],
+            autohide:   [Fields.AUTOHIDE,  'uint'],
+            hide_title: [Fields.HIDETITLE, 'boolean'],
+        }, ExtensionUtils.getSettings(), this);
     }
 
     get _scrollable() {
@@ -369,6 +386,11 @@ class DictBox extends BoxPointer.BoxPointer {
         if(limited < 0) limited = g_size()[1] * 15 / 32;
 
         return height >= limited;
+    }
+
+    set hide_title(hide) {
+        this._hide_title = hide;
+        this._text?.set_visible(!this._hide_title);
     }
 
     _onEnter() {
@@ -438,6 +460,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     destroy() {
+        this._field.unbind(this);
         clearTimeout(this._delayId);
         super.destroy();
     }
@@ -446,14 +469,6 @@ class DictBox extends BoxPointer.BoxPointer {
 class DictAct extends GObject.Object {
     static {
         GObject.registerClass({
-            Properties: {
-                ocr_params: genParam('string', 'ocr_params', ''),
-                ocr_mode:   genParam('uint', 'ocr_mode', 0, 5, 0),
-                scommand:   genParam('int', 'scommand', -1, 2000, 0),
-                dwell_ocr:  genParam('boolean', 'dwell_ocr', false),
-                short_ocr:  genParam('boolean', 'short_ocr', false),
-                enable_ocr: genParam('boolean', 'enable_ocr', false),
-            },
             Signals: {
                 dict_act_dwelled: { param_types: [GObject.TYPE_UINT, GObject.TYPE_JSOBJECT] },
             },
@@ -468,20 +483,20 @@ class DictAct extends GObject.Object {
     }
 
     _bindSettings() {
-        [
-            [Fields.ENABLEOCR, 'enable_ocr'],
-            [Fields.OCRMODE,   'ocr_mode'],
-            [Fields.OCRPARAMS, 'ocr_params'],
-            [Fields.SCOMMAND,  'scommand'],
-            [Fields.DWELLOCR,  'dwell_ocr'],
-            [Fields.SHORTOCR,  'short_ocr'],
-        ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
-        this.setScommands();
-        gsettings.connectObject(`changed::${Fields.SCOMMANDS}`, this.setScommands.bind(this), this);
+        this.gset = ExtensionUtils.getSettings();
+        this._field = new Field({
+            ocr_params: [Fields.OCRPARAMS, 'string'],
+            ocr_mode:   [Fields.OCRMODE,   'uint'],
+            scommand:   [Fields.SCOMMAND,  'int'],
+            dwell_ocr:  [Fields.DWELLOCR,  'boolean'],
+            short_ocr:  [Fields.SHORTOCR,  'boolean'],
+            enable_ocr: [Fields.ENABLEOCR, 'boolean'],
+            scommands:  [Fields.SCOMMANDS, 'strv'],
+        }, this.gset, this);
     }
 
-    setScommands() {
-        this._scmds = gsettings.get_strv(Fields.SCOMMANDS).map(x => JSON.parse(x));
+    set scommands(scmds) {
+        this._scmds = scmds.map(x => JSON.parse(x));
     }
 
     getCommand(name) {
@@ -508,7 +523,7 @@ class DictAct extends GObject.Object {
     set short_ocr(short) {
         this._shortId && Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
         this._shortId = (this._short_ocr = short) && this._enable_ocr &&
-            Main.wm.addKeybinding(Fields.OCRSHORTCUT, gsettings, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
+            Main.wm.addKeybinding(Fields.OCRSHORTCUT, this.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this._invokeOCR());
     }
 
     set ocr_mode(mode) {
@@ -571,7 +586,7 @@ class DictAct extends GObject.Object {
     }
 
     destroy() {
-        gsettings.disconnectObject(this);
+        this._field.unbind(this);
         this._keyIds?.forEach(x => clearTimeout(x));
         this.screenshot = this.enable_ocr = this._keyboard = null;
     }
@@ -579,16 +594,7 @@ class DictAct extends GObject.Object {
 
 class DictBtn extends PanelMenu.Button {
     static {
-        GObject.registerClass({
-            Properties: {
-                passive:    genParam('uint', 'passive', 0, 1, 0),
-                trigger:    genParam('uint', 'trigger', 0, 2, 1),
-                ocr_mode:   genParam('uint', 'ocr_mode', 0, 5, 0),
-                dwell_ocr:  genParam('boolean', 'dwell_ocr', false),
-                enable_ocr: genParam('boolean', 'enable_ocr', false),
-                scommand:   genParam('int', 'scommand', -1, 2000, 0),
-            },
-        }, this);
+        GObject.registerClass(this);
     }
 
     constructor(params) {
@@ -605,20 +611,19 @@ class DictBtn extends PanelMenu.Button {
     }
 
     _bindSettings() {
-        [
-            [Fields.ENABLEOCR, 'enable_ocr'],
-            [Fields.DWELLOCR,  'dwell_ocr'],
-            [Fields.PASSIVE,   'passive'],
-            [Fields.TRIGGER,   'trigger'],
-            [Fields.OCRMODE,   'ocr_mode'],
-            [Fields.SCOMMAND,  'scommand'],
-        ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
-        this.setScommands();
-        gsettings.connectObject(`changed::${Fields.SCOMMANDS}`, this.setScommands.bind(this), this);
+        this._field = new Field({
+            passive:    [Fields.PASSIVE,   'uint'],
+            trigger:    [Fields.TRIGGER,   'uint'],
+            ocr_mode:   [Fields.OCRMODE,   'uint'],
+            dwell_ocr:  [Fields.DWELLOCR,  'boolean'],
+            enable_ocr: [Fields.ENABLEOCR, 'boolean'],
+            scommand:   [Fields.SCOMMAND,  'int'],
+            scommands:  [Fields.SCOMMANDS, 'strv'],
+        }, ExtensionUtils.getSettings(), this);
     }
 
-    setScommands() {
-        let cmds = gsettings.get_strv(Fields.SCOMMANDS).map(x => JSON.parse(x).name);
+    set scommands(scmds) {
+        let cmds = scmds.map(x => JSON.parse(x).name);
         if(this._scmds?.every((x, i) => x === cmds[i])) return;
         this._scmds = cmds;
         this._menus?.scmds.setList(this._scmds);
@@ -658,8 +663,8 @@ class DictBtn extends PanelMenu.Button {
 
     vfunc_scroll_event(event) {
         switch(event.direction) {
-        case Clutter.ScrollDirection.UP: gsettings.set_uint(Fields.TRIGGER, (this._trigger + 1) % 2); break;
-        case Clutter.ScrollDirection.DOWN: gsettings.set_uint(Fields.PASSIVE, 1 - this._passive); break;
+        case Clutter.ScrollDirection.UP: this._field._set('trigger', (this._trigger + 1) % 2); break;
+        case Clutter.ScrollDirection.DOWN: this._field._set('passive', 1 - this._passive); break;
         }
         return Clutter.EVENT_STOP;
     }
@@ -671,12 +676,12 @@ class DictBtn extends PanelMenu.Button {
 
     _addMenuItems() {
         this._menus = {
-            dwell:    new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => gsettings.set_boolean(Fields.DWELLOCR, x)),
-            passive:  new SwitchItem(_('Passive mode'), !!this._passive, x => gsettings.set_uint(Fields.PASSIVE, x ? 1 : 0)),
+            dwell:    new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this._field._set('dwell_ocr', x)),
+            passive:  new SwitchItem(_('Passive mode'), !!this._passive, x => this._field._set('passive', x ? 1 : 0)),
             sep1:     new PopupMenu.PopupSeparatorMenuItem(),
-            trigger:  new RadioItem(_('Trigger: '), Trigger, this._trigger, x => gsettings.set_uint(Fields.TRIGGER, x)),
-            scmds:    new DListItem(_('Swift: '), this._scmds, this._scmd, x => gsettings.set_int(Fields.SCOMMAND, x)),
-            ocr:      new RadioItem(_('OCR: '), OCRMode, this._ocr_mode, x => gsettings.set_uint(Fields.OCRMODE, x)),
+            trigger:  new RadioItem(_('Trigger: '), Trigger, this._trigger, x => this._field._set('trigger', x)),
+            scmds:    new DListItem(_('Swift: '), this._scmds, this._scmd, x => this._field._set('scommand', x)),
+            ocr:      new RadioItem(_('OCR: '), OCRMode, this._ocr_mode, x => this._field._set('ocr_mode', x)),
             sep2:     new PopupMenu.PopupSeparatorMenuItem(),
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
@@ -685,28 +690,13 @@ class DictBtn extends PanelMenu.Button {
     }
 
     destroy() {
-        gsettings.disconnectObject(this);
+        this._field.unbind(this);
         super.destroy();
     }
 }
 
-class LightDict extends GObject.Object {
-    static {
-        GObject.registerClass({
-            Properties: {
-                filter:     genParam('string', 'filter', ''),
-                app_list:   genParam('string', 'app_list', ''),
-                passive:    genParam('uint', 'passive', 0, 1, 0),
-                systray:    genParam('boolean', 'systray', true),
-                trigger:    genParam('uint', 'trigger', 0, 2, 1),
-                list_type:  genParam('uint', 'list_type', 0, 1, 1),
-                text_strip: genParam('boolean', 'text_strip', true),
-            },
-        }, this);
-    }
-
+class LightDict {
     constructor() {
-        super();
         this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
         this._bindSettings();
@@ -715,15 +705,15 @@ class LightDict extends GObject.Object {
     }
 
     _bindSettings() {
-        [
-            [Fields.APPLIST,   'app_list', Gio.SettingsBindFlags.DEFAULT],
-            [Fields.TRIGGER,   'trigger',  Gio.SettingsBindFlags.DEFAULT],
-            [Fields.SYSTRAY,   'systray'],
-            [Fields.TXTFILTER, 'filter'],
-            [Fields.LISTTYPE,  'list_type'],
-            [Fields.PASSIVE,   'passive'],
-            [Fields.TEXTSTRIP, 'text_strip'],
-        ].forEach(([x, y, z]) => gsettings.bind(x, this, y, z ?? Gio.SettingsBindFlags.GET));
+        this._field = new Field({
+            filter:     [Fields.TXTFILTER, 'string'],
+            app_list:   [Fields.APPLIST,   'string'],
+            passive:    [Fields.PASSIVE,   'uint'],
+            systray:    [Fields.SYSTRAY,   'boolean'],
+            trigger:    [Fields.TRIGGER,   'uint'],
+            list_type:  [Fields.LISTTYPE,  'uint'],
+            text_strip: [Fields.TEXTSTRIP, 'boolean'],
+        }, ExtensionUtils.getSettings(), this);
     }
 
     _buildWidgets() {
@@ -879,8 +869,8 @@ class LightDict extends GObject.Object {
         } else {
             let [ty, pe] = type.split(':');
             switch(ty === 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
-            case 'swift': this._store(text || await this._fetch()); this._swift(pe); break;
-            case 'popup': this._store(text || await this._fetch()); this._popup(); break;
+            case 'swift':   this._store(text || await this._fetch()); this._swift(pe); break;
+            case 'popup':   this._store(text || await this._fetch()); this._popup(); break;
             case 'display': this._store(text || '¯\\_(ツ)_/¯'); this._display(info.trim() || '_(:з」∠)_'); break;
             }
         }
@@ -901,7 +891,7 @@ class LightDict extends GObject.Object {
     Toggle() {
         let next = (this.trigger + 1) % 2;
         Main.notify(Me.metadata.name, _('Switch to %s style').format(_(Object.keys(Trigger)[next])));
-        this.trigger = next;
+        this._field._set('trigger', next);
     }
 
     get Pointer() {
@@ -917,6 +907,7 @@ class LightDict extends GObject.Object {
     }
 
     destroy() {
+        this._field.unbind(this);
         this._dbus.flush();
         this._dbus.unexport();
         clearInterval(this._mouseId);
@@ -933,17 +924,15 @@ class Extension {
     }
 
     enable() {
-        gsettings = ExtensionUtils.getSettings();
         this._ext = new LightDict();
     }
 
     disable() {
         this._ext.destroy();
-        this._ext = gsettings = null;
+        this._ext = null;
     }
 }
 
 function init() {
     return new Extension();
 }
-
