@@ -144,7 +144,7 @@ class AppsBox extends Gtk.Box {
     }
 
     _onAddActivated(widget) {
-        let chooser = new Gtk.AppChooserDialog({ modal: true, transient_for: widget.get_root() });
+        let chooser = new Gtk.AppChooserDialog({ modal: Gtk.DialogFlags.MODAL, transient_for: widget.get_root() });
         let updateSensitivity = () => {
             let appInfo = chooser.get_widget().get_app_info();
             chooser.set_response_sensitive(Gtk.ResponseType.OK, appInfo && !this.apps.includes(appInfo.get_id()));
@@ -504,88 +504,66 @@ class LightDictBasic extends PrefPage {
     constructor(params) {
         super(params);
         this._buildWidgets();
-        this._bindValues();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._field_ocr_params     = new UI.LazyEntry();
-        this._field_page_size      = new UI.Spin(1, 10, 1);
-        this._field_short_ocr      = new Gtk.CheckButton();
-        this._field_auto_hide      = new UI.Spin(500, 10000, 250);
-        this._field_left_command   = new UI.LazyEntry('notify-send LDWORD');
-        this._field_right_command  = new UI.LazyEntry('notify-send LDWORD');
-        this._field_text_filter    = new UI.LazyEntry('^[^\\n\\.\\t/:]{3,50}$');
-        this._field_passive_mode   = new UI.Drop(_('Proactive'), _('Passive'));
-        this._field_list_type      = new UI.Drop(_('Allowlist'), _('Blocklist'));
-        this._field_ocr_shortcut   = new UI.Short(gsettings, Fields.OCRSHORTCUT);
-        this._field_dwell_ocr      = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_enable_ocr     = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_enable_strip   = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_enable_systray = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_enable_tooltip = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_hide_title     = new Gtk.Switch({ valign: Gtk.Align.CENTER });
-        this._field_app_list       = new AppsBox(_('Click the app icon to remove'));
-        this._field_trigger_style  = new UI.Drop(_('Swift'), _('Popup'), _('Disable'));
-        this._field_ocr_work_mode  = new UI.Drop(_('Word'), _('Paragraph'), _('Area'), _('Line'));
-        this._ocr_help_button      = new Gtk.MenuButton({ label: _('Help'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
-        this._field_enable_ocr     = new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true });
+        this._field_ocr_shortcut = new UI.Short(gsettings, Fields.OCRSHORTCUT);
+        this._ocr_help_button    = new Gtk.MenuButton({ label: _('Help'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
+        this._field = {
+            OCRPARAMS: ['text',             new UI.LazyEntry()],
+            PAGESIZE:  ['value',            new UI.Spin(1, 10, 1)],
+            SHORTOCR:  ['active',           new Gtk.CheckButton()],
+            AUTOHIDE:  ['value',            new UI.Spin(500, 10000, 250)],
+            LCOMMAND:  ['text',             new UI.LazyEntry('notify-send LDWORD')],
+            RCOMMAND:  ['text',             new UI.LazyEntry('notify-send LDWORD')],
+            TXTFILTER: ['text',             new UI.LazyEntry('^[^\\n\\.\\t/:{3,50}$')],
+            PASSIVE:   ['selected',         new UI.Drop(_('Proactive'), _('Passive'))],
+            LISTTYPE:  ['selected',         new UI.Drop(_('Allowlist'), _('Blocklist'))],
+            DWELLOCR:  ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            TXTSTRIP:  ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            SYSTRAY:   ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            TOOLTIP:   ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            HIDETITLE: ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            APPLIST:   ['apps',             new AppsBox(_('Click the app icon to remove'))],
+            TRIGGER:   ['selected',         new UI.Drop(_('Swift'), _('Popup'), _('Disable'))],
+            OCRMODE:   ['selected',         new UI.Drop(_('Word'), _('Paragraph'), _('Area'), _('Line'))],
+            ENABLEOCR: ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
+        };
+        Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
+        this._buildHelpPopver().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
     }
 
     _buildUI() {
         [
-            [[_('Enable systray')], this._field_enable_systray],
-            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._field_passive_mode, this._field_trigger_style],
-            [[_('Application list')], this._field_app_list, this._field_list_type],
+            [[_('Enable systray')], this._field.SYSTRAY[1]],
+            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._field.PASSIVE[1], this._field.TRIGGER[1]],
+            [[_('Application list')], this._field.APPLIST[1], this._field.LISTTYPE[1]],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
         [
-            [this._field_short_ocr, [_('Shortcut')], this._field_ocr_shortcut],
-            [[_('Dwell OCR')], this._field_dwell_ocr],
-            [[_('Work mode')], this._field_ocr_work_mode],
-            [[_('Parameters')], this._field_ocr_params, this._ocr_help_button],
-        ].forEach(xs => this._field_enable_ocr.add_row(new UI.PrefRow(...xs)));
+            [this._field.SHORTOCR[1], [_('Shortcut')], this._field_ocr_shortcut],
+            [[_('Dwell OCR')], this._field.DWELLOCR[1]],
+            [[_('Work mode')], this._field.OCRMODE[1]],
+            [[_('Parameters')], this._field.OCRPARAMS[1], this._ocr_help_button],
+        ].forEach(xs => this._field.ENABLEOCR[1].add_row(new UI.PrefRow(...xs)));
         [this._buildList(_('Other'),
-            [[_('Trim blank lines')], this._field_enable_strip],
-            [[_('Autohide interval')], this._field_auto_hide],
-            [[_('RegExp filter')], this._field_text_filter]),
+            [[_('Trim blank lines')], this._field.TXTSTRIP[1]],
+            [[_('Autohide interval')], this._field.AUTOHIDE[1]],
+            [[_('RegExp filter')], this._field.TXTFILTER[1]]),
         this._buildList(_('Panel'),
-            [[_('Hide title')], this._field_hide_title],
-            [[_('Right command'), _('Right click to run and hide panel')], this._field_right_command],
-            [[_('Left command'), _('Left click to run')], this._field_left_command]),
+            [[_('Hide title')], this._field.HIDETITLE[1]],
+            [[_('Right command'), _('Right click to run and hide panel')], this._field.RCOMMAND[1]],
+            [[_('Left command'), _('Left click to run')], this._field.LCOMMAND[1]]),
         this._buildList(_('Popup'),
-            [[_('Enable tooltip')], this._field_enable_tooltip],
-            [[_('Page size')], this._field_page_size])].forEach(x => this._add(x));
-        this._add(this._field_enable_ocr);
+            [[_('Enable tooltip')], this._field.TOOLTIP[1]],
+            [[_('Page size')], this._field.PAGESIZE[1]])].forEach(x => this._add(x));
+        this._add(this._field.ENABLEOCR[1]);
     }
 
     _buildList(title, ...list) {
         let expander = new Adw.ExpanderRow({ title });
         list.forEach(xs => expander.add_row(new UI.PrefRow(...xs)));
         return expander;
-    }
-
-    _bindValues() {
-        [
-            [Fields.TXTFILTER, this._field_text_filter,    'text'],
-            [Fields.RCOMMAND,  this._field_right_command,  'text'],
-            [Fields.LCOMMAND,  this._field_left_command,   'text'],
-            [Fields.OCRPARAMS, this._field_ocr_params,     'text'],
-            [Fields.APPLIST,   this._field_app_list,       'apps'],
-            [Fields.AUTOHIDE,  this._field_auto_hide,      'value'],
-            [Fields.PAGESIZE,  this._field_page_size,      'value'],
-            [Fields.TRIGGER,   this._field_trigger_style,  'selected'],
-            [Fields.OCRMODE,   this._field_ocr_work_mode,  'selected'],
-            [Fields.LISTTYPE,  this._field_list_type,      'selected'],
-            [Fields.SYSTRAY,   this._field_enable_systray, 'active'],
-            [Fields.ENABLEOCR, this._field_enable_ocr,     'enable-expansion'],
-            [Fields.DWELLOCR,  this._field_dwell_ocr,      'active'],
-            [Fields.SHORTOCR,  this._field_short_ocr,      'active'],
-            [Fields.HIDETITLE, this._field_hide_title,     'active'],
-            [Fields.TEXTSTRIP, this._field_enable_strip,   'active'],
-            [Fields.TOOLTIP,   this._field_enable_tooltip, 'active'],
-            [Fields.PASSIVE,   this._field_passive_mode,   'selected'],
-        ].forEach(xs => gsettings.bind(...xs, Gio.SettingsBindFlags.DEFAULT));
-        this._buildHelpPopver().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
     }
 
     async _buildHelpPopver() {
@@ -708,4 +686,3 @@ class LightDictJSON extends PrefPage {
         gsettings.set_strv(this._key, this._cmds);
     }
 }
-

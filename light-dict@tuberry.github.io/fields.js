@@ -13,7 +13,7 @@ var Fields = {
     TXTFILTER:   'text-filter',
     LCOMMAND:    'left-command',
     PASSIVE:     'passive-mode',
-    TEXTSTRIP:   'enable-strip',
+    TXTSTRIP:    'enable-strip',
     OCRMODE:     'ocr-work-mode',
     PAGESIZE:    'icon-pagesize',
     RCOMMAND:    'right-command',

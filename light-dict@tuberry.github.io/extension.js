@@ -712,7 +712,7 @@ class LightDict {
             systray:    [Fields.SYSTRAY,   'boolean'],
             trigger:    [Fields.TRIGGER,   'uint'],
             list_type:  [Fields.LISTTYPE,  'uint'],
-            text_strip: [Fields.TEXTSTRIP, 'boolean'],
+            text_strip: [Fields.TXTSTRIP,  'boolean'],
         }, ExtensionUtils.getSettings(), this);
     }
 
