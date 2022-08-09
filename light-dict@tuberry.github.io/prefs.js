@@ -6,7 +6,6 @@
 const { Adw, Gtk, GObject, Gio, GLib, Gdk } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const gsettings = ExtensionUtils.getSettings();
 const _ = ExtensionUtils.gettext;
 const _GTK = imports.gettext.domain('gtk40').gettext;
 const { Fields } = Me.imports.fields;
@@ -110,8 +109,9 @@ class AppsBox extends Gtk.Box {
         super({ valign: Gtk.Align.CENTER, hexpand: true, css_classes: ['linked'] });
         this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '', css_name: 'entry', css_classes: ['linked'] });
         this._btn = new Gtk.Button({ tooltip_text: tip2 || '', icon_name: 'list-add-symbolic' });
-        this._btn.connect('clicked', this._onAddActivated.bind(this));
+        this._btn.connect('clicked', this._onActivated.bind(this));
         [this._box, this._btn].forEach(x => this.append(x));
+        this._buildChooser();
     }
 
     vfunc_mnemonic_activate() {
@@ -143,25 +143,30 @@ class AppsBox extends Gtk.Box {
         this.apps = apps;
     }
 
-    _onAddActivated(widget) {
-        let chooser = new Gtk.AppChooserDialog({ modal: Gtk.DialogFlags.MODAL, transient_for: widget.get_root() });
-        let updateSensitivity = () => {
-            let appInfo = chooser.get_widget().get_app_info();
-            chooser.set_response_sensitive(Gtk.ResponseType.OK, appInfo && !this.apps.includes(appInfo.get_id()));
-        };
-        updateSensitivity();
-        chooser.get_widget().set({ show_all: true, show_other: true });
-        chooser.get_widget().connect('application-selected', updateSensitivity);
-        chooser.connect('response', (wdg, res) => {
+    _buildChooser() {
+        this.chooser = new Gtk.AppChooserDialog({ modal: Gtk.DialogFlags.MODAL });
+        this.chooser.get_widget().set({ show_all: true, show_other: true });
+        this.chooser.get_widget().connect('application-selected', this._updateResponse.bind(this));
+        this.chooser.connect('response', (wdg, res) => {
             if(res === Gtk.ResponseType.OK) {
                 let id = wdg.get_widget().get_app_info().get_id();
-                this._appendApp(id);
                 this.apps = this.apps ? [this.apps, id].join(',') : id;
                 this.emit('changed', this._apps);
+                this._appendApp(id);
             }
-            chooser.destroy();
+            this.chooser.hide();
         });
-        chooser.show();
+    }
+
+    _updateResponse() {
+        let app = this.chooser.get_widget().get_app_info();
+        this.chooser.set_response_sensitive(Gtk.ResponseType.OK, app && !this.apps.includes(app.get_id()));
+    }
+
+    _onActivated(widget) {
+        this.chooser.set_transient_for(widget.get_root());
+        this._updateResponse();
+        this.chooser.show();
     }
 
     _appendApp(id) {
@@ -315,14 +320,13 @@ class SwiftBox extends Adw.PreferencesPage {
     constructor() {
         super({ hexpand: true });
         this._temp = { type: 0, copy: false, commit: false, select: false, popup: false, apps: '', command: '', regexp: '' };
-
         this._buildWidgets();
         this._bindValues();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._type    = new UI.Drop('sh', 'JS');
+        this._type    = new UI.Drop(['sh', 'JS']);
         this._command = new UI.LazyEntry('gio open LDWORD');
         this._regexp  = new UI.LazyEntry('(https?|ftp|file)://.*');
         this._commit  = new Gtk.Switch({ valign: Gtk.Align.CENTER });
@@ -439,6 +443,7 @@ class LightDictAbout extends PrefPage {
 
     _buildIcon() {
         let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 });
+        let gsettings = ExtensionUtils.getSettings();
         let active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
         if(active.length) {
             active.forEach(x => {
@@ -508,6 +513,7 @@ class LightDictBasic extends PrefPage {
     }
 
     _buildWidgets() {
+        let gsettings = ExtensionUtils.getSettings();
         this._field_ocr_shortcut = new UI.Short(gsettings, Fields.OCRSHORTCUT);
         this._ocr_help_button    = new Gtk.MenuButton({ label: _('Help'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
         this._field = {
@@ -518,16 +524,16 @@ class LightDictBasic extends PrefPage {
             LCOMMAND:  ['text',             new UI.LazyEntry('notify-send LDWORD')],
             RCOMMAND:  ['text',             new UI.LazyEntry('notify-send LDWORD')],
             TXTFILTER: ['text',             new UI.LazyEntry('^[^\\n\\.\\t/:{3,50}$')],
-            PASSIVE:   ['selected',         new UI.Drop(_('Proactive'), _('Passive'))],
-            LISTTYPE:  ['selected',         new UI.Drop(_('Allowlist'), _('Blocklist'))],
+            PASSIVE:   ['selected',         new UI.Drop([_('Proactive'), _('Passive')])],
+            LISTTYPE:  ['selected',         new UI.Drop([_('Allowlist'), _('Blocklist')])],
             DWELLOCR:  ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TXTSTRIP:  ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             SYSTRAY:   ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TOOLTIP:   ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             HIDETITLE: ['active',           new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             APPLIST:   ['apps',             new AppsBox(_('Click the app icon to remove'))],
-            TRIGGER:   ['selected',         new UI.Drop(_('Swift'), _('Popup'), _('Disable'))],
-            OCRMODE:   ['selected',         new UI.Drop(_('Word'), _('Paragraph'), _('Area'), _('Line'))],
+            TRIGGER:   ['selected',         new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+            OCRMODE:   ['selected',         new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
             ENABLEOCR: ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
         };
         Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
@@ -587,7 +593,8 @@ class LightDictJSON extends PrefPage {
         super(params);
         this._key = key;
         this._swift = key === Fields.SCOMMANDS;
-        this._cmds = gsettings.get_strv(key);
+        this._gset = ExtensionUtils.getSettings();
+        this._cmds = this._gset.get_strv(key);
         this._buildWidgets();
         this._bindValues();
     }
@@ -626,7 +633,7 @@ class LightDictJSON extends PrefPage {
     }
 
     get enabled() {
-        return gsettings.get_int(Fields.SCOMMAND);
+        return this._gset.get_int(Fields.SCOMMAND);
     }
 
     _onButtonClicked(widget, index, button) {
@@ -679,10 +686,10 @@ class LightDictJSON extends PrefPage {
     }
 
     _saveCommand(index) {
-        if(this._swift) gsettings.set_int(Fields.SCOMMAND, index);
+        if(this._swift) this._gset.set_int(Fields.SCOMMAND, index);
     }
 
     _saveCommands() {
-        gsettings.set_strv(this._key, this._cmds);
+        this._gset.set_strv(this._key, this._cmds);
     }
 }

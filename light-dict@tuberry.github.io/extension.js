@@ -361,10 +361,12 @@ class DictBox extends BoxPointer.BoxPointer {
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
         this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
-        this._text.clutter_text.line_wrap = true; // FIXME: incompatible with ScrollView AUTOMATIC policy / GNOME 42
-        this._info.clutter_text.line_wrap = true;
-        this._box.add(this._text);
-        this._box.add(this._info);
+        [this._text, this._info].forEach(x => {
+            x.clutter_text.line_wrap = true;
+            x.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+            x.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            this._box.add(x);
+        });
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
@@ -821,8 +823,8 @@ class LightDict {
         }
     }
 
-    _exeCmd(p) {
-        (q => p.type ? this._exeJS(...q) : this._exeSh(...q))([p.command, p.popup, p.copy, p.commit, p.select]);
+    _exeCmd({ command: a, popup: b, copy: c, commit: d, select: e, type: f }) {
+        f ? this._exeJS(a, b, c, d, e) : this._exeSh(a, b, c, d, e);
     }
 
     _select(x) {
