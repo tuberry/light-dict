@@ -626,7 +626,7 @@ class DictBtn extends PanelMenu.Button {
 
     set scommands(scmds) {
         let cmds = scmds.map(x => JSON.parse(x).name);
-        if(this._scmds?.every((x, i) => x === cmds[i])) return;
+        if(this._scmds?.length === cmds.length && this._scmds?.every((x, i) => x === cmds[i])) return;
         this._scmds = cmds;
         this._menus?.scmds.setList(this._scmds);
     }

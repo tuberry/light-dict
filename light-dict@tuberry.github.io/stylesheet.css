@@ -7,6 +7,7 @@
 
 .light-dict-box-boxpointer {
     /* -arrow-rize: 30px; */
+    /* box-shadow: 0 0 3px rgba(233, 233, 233, 0.5); */
 }
 
 .light-dict-scroll:scrolled {
@@ -18,8 +19,8 @@
     max-width: 40em !important; /* for text line wrap */
     font-size: 1.25em;
     border-radius: 0.4em;
-    color: rgba(255, 255, 255, 1);
-    background-color: rgba(97, 97, 97, 1);
+    color: white;
+    background-color: rgba(85, 85, 85, 1);
 }
 
 .light-dict-text {
@@ -30,7 +31,7 @@
 }
 
 .light-dict-content:error {
-    color: rgba(255, 205, 205, 1);
+    color: rgba(255, 195, 195, 1);
 }
 
 .light-dict-iconbox {
