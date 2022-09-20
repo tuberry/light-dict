@@ -20,11 +20,12 @@ function init() {
 }
 
 function fillPreferencesWindow(win) {
+    Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(Me.dir.get_child('icons').get_path());
     [
-        new LightDictBasic({ title: _('Basic'), icon_name: 'face-smirk-symbolic' }),
-        new LightDictJSON({ title: _('Swift'), icon_name: 'face-smile-big-symbolic' }, Fields.SCOMMANDS),
-        new LightDictJSON({ title: _('Popup'), icon_name: 'face-devilish-symbolic' }, Fields.PCOMMANDS),
-        new LightDictAbout({ title: _('About'), icon_name: 'face-surprise-symbolic' }),
+        new LightDictBasic({ title: _('Basic'), icon_name: 'disable-passive-symbolic' }),
+        new LightDictJSON({ title: _('Swift'), icon_name: 'swift-passive-symbolic' }, Fields.SCOMMANDS),
+        new LightDictJSON({ title: _('Popup'), icon_name: 'popup-passive-symbolic' }, Fields.PCOMMANDS),
+        new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }),
     ].forEach(x => win.add(x));
 }
 

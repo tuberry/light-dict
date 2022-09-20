@@ -125,7 +125,7 @@ class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
 
     setSelected(index) {
         if(!(index in this._list)) return;
-        this.label.set_text(this._name + _(this._list[index]));
+        this.label.set_text(`${this._name}：${_(this._list[index])}`);
         this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 }
@@ -145,7 +145,7 @@ class DListItem extends PopupMenu.PopupSubMenuMenuItem {
 
     setSelected(index) {
         this._index = index;
-        this.label.set_text(`${this._name}${this._list[this._index] ?? ''}`);
+        this.label.set_text(`${this._name}：${this._list[this._index] ?? ''}`);
         this._items.forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 
@@ -409,8 +409,8 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onClick(actor, event) {
         switch(event.get_button()) {
-        case 1: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
         case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
+        case 1: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
         case 3: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
         }
     }
@@ -533,7 +533,7 @@ class DictAct extends GObject.Object {
     }
 
     set screenshot(screenshot) {
-        if(global.context?.unsafe_mode ?? true) return;
+        if(global.context.unsafe_mode ?? true) return;
         let checker = Main.shellDBusService._screenshotService._senderChecker;
         checker._isSenderAllowed = screenshot ? () => true : sender => [...checker._allowlistMap.values()].includes(sender);
     }
@@ -681,9 +681,9 @@ class DictBtn extends PanelMenu.Button {
             dwell:    new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this._field._set('dwell_ocr', x)),
             passive:  new SwitchItem(_('Passive mode'), !!this._passive, x => this._field._set('passive', x ? 1 : 0)),
             sep1:     new PopupMenu.PopupSeparatorMenuItem(),
-            trigger:  new RadioItem(_('Trigger: '), Trigger, this._trigger, x => this._field._set('trigger', x)),
-            scmds:    new DListItem(_('Swift: '), this._scmds, this._scmd, x => this._field._set('scommand', x)),
-            ocr:      new RadioItem(_('OCR: '), OCRMode, this._ocr_mode, x => this._field._set('ocr_mode', x)),
+            trigger:  new RadioItem(_('Trigger'), Trigger, this._trigger, x => this._field._set('trigger', x)),
+            scmds:    new DListItem(_('Swift'), this._scmds, this._scmd, x => this._field._set('scommand', x)),
+            ocr:      new RadioItem(_('OCR'), OCRMode, this._ocr_mode, x => this._field._set('ocr_mode', x)),
             sep2:     new PopupMenu.PopupSeparatorMenuItem(),
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
