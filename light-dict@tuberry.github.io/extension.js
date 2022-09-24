@@ -91,7 +91,7 @@ class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
 
     constructor(text, active, callback, params) {
         super(text, active, params);
-        this.connect('toggled', (x_, y) => callback(y));
+        this.connect('toggled', (x, y) => callback(y));
     }
 }
 
@@ -629,6 +629,7 @@ class DictBtn extends PanelMenu.Button {
         if(this._scmds?.length === cmds.length && this._scmds?.every((x, i) => x === cmds[i])) return;
         this._scmds = cmds;
         this._menus?.scmds.setList(this._scmds);
+        this.scommand = this._scmd;
     }
 
     set scommand(scmd) {
