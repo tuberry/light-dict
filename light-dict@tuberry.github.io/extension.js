@@ -25,6 +25,7 @@ const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const dwell = (u, v, w, m) => !still(u, v) * 2 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
 const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}-symbolic.svg`).get_path());
+const genEmpty = () => (x => x[Math.floor(Math.random() * x.length)])(['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']); // placeholder
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
@@ -409,9 +410,9 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onClick(actor, event) {
         switch(event.get_button()) {
-        case 2: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
-        case 1: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
-        case 3: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
+        case Clutter.BUTTON_MIDDLE: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
+        case Clutter.BUTTON_PRIMARY: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
+        case Clutter.BUTTON_SECONDARY: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
         }
     }
 
@@ -430,9 +431,9 @@ class DictBox extends BoxPointer.BoxPointer {
         this._selection = text;
         try {
             Pango.parse_markup(info, -1, '');
-            this._info.clutter_text.set_markup(info || 'Σ(ʘωʘﾉ)ﾉ');
+            this._info.clutter_text.set_markup(info || genEmpty());
         } catch(e) {
-            this._info.set_text(info || 'o(T^T)o');
+            this._info.set_text(info || genEmpty());
         }
         if(this._text.visible) this._text.set_text(text);
         if(this._scrollable) {
@@ -456,7 +457,7 @@ class DictBox extends BoxPointer.BoxPointer {
         clearTimeout(this._delayId);
         this._rectt = this._rect;
         this._view.visible = false;
-        this._info.set_text('ヽ(ー_ー)ノ');
+        this._info.set_text(genEmpty());
         this.close(BoxPointer.PopupAnimation.FADE);
         this._entered = false;
     }
@@ -725,9 +726,9 @@ class LightDict {
         this._bar = new DictBar();
         this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
-        this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._dLock = true; this._exeCmd(cmd); });
+        this._bar.connect('dict-bar-clicked', (actor, cmd) => { this._dlock = true; this._exeCmd(cmd); });
         this._act.connect('dict-act-dwelled', (actor, dw, ptt) => {
-            if(this._dLock) { this._dLock = null; return; }
+            if(this._dlock) return (this._dlock = undefined);
             if(this._box._rectt && !outOf(this._box._rectt, ptt) ||
                this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
             if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--no-verbose');
@@ -773,7 +774,7 @@ class LightDict {
     _onSelectChanged(_sel, type, _src) {
         if(type !== St.ClipboardType.PRIMARY) return;
         clearInterval(this._mouseId);
-        if(this._sLock) { this._sLock = null; return; }
+        if(this._slock) return (this._slock = undefined);
         if(!this._allow || this.trigger === Trigger.Disable) return;
         let mods = g_pointer()[2];
         if(this.passive && !(mods & LD_MODR)) return;
@@ -810,6 +811,7 @@ class LightDict {
             let APPID = this._app;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
+            let search = x => { Main.overview.toggle(); Main.overview.searchEntry.set_text(x); };
             if(pop | cpy | cmt | sel) {
                 let result = String(eval(cmd)) || '';
                 if(cpy) this._act.copy(result);
@@ -829,7 +831,7 @@ class LightDict {
     }
 
     _select(x) {
-        this._sLock = true;
+        this._slock = true;
         this._act.select(x);
     }
 
@@ -874,7 +876,7 @@ class LightDict {
             switch(ty === 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
             case 'swift':   this._store(text || await this._fetch()); this._swift(pe); break;
             case 'popup':   this._store(text || await this._fetch()); this._popup(); break;
-            case 'display': this._store(text || '¯\\_(ツ)_/¯'); this._display(info.trim() || '_(:з」∠)_'); break;
+            case 'display': this._store(text || 'ERROR'); this._display(info.trim() || genEmpty(), !text); break;
             }
         }
     }
@@ -922,7 +924,7 @@ class LightDict {
 }
 
 class Extension {
-    static {
+    constructor() {
         ExtensionUtils.initTranslations();
     }
 

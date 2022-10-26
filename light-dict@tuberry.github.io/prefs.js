@@ -25,7 +25,7 @@ function init() {
 
 function fillPreferencesWindow(win) {
     let provider = new Gtk.CssProvider();
-    // Refer: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
+    // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
     provider.load_from_data(`.ld-drop-up { background: linear-gradient(to bottom, #000a 0%, #0000 35%); }
                             .ld-drop-down { background: linear-gradient(to bottom, #0000 65%, #000a 100%); }
                             .ld-drop-up-dark { background: linear-gradient(to bottom, #fffa 0%, #fff0 35%); }
@@ -62,7 +62,7 @@ class IconBtn extends UI.File {
     }
 
     constructor() {
-        super({ filter: 'image/svg+xml' });
+        super({ filter: 'image/svg+xml' }, Gio.FILE_ATTRIBUTE_STANDARD_NAME);
     }
 
     set_icon(icon) {
@@ -74,27 +74,21 @@ class IconBtn extends UI.File {
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
     }
 
-    async setFile(path) {
-        let prev = this._file;
-        try {
-            let file = Gio.File.new_for_path(path);
-            let info = await file.query_info_async(Gio.FILE_ATTRIBUTE_STANDARD_NAME, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
-            this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
-            let icon = this._checkIcon(path);
-            icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
-            if(!this.file) this.chooser.set_file(file);
-            this._file = path;
-            this._icon.show();
-        } catch(e) {
-            this._icon.hide();
-            this._setLabel(null);
-            this._file = null;
-        } finally {
-            if(prev !== undefined && prev !== this.file) {
-                this.notify('file');
-                this.emit('changed', this.file);
-            }
-        }
+    async _setFile(path) {
+        let file = Gio.File.new_for_path(path);
+        let info = await file.query_info_async(this._attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+        this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
+        let icon = this._checkIcon(path);
+        icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
+        if(!this.file) this.chooser.set_file(file);
+        this._file = path;
+        this._icon.show();
+    }
+
+    _setEmpty() {
+        this._icon.hide();
+        this._setLabel(null);
+        this._file = null;
     }
 }
 
@@ -249,7 +243,7 @@ class SideRow extends Gtk.Box {
     }
 
     _buildDND() {
-        // Refer: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
+        // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
         let drag = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
         drag.connect('prepare', dg => {
             this.emit('drag');
@@ -319,7 +313,7 @@ class SideBar extends Gtk.Box {
     }
 
     _buildList(cmds, swift) {
-        // Refer: https://blog.gtk.org/2020/09/05/a-primer-on-gtklistview/
+        // Ref: https://blog.gtk.org/2020/09/05/a-primer-on-gtklistview/
         this.swift = swift ? new Gtk.CheckButton() : null;
         this._model = new Gio.ListStore({ item_type: SideItem });
         cmds.forEach(x => this._model.append(new SideItem(x)));
@@ -330,13 +324,13 @@ class SideBar extends Gtk.Box {
         factory.connect('bind', (f, x) => {
             let w = x.get_child();
             w.bind(x.get_item());
-            w._dragId ??= w.connect('drag', a => { this.drag = this.get_pos(a); });
-            w._dropId ??= w.connect('drop', (a, down) => this.drop(this.get_pos(a) + down));
-            w._editId ??= w.connect('edit', (a, name) => this.emit('change', this.get_pos(a), name));
+            w._dragId ??= w.connect('drag', a => { this.drag = this.getPos(a); });
+            w._dropId ??= w.connect('drop', (a, down) => this.drop(this.getPos(a) + down));
+            w._editId ??= w.connect('edit', (a, name) => this.emit('change', this.getPos(a), name));
             w._toggleId ??= w.connect('toggle', (a, enable) => {
                 if(this.swift && !enable) return;
-                this.emit('enable', this.get_pos(a), enable);
-                this.emit('select', this.get_pos(a));
+                this.emit('enable', this.getPos(a), enable);
+                this.emit('select', this.getPos(a));
             });
         });
         // do not `unbind` on small lists, also avoid offending gjs errors
@@ -346,7 +340,7 @@ class SideBar extends Gtk.Box {
         return new Gtk.ScrolledWindow({ child: this._list });
     }
 
-    get_pos(x) {
+    getPos(x) {
         return this._model.find(x._item)[1];
     }
 
@@ -359,16 +353,16 @@ class SideBar extends Gtk.Box {
         this.emit('move', this.drag, to);
     }
 
-    add(text) {
+    add(text = '{"name": "name"}') {
         let index = this.selected;
         let item = new SideItem().from_string(text);
         if(this.swift) item.enable = false;
         if(index === Gtk.INVALID_LIST_POSITION) {
             this._model.append(item);
-            this.emit('add', -1, text || '{"name": "name"}');
+            this.emit('add', -1, text);
         } else {
             this._model.insert(index + 1, item);
-            this.emit('add', index, text || '{"name": "name"}');
+            this.emit('add', index, text);
         }
     }
 

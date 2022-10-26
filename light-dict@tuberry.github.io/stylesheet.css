@@ -31,7 +31,7 @@
 }
 
 .light-dict-content:error {
-    color: rgba(255, 195, 195, 1);
+    border: 0.05em solid rgba(255, 0, 50, 1);
 }
 
 .light-dict-iconbox {

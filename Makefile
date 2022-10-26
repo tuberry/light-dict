@@ -68,7 +68,7 @@ $(MSGAIM):
 
 $(MSGPOT):
 	cd $(UUID); \
-		xgettext --keyword=_ --from-code=utf-8 --package-name="$(NAME)" --add-comments='Translators:' --output locale/$(NAME).pot *js
+		xgettext --keyword=_ --from-code=utf-8 --package-name="$(NAME)" --add-comments='Translators:' --output locale/$(NAME).pot *js *py
 
 mergepo: $(MSGPOT) $(MSGAIM)
 	msgmerge -U $(MSGAIM) $(MSGPOT)

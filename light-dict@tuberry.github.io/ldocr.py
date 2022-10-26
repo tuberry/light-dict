@@ -4,14 +4,21 @@
 import re
 import cv2
 import string
+import gettext
 import colorsys
 import argparse
 import pytesseract
 import numpy as np
-from gi.repository import Gio, GLib
+from pathlib import Path
+from gi.repository import Gio, GLib # type: ignore
 from tempfile import NamedTemporaryFile
 
 DEBUG = False
+
+domain = 'gnome-shell-extension-light-dict'
+gettext.bindtextdomain(domain, Path(__file__).absolute().parent / 'locale')
+gettext.textdomain(domain)
+_ = gettext.gettext
 
 def main():
     args = parser()
@@ -20,24 +27,18 @@ def main():
     if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
     if args.cursor: result.area = None
     # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
-    gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
+    gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
 
 def parser():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('-m', '--mode', default='word', choices=['word', 'paragraph', 'area', 'line'],
-                    help='specify the work mode: [%(choices)s] (default: %(default)s)')
-    ap.add_argument('-s', '--style', default='auto', choices=['auto', 'swift', 'popup'],
-                    help='specify the LD style: [%(choices)s] (default: %(default)s)')
-    ap.add_argument('-l', '--lang', default='eng',
-                    help='specify language(s) used by Tesseract OCR (default: %(default)s)')
-    ap.add_argument('-n', '--name', default='',
-                    help='specify the LD swift style name (default: %(default)s)')
-    ap.add_argument('-c', '--cursor', default=False, action=argparse.BooleanOptionalAction,
-                    help='invoke the LD around the cursor')
-    ap.add_argument('-f', '--flash', default=False, action=argparse.BooleanOptionalAction,
-                    help='flash the detected area')
-    ap.add_argument('-v', '--verbose', default=True, action=argparse.BooleanOptionalAction,
-                    help='report error messages')
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument('-h', '--help',   help=_('show this help message and exit'), action='help')
+    ap.add_argument('-m', '--mode',   help=_('specify work mode: [%(choices)s] (default: %(default)s)'), default='word', choices=['word', 'paragraph', 'area', 'line'])
+    ap.add_argument('-s', '--style',  help=_('specify LD trigger style: [%(choices)s] (default: %(default)s)'), default='auto', choices=['auto', 'swift', 'popup'])
+    ap.add_argument('-l', '--lang',   help=_('specify language(s) used by Tesseract OCR (default: %(default)s)'), default='eng')
+    ap.add_argument('-n', '--name',   help=_('specify LD swift style name'), action='store', default='')
+    ap.add_argument('-c', '--cursor', help=_('invoke LD around the cursor'), action=argparse.BooleanOptionalAction)
+    ap.add_argument('-f', '--flash',  help=_('flash on the detected area'), action=argparse.BooleanOptionalAction)
+    ap.add_argument('-q', '--quiet',  help=_('suppress error messages'), action=argparse.BooleanOptionalAction)
     return ap.parse_args()
 
 class Result:
@@ -47,8 +48,8 @@ class Result:
     def set_style(self, style, name):
         self.style = style + ':' + name if name else style
 
-    def set_verbose(self, verbose):
-        if not verbose and self.is_error: self.cancel = True
+    def set_quiet(self, quiet):
+        if quiet and self.is_error: self.cancel = True
 
     @property
     def is_error(self):
@@ -56,7 +57,7 @@ class Result:
 
     @property
     def param(self):
-        style, text, info = ['display', 'ERROR', self.error or ''] if self.is_error else [self.style, self.text, '']
+        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.is_error else [self.style, self.text, '']
         return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
 def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
@@ -77,7 +78,7 @@ def bincount_img(img):
     # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
     i1d = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
     rgb = np.unravel_index(np.bincount(i1d).argmax(), (256, 256, 256))[:3]
-    return colorsys.rgb_to_hls(*[x / 255 for x in rgb])[1] < 0.5
+    return colorsys.rgb_to_hls(*[x.astype(int) / 255 for x in rgb])[1] < 0.5
 
 def read_img(filename, trim=False):
     img = cv2.imread(filename)
@@ -125,9 +126,9 @@ def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]
 
 def ocr_word(lang, sz=(250, 50)):
     pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
-    if pt is None or sc is None: return Result(error='LD dbus error')
+    if pt is None or sc is None: return Result(error=_('LD DBus error. (~_~)'))
     w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
-    if w < 5 or h < 5: return Result(error='too small to screenshot')
+    if w < 5 or h < 5: return Result(error=_('Too marginal. (>_<)'))
     ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
@@ -136,7 +137,7 @@ def ocr_word(lang, sz=(250, 50)):
         bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
         rct = find_rect(bxs, (w, h))
         return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                      area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=' ')
+                      area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR preprocess failed. (-_-;)'))
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None)
@@ -148,7 +149,7 @@ def ocr_area(lang):
 
 def ocr_prln(lang, line=False):
     pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
-    if pt is None or fw is None: return Result(error='LD DBus error')
+    if pt is None or fw is None: return Result(error=_('LD DBus error. (~_~)'))
     pt = [a - b for (a, b) in zip(pt, fw)]
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
@@ -158,7 +159,7 @@ def ocr_prln(lang, line=False):
         img = read_img(fn, trim=True)
         rct = crop_img(img, pt, kn, it)
         return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
-                      area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=' ')
+                      area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=_('OCR preprocess failed. (-_-;)'))
 
 def exe_mode(args):
     result = (lambda m: m[0](*m[1]))({
@@ -168,7 +169,7 @@ def exe_mode(args):
         'line': (ocr_prln, (args.lang, True)),
     }[args.mode])
     result.set_style(args.style, args.name)
-    result.set_verbose(args.verbose)
+    result.set_quiet(args.quiet)
     return result
 
 if __name__ == '__main__':

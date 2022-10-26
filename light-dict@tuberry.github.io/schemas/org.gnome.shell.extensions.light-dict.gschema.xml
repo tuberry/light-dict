@@ -92,7 +92,7 @@
         <summary>alternative swift commands</summary>
     </key>
     <key type="as" name="popup-commands">
-        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"Main.overview.toggle(); Main.overview.searchEntry.set_text(LDWORD);"}']</default>
+        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"search(LDWORD)"}']</default>
         <summary>commands of popup style</summary>
     </key>
   </schema>
