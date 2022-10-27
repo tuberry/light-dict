@@ -181,8 +181,7 @@ class AppsBox extends Gtk.Box {
         this._box.append(app);
     }
 }
-
-class SideItem extends GObject.Object {
+class SideItem extends GObject.Object { // required GObject.Object by Gtk.SignalListItemFactory
     static {
         GObject.registerClass({
             Properties: {
@@ -209,7 +208,6 @@ class SideItem extends GObject.Object {
         } catch(e) {
             //
         }
-
         return this;
     }
 
@@ -336,7 +334,6 @@ class SideBar extends Gtk.Box {
         // do not `unbind` on small lists, also avoid offending gjs errors
         this._list = new Gtk.ListView({ model: this._select, factory, vexpand: true });
         this._list.connect('activate', () => this.emit('select', this.selected));
-
         return new Gtk.ScrolledWindow({ child: this._list });
     }
 
@@ -388,7 +385,6 @@ class SideBar extends Gtk.Box {
             btn.connect('clicked', y);
             return btn;
         }).forEach(x => box.append(x));
-
         return box;
     }
 
@@ -551,7 +547,6 @@ class LightDictAbout extends PrefPage {
                 box.append(img);
             });
         } else { box.append(new Gtk.Image({ icon_size: Gtk.IconSize.LARGE, icon_name: 'accessories-dictionary-symbolic' })); }
-
         return box;
     }
 
@@ -581,7 +576,6 @@ class LightDictAbout extends PrefPage {
             _('Substitute <b>LDWORD</b> for the selected text in the command'),
             _('Simulate keyboard input in JS statement: <i>key("Control_L+c")</i>'),
         ].forEach((x, i) => box.append(new Gtk.Label({ halign: Gtk.Align.START, use_markup: true, label: `${i}. ${x}` })));
-
         return new Gtk.MenuButton({
             label: _('Tips'),
             halign: Gtk.Align.CENTER,
@@ -594,7 +588,6 @@ class LightDictAbout extends PrefPage {
         let gpl = 'https://www.gnu.org/licenses/gpl-3.0.html';
         let license  = _GTK('GNU General Public License, version 3 or later');
         let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
-
         return this._buildLabel(`<small>\n\n${_GTK(statement).format(gpl, license)}</small>`);
     }
 }

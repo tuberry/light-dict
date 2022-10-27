@@ -9,6 +9,7 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
 const Keyboard = imports.ui.status.keyboard;
+const { EventEmitter } = imports.misc.signals;
 const ExtensionUtils = imports.misc.extensionUtils;
 const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
 
@@ -63,7 +64,7 @@ class Field {
     constructor(prop, gset, obj) {
         this.gset = typeof gset === 'string' ? new Gio.Settings({ schema: gset }) : gset;
         this.prop = prop;
-        this.bind(obj);
+        this.attach(obj);
     }
 
     _get(x) {
@@ -74,13 +75,13 @@ class Field {
         this.gset[`set_${this.prop[x][1]}`](this.prop[x][0], y);
     }
 
-    bind(a) {
+    attach(a) {
         let fs = Object.entries(this.prop);
         fs.forEach(([x]) => { a[x] = this._get(x); });
         this.gset.connectObject(...fs.flatMap(([x, [y]]) => [`changed::${y}`, () => { a[x] = this._get(x); }]), a);
     }
 
-    unbind(a) {
+    detach(a) {
         this.gset.disconnectObject(a);
     }
 }
@@ -131,32 +132,33 @@ class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
     }
 }
 
-class DListItem extends PopupMenu.PopupSubMenuMenuItem {
+class DRadioItem extends PopupMenu.PopupSubMenuMenuItem {
     static {
         GObject.registerClass(this);
     }
 
-    constructor(name, modes, index, callback) {
+    constructor(name, list, index, cb1, cb2) {
         super('');
         this._name = name;
-        this._call = callback;
-        this.setList(modes);
-        this.setSelected(index);
+        this._call1 = cb1;
+        this._call2 = cb2 || (x => this._list[x]);
+        this.setList(list, index);
     }
 
     setSelected(index) {
         this._index = index;
-        this.label.set_text(`${this._name}：${this._list[this._index] ?? ''}`);
+        this.label.set_text(`${this._name}：${this._call2(this._index) || ''}`);
         this._items.forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
     }
 
-    setList(list) {
+    setList(list, index) {
         let items = this._items;
         let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._call(items.length + a)));
+        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._call1(items.length + a)));
         else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
         this._list = list;
-        this._items.forEach((x, i) => x.setLabel(this._list[i]));
+        this._items.forEach((x, i) => x.setLabel(list[i]));
+        this.setSelected(index ?? this._index);
     }
 
     get _items() {
@@ -332,7 +334,7 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         clearTimeout(this._tooltipId);
         clearTimeout(this._delayId);
         this.tooltips = false;
@@ -387,7 +389,6 @@ class DictBox extends BoxPointer.BoxPointer {
         let [, height] = this._view.get_preferred_height(-1);
         let limited = this._view.get_theme_node().get_max_height();
         if(limited < 0) limited = g_size()[1] * 15 / 32;
-
         return height >= limited;
     }
 
@@ -463,21 +464,13 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         clearTimeout(this._delayId);
         super.destroy();
     }
 }
 
-class DictAct extends GObject.Object {
-    static {
-        GObject.registerClass({
-            Signals: {
-                dict_act_dwelled: { param_types: [GObject.TYPE_UINT, GObject.TYPE_JSOBJECT] },
-            },
-        }, this);
-    }
-
+class DictAct extends EventEmitter {
     constructor() {
         super();
         this._bindSettings();
@@ -518,7 +511,7 @@ class DictAct extends GObject.Object {
         this._ptt = this._pt = dwell_ocr ? g_pointer() : null;
         this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr && setInterval(() => {
             let pt = g_pointer();
-            if(still(this._pt, pt)) (dw => dw && this.emit('dict_act_dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODR));
+            if(still(this._pt, pt)) (dw => dw && this.emit('dict-act-dwelled', dw, this._ptt))(dwell(this._ptt, this._pt, pt, LD_MODR));
             [this._ptt, this._pt] = [this._pt, pt];
         }, 375);
     }
@@ -539,10 +532,10 @@ class DictAct extends GObject.Object {
         checker._isSenderAllowed = screenshot ? () => true : sender => [...checker._allowlistMap.values()].includes(sender);
     }
 
-    _invokeOCR(params = '', attach = '') {
+    _invokeOCR(params = '', addtion = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this._ocr_cmd + (params || [this.ocr_params, attach, '-m', this._ocr_mode].join(' ')))
+        this.execute(this._ocr_cmd + (params || [this.ocr_params, addtion, '-m', this._ocr_mode].join(' ')))
             .catch(noop).finally(() => (this.screenshot = false));
     }
 
@@ -584,12 +577,11 @@ class DictAct extends GObject.Object {
         proc.init(null);
         let [stdout, stderr] = await proc.communicate_utf8_async(null, null);
         if(proc.get_exit_status()) throw new Error(stderr.trim());
-
         return stdout.trim();
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         this._keyIds?.forEach(x => clearTimeout(x));
         this.screenshot = this.enable_ocr = this._keyboard = null;
     }
@@ -684,7 +676,7 @@ class DictBtn extends PanelMenu.Button {
             passive:  new SwitchItem(_('Passive mode'), !!this._passive, x => this._field._set('passive', x ? 1 : 0)),
             sep1:     new PopupMenu.PopupSeparatorMenuItem(),
             trigger:  new RadioItem(_('Trigger'), Trigger, this._trigger, x => this._field._set('trigger', x)),
-            scmds:    new DListItem(_('Swift'), this._scmds, this._scmd, x => this._field._set('scommand', x)),
+            scmds:    new DRadioItem(_('Swift'), this._scmds, this._scmd, x => this._field._set('scommand', x)),
             ocr:      new RadioItem(_('OCR'), OCRMode, this._ocr_mode, x => this._field._set('ocr_mode', x)),
             sep2:     new PopupMenu.PopupSeparatorMenuItem(),
             settings: new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
@@ -694,7 +686,7 @@ class DictBtn extends PanelMenu.Button {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         super.destroy();
     }
 }
@@ -731,7 +723,7 @@ class LightDict {
             if(this._dlock) return (this._dlock = undefined);
             if(this._box._rectt && !outOf(this._box._rectt, ptt) ||
                this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
-            if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--no-verbose');
+            if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act._invokeOCR('', '--quiet');
         });
         global.display.connectObject('notify::focus-window', this._onWindowChanged.bind(this), this);
         global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
@@ -826,8 +818,8 @@ class LightDict {
         }
     }
 
-    _exeCmd({ command: a, popup: b, copy: c, commit: d, select: e, type: f }) {
-        f ? this._exeJS(a, b, c, d, e) : this._exeSh(a, b, c, d, e);
+    _exeCmd({ command, popup, copy, commit, select, type }) {
+        (type ? this._exeJS : this._exeSh).bind(this)(command, popup, copy, commit, select);
     }
 
     _select(x) {
@@ -912,7 +904,7 @@ class LightDict {
     }
 
     destroy() {
-        this._field.unbind(this);
+        this._field.detach(this);
         this._dbus.flush();
         this._dbus.unexport();
         clearInterval(this._mouseId);
