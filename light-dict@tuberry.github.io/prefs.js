@@ -237,11 +237,12 @@ class SideRow extends Gtk.Box {
         this._txt.connect('changed', () => !this._txt.get_position() && this.emit('edit', this._txt.text));
         this._img = new Gtk.Image({ icon_name: 'open-menu-symbolic' });
         ['_btn', '_txt', '_img'].forEach(x => this.append(this[x]));
-        this._buildDND();
+        this._buildDND(group);
     }
 
-    _buildDND() {
+    _buildDND(group) {
         // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
+        this._type = !group;
         let drag = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
         drag.connect('prepare', dg => {
             this.emit('drag');
@@ -273,7 +274,7 @@ class SideRow extends Gtk.Box {
         drop.connect('leave', () => this._clearDropStyle());
         drop.connect('drop', (a, t, x, y) => {
             this._clearDropStyle();
-            this.emit('drop', y > this.get_allocation().height / 2);
+            if(t._type === this._type) this.emit('drop', y > this.get_allocation().height / 2);
         });
         this.add_controller(drop);
     }

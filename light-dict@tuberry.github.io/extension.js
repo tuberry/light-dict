@@ -763,7 +763,7 @@ class LightDict {
         this._app = this.appid;
     }
 
-    _onSelectChanged(_sel, type, _src) {
+    _onSelectChanged(sel, type) {
         if(type !== St.ClipboardType.PRIMARY) return;
         clearInterval(this._mouseId);
         if(this._slock) return (this._slock = undefined);
@@ -781,45 +781,45 @@ class LightDict {
         }
     }
 
-    _exeSh(cmd, pop, cpy, cmt, sel) {
-        let rcmd = cmd.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/APPID/g, GLib.shell_quote(this._app));
-        if(pop | cpy | cmt | sel) {
-            this._act.execute(rcmd).then(scc => {
-                if(sel) this._select(scc);
-                if(cpy) this._act.copy(scc);
-                if(cmt) this._act.commit(scc);
-                if(pop) this._display(scc);
+    _exeSh({ command, popup, copy, commit, select }) {
+        let cmd = command.replace(/LDWORD/g, GLib.shell_quote(this._selection)).replace(/APPID/g, GLib.shell_quote(this._app));
+        if(popup | copy | commit | select) {
+            this._act.execute(cmd).then(scc => {
+                if(select) this._select(scc);
+                if(copy) this._act.copy(scc);
+                if(popup) this._display(scc);
+                if(commit) this._act.commit(scc);
             }).catch(err => {
                 this._display(err.message, true);
             });
         } else {
-            Util.spawnCommandLine(rcmd);
+            Util.spawnCommandLine(cmd);
         }
     }
 
-    _exeJS(cmd, pop, cpy, cmt, sel) {
+    _exeJS({ command, popup, copy, commit, select }) {
         /* eslint-disable no-unused-vars */
         try {
             let APPID = this._app;
             let LDWORD = this._selection;
             let key = x => this._act.stroke(x);
             let search = x => { Main.overview.toggle(); Main.overview.searchEntry.set_text(x); };
-            if(pop | cpy | cmt | sel) {
-                let result = String(eval(cmd)) || '';
-                if(cpy) this._act.copy(result);
-                if(cmt) this._act.commit(result);
-                if(sel) this._select(result);
-                if(pop) this._display(result);
+            if(popup | copy | commit | select) {
+                let result = String(eval(command)) || '';
+                if(copy) this._act.copy(result);
+                if(select) this._select(result);
+                if(popup) this._display(result);
+                if(commit) this._act.commit(result);
             } else {
-                eval(cmd);
+                eval(command);
             }
         } catch(e) {
             this._display(e.message, true);
         }
     }
 
-    _exeCmd({ command, popup, copy, commit, select, type }) {
-        (type ? this._exeJS : this._exeSh).bind(this)(command, popup, copy, commit, select);
+    _exeCmd(cmd) {
+        cmd.type ? this._exeJS(cmd) : this._exeSh(cmd);
     }
 
     _select(x) {
