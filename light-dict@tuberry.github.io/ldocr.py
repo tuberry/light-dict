@@ -22,12 +22,12 @@ _ = gettext.gettext
 
 def main():
     args = parser()
-    result = exe_mode(args)
-    if result.cancel: return
-    if args.flash and result.area: gs_dbus_call('FlashArea', ('(iiii)', (*result.area,)))
-    if args.cursor: result.area = None
+    ret = exe_mode(args)
+    if ret.cancel: return
+    if args.flash and ret.area: gs_dbus_call('FlashArea', ('(iiii)', (*ret.area,)))
+    if args.cursor: ret.area = None
     # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
-    gs_dbus_call(*result.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
+    gs_dbus_call(*ret.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
 
 def parser():
     ap = argparse.ArgumentParser(add_help=False)
@@ -162,15 +162,15 @@ def ocr_prln(lang, line=False):
                       area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=_('OCR preprocess failed. (-_-;)'))
 
 def exe_mode(args):
-    result = (lambda m: m[0](*m[1]))({
+    ret = (lambda m: m[0](*m[1]))({
         'word': (ocr_word, (args.lang,)),
         'area': (ocr_area, (args.lang,)),
         'paragraph': (ocr_prln, (args.lang,)),
         'line': (ocr_prln, (args.lang, True)),
     }[args.mode])
-    result.set_style(args.style, args.name)
-    result.set_quiet(args.quiet)
-    return result
+    ret.set_style(args.style, args.name)
+    ret.set_quiet(args.quiet)
+    return ret
 
 if __name__ == '__main__':
     main()

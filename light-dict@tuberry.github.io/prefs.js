@@ -99,7 +99,7 @@ class AppsBox extends Gtk.Box {
                 apps: genParam('string', 'apps', ''),
             },
             Signals: {
-                changed:  { param_types: [GObject.TYPE_STRING] },
+                changed: { param_types: [GObject.TYPE_STRING] },
             },
         }, this);
     }
@@ -109,7 +109,7 @@ class AppsBox extends Gtk.Box {
         this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '', css_name: 'entry', css_classes: ['linked'] });
         this._btn = new Gtk.Button({ tooltip_text: tip2 || '', icon_name: 'list-add-symbolic' });
         this._btn.connect('clicked', this._onActivated.bind(this));
-        [this._box, this._btn].forEach(x => this.append(x));
+        [new Gtk.ScrolledWindow({ child: this._box, vscrollbar_policy: Gtk.PolicyType.NEVER }), this._btn].forEach(x => this.append(x));
         this._buildChooser();
     }
 
@@ -118,13 +118,11 @@ class AppsBox extends Gtk.Box {
     }
 
     set apps(apps) {
-        if(!this.apps) {
-            let widgets = [];
-            let children = this._box.observe_children();
-            for(let i = 0, x; (x = children.get_item(i)); i++) widgets.push(x);
-            widgets.forEach(w => this._box.remove(w));
-            apps.split(',').forEach(a => this._appendApp(a));
-        }
+        let widgets = [];
+        let children = this._box.observe_children();
+        for(let i = 0, x; (x = children.get_item(i)); i++) widgets.push(x);
+        widgets.forEach(w => this._box.remove(w));
+        apps.split(',').forEach(a => this._appendApp(a));
         this._apps = apps;
         this.notify('apps');
     }
@@ -133,25 +131,21 @@ class AppsBox extends Gtk.Box {
         return this._apps ?? '';
     }
 
-    get_apps() {
-        return this.apps;
-    }
-
     set_apps(apps) { // set new apps
-        this._apps = '';
         this.apps = apps;
     }
 
     _buildChooser() {
         this.chooser = new Gtk.AppChooserDialog({ modal: Gtk.DialogFlags.MODAL });
         this.chooser.get_widget().set({ show_all: true, show_other: true });
-        this.chooser.get_widget().connect('application-selected', this._updateResponse.bind(this));
+        this.chooser.get_widget().connect('application-selected', () => this._updateResponse());
         this.chooser.connect('response', (wdg, res) => {
             if(res === Gtk.ResponseType.OK) {
                 let id = wdg.get_widget().get_app_info().get_id();
-                this.apps = this.apps ? [this.apps, id].join(',') : id;
-                this.emit('changed', this._apps);
+                this._apps = this.apps ? [this.apps, id].join(',') : id;
                 this._appendApp(id);
+                this.emit('changed', this.apps);
+                this.notify('apps');
             }
             this.chooser.hide();
         });
@@ -175,12 +169,14 @@ class AppsBox extends Gtk.Box {
         app.set_child(new Gtk.Image({ gicon: appInfo.get_icon(), css_classes: ['icon-dropshadow'] }));
         app.connect('clicked', widget => {
             this._box.remove(widget);
-            this.apps = this.apps.split(',').filter(x => x !== id).join(',');
-            this.emit('changed', this._apps);
+            this._apps = this.apps.split(',').filter(x => x !== id).join(',');
+            this.emit('changed', this.apps);
+            this.notify('apps');
         });
         this._box.append(app);
     }
 }
+
 class SideItem extends GObject.Object { // required GObject.Object by Gtk.SignalListItemFactory
     static {
         GObject.registerClass({
@@ -246,9 +242,9 @@ class SideRow extends Gtk.Box {
         let drag = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
         drag.connect('prepare', dg => {
             this.emit('drag');
-            let { width: x, height: y } = this.get_allocation();
-            let ss = new Gtk.Snapshot();
-            let fg = this.get_style_context().get_color().red;
+            let { width: x, height: y } = this.get_allocation(),
+                ss = new Gtk.Snapshot(),
+                fg = this.get_style_context().get_color().red;
             ss.append_color(fg ? genColor(53, 132, 228) : genColor(255, 255, 255), genRect(x, y));
             new Gtk.WidgetPaintable({ widget: this }).snapshot(ss, x, y);
             let cr = ss.append_cairo(genRect(x, y));
@@ -263,7 +259,7 @@ class SideRow extends Gtk.Box {
         this._img.add_controller(drag);
         let drop = new Gtk.DropTarget({ actions: Gdk.DragAction.MOVE });
         drop.set_gtypes([this.constructor.$gtype]);
-        drop.connect('motion', (a, x, y) => {
+        drop.connect('motion', (_a, _x, y) => {
             let dark = this.get_style_context().get_color().red ? '-dark' : '';
             let [add, del] = y > this.get_allocation().height / 2 ? ['down', 'up'] : ['up', 'down'];
             this.get_style_context().add_class(`ld-drop-${add}${dark}`);
@@ -272,7 +268,7 @@ class SideRow extends Gtk.Box {
             return Gdk.DragAction.MOVE;
         });
         drop.connect('leave', () => this._clearDropStyle());
-        drop.connect('drop', (a, t, x, y) => {
+        drop.connect('drop', (_a, t, _x, y) => {
             this._clearDropStyle();
             if(t._type === this._type) this.emit('drop', y > this.get_allocation().height / 2);
         });
@@ -283,7 +279,7 @@ class SideRow extends Gtk.Box {
         ['up', 'down', 'up-dark', 'down-dark'].forEach(x => this.get_style_context().remove_class(`ld-drop-${x}`));
     }
 
-    bind(item) {
+    binds(item) {
         if(this._item === item) return;
         this._item = item;
         item.bind_property('name', this._txt, 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
@@ -308,10 +304,10 @@ class SideBar extends Gtk.Box {
 
     constructor(cmds, swift) {
         super({ orientation: Gtk.Orientation.VERTICAL, sensitive: !!cmds.length });
-        [this._buildList(cmds, swift), new Gtk.Separator(), this._buildTool()].forEach(x => this.append(x));
+        [this._buildExpander(cmds, swift), new Gtk.Separator(), this._buildTool()].forEach(x => this.append(x));
     }
 
-    _buildList(cmds, swift) {
+    _buildExpander(cmds, swift) {
         // Ref: https://blog.gtk.org/2020/09/05/a-primer-on-gtklistview/
         this.swift = swift ? new Gtk.CheckButton() : null;
         this._model = new Gio.ListStore({ item_type: SideItem });
@@ -319,10 +315,10 @@ class SideBar extends Gtk.Box {
         this._select = new Gtk.SingleSelection({ model: this._model });
         this._select.connect('selection-changed', () => this.emit('select', this.selected));
         let factory = new Gtk.SignalListItemFactory();
-        factory.connect('setup', (f, x) => x.set_child(new SideRow(this.swift)));
-        factory.connect('bind', (f, x) => {
+        factory.connect('setup', (_f, x) => x.set_child(new SideRow(this.swift)));
+        factory.connect('bind', (_f, x) => {
             let w = x.get_child();
-            w.bind(x.get_item());
+            w.binds(x.get_item());
             w._dragId ??= w.connect('drag', a => { this.drag = this.getPos(a); });
             w._dropId ??= w.connect('drop', (a, down) => this.drop(this.getPos(a) + down));
             w._editId ??= w.connect('edit', (a, name) => this.emit('change', this.getPos(a), name));
@@ -332,7 +328,7 @@ class SideBar extends Gtk.Box {
                 this.emit('select', this.getPos(a));
             });
         });
-        // do not `unbind` on small lists, also avoid offending gjs errors
+        // do not `unbind` on small lists, also avoid offending gjs warnings
         this._list = new Gtk.ListView({ model: this._select, factory, vexpand: true });
         this._list.connect('activate', () => this.emit('select', this.selected));
         return new Gtk.ScrolledWindow({ child: this._list });
@@ -448,19 +444,19 @@ class SwiftBox extends Adw.PreferencesPage {
     }
 
     _bindValues() {
-        this._popup.connect('state-set', (widget, state) => this._emitChanged({ popup: state || undefined }));
-        this._commit.connect('state-set', (widget, state) => this._emitChanged({ commit: state || undefined }));
-        this._select.connect('state-set', (widget, state) => this._emitChanged({ select: state || undefined }));
-        this._copy.connect('state-set', (widget, state) => this._emitChanged({ copy: state || undefined }));
-        this._apps.connect('changed', widget => this._emitChanged({ apps: widget.get_apps() || undefined }));
-        this._type.connect('notify::selected', widget => this._emitChanged({ type: widget.get_selected() || undefined }));
-        this._regexp.connect('changed', widget => this._emitChanged({ regexp: widget.get_text() || undefined }));
-        this._command.connect('changed', widget => this._emitChanged({ command: widget.get_text() || undefined }));
+        this._popup.connect('state-set', (_w, state) => this._emit('popup', state));
+        this._commit.connect('state-set', (_w, state) => this._emit('commit', state));
+        this._select.connect('state-set', (_w, state) => this._emit('select', state));
+        this._copy.connect('state-set', (_w, state) => this._emit('copy', state));
+        this._apps.connect('changed', (_w, apps) => this._emit('apps', apps));
+        this._type.connect('notify::selected', widget => this._emit('type', widget.get_selected()));
+        this._regexp.connect('changed', widget => this._emit('regexp', widget.get_text()));
+        this._command.connect('changed', widget => this._emit('command', widget.get_text()));
     }
 
-    _emitChanged(param) {
+    _emit(key, value) {
         if(this._blocked) return;
-        this.emit('change', param);
+        this.emit('change', { [key]: value || undefined });
     }
 
     set config(config) {
@@ -519,8 +515,8 @@ class PopupBox extends SwiftBox {
 
     _bindValues() {
         super._bindValues();
-        this._icon.connect('changed', (w, icon) => this._emitChanged({ icon: icon || undefined }));
-        this._tooltip.connect('changed', w => this._emitChanged({ tooltip: w.get_text() || undefined }));
+        this._icon.connect('changed', (_w, icon) => this._emit('icon', icon));
+        this._tooltip.connect('changed', w => this._emit('tooltip', w.get_text()));
     }
 }
 
@@ -537,9 +533,9 @@ class LightDictAbout extends PrefPage {
     }
 
     _buildIcon() {
-        let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 });
-        let gsettings = ExtensionUtils.getSettings();
-        let active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
+        let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 }),
+            gsettings = ExtensionUtils.getSettings(),
+            active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
         if(active.length) {
             active.forEach(x => {
                 let icon = this._checkIcon(x);
@@ -586,9 +582,9 @@ class LightDictAbout extends PrefPage {
     }
 
     _buildLicense() {
-        let gpl = 'https://www.gnu.org/licenses/gpl-3.0.html';
-        let license  = _GTK('GNU General Public License, version 3 or later');
-        let statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
+        let gpl = 'https://www.gnu.org/licenses/gpl-3.0.html',
+            license  = _GTK('GNU General Public License, version 3 or later'),
+            statement = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
         return this._buildLabel(`<small>\n\n${_GTK(statement).format(gpl, license)}</small>`);
     }
 }
@@ -629,7 +625,7 @@ class LightDictBasic extends PrefPage {
             ENABLEOCR: ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
         };
         Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
-        this._buildHelpPopver().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
+        this._buildHelpPopover().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
     }
 
     _buildUI() {
@@ -644,27 +640,27 @@ class LightDictBasic extends PrefPage {
             [[_('Work mode')], this._field.OCRMODE[1]],
             [[_('Parameters')], this._field.OCRPARAMS[1], this._ocr_help_button],
         ].forEach(xs => this._field.ENABLEOCR[1].add_row(new UI.PrefRow(...xs)));
-        [this._buildList(_('Other'),
+        [this._buildExpander(_('Other'),
             [[_('Trim blank lines')], this._field.TXTSTRIP[1]],
             [[_('Autohide interval')], this._field.AUTOHIDE[1]],
             [[_('RegExp filter')], this._field.TXTFILTER[1]]),
-        this._buildList(_('Panel'),
+        this._buildExpander(_('Panel'),
             [[_('Hide title')], this._field.HIDETITLE[1]],
             [[_('Right command'), _('Right click to run and hide panel')], this._field.RCOMMAND[1]],
             [[_('Left command'), _('Left click to run')], this._field.LCOMMAND[1]]),
-        this._buildList(_('Popup'),
+        this._buildExpander(_('Popup'),
             [[_('Enable tooltip')], this._field.TOOLTIP[1]],
             [[_('Page size')], this._field.PAGESIZE[1]])].forEach(x => this._add(x));
         this._add(this._field.ENABLEOCR[1]);
     }
 
-    _buildList(title, ...list) {
+    _buildExpander(title, ...list) {
         let expander = new Adw.ExpanderRow({ title });
         list.forEach(xs => expander.add_row(new UI.PrefRow(...xs)));
         return expander;
     }
 
-    async _buildHelpPopver() {
+    async _buildHelpPopover() {
         let proc = new Gio.Subprocess({
             argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
             flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
@@ -713,7 +709,7 @@ class LightDictJSON extends PrefPage {
         this._side.connect('remove', this._onRemove.bind(this));
         this._side.connect('change', this._onSideChange.bind(this));
         this._pane.connect('change', this._onPaneChange.bind(this));
-        if(this._swift) this._gset.connect(`changed::${Fields.SCOMMAND}`, this._onSettingChanged.bind(this));
+        if(this._swift) this._gset.connect(`changed::${Fields.SCOMMAND}`, () => this._onSettingChanged());
         this._side.grabFocus(0);
     }
 
@@ -723,7 +719,7 @@ class LightDictJSON extends PrefPage {
         this._side.setEnabled(index);
     }
 
-    _onEnable(w, index, enable) {
+    _onEnable(_w, index, enable) {
         if(this._swift) {
             this.enable = index;
         } else {
@@ -742,16 +738,16 @@ class LightDictJSON extends PrefPage {
         this._gset.set_int(Fields.SCOMMAND, index);
     }
 
-    _onSelect(w, index) {
+    _onSelect(_w, index) {
         this._pane.config = JSON.parse(this._cmds[index] || '{}');
     }
 
-    _onSideChange(w, index, name) {
+    _onSideChange(_w, index, name) {
         this._cmds[index] = JSON.stringify({ ...JSON.parse(this._cmds[index]), name }, null, 0);
         this._saveCommands();
     }
 
-    _onAdd(w, index, text) {
+    _onAdd(_w, index, text) {
         if(index < 0) {
             this._cmds.push(text);
             this._pane.set_sensitive(true);
@@ -763,7 +759,7 @@ class LightDictJSON extends PrefPage {
         this._saveCommands();
     }
 
-    _onRemove(w, index) {
+    _onRemove(_w, index) {
         this._cmds.splice(index, 1);
         if(this._enable >= index) this.enable = this._enable === index ? -1 : this._enable - 1;
         this._pane.config = JSON.parse(this._cmds[index] || this._cmds[index - 1] || '{}');
@@ -771,7 +767,7 @@ class LightDictJSON extends PrefPage {
         this._saveCommands();
     }
 
-    _onMove(w, f, t) {
+    _onMove(_w, f, t) {
         this._cmds.splice(t, 0, this._cmds.splice(f, 1)[0]);
         if(this._enable <= Math.max(f, t) && this._enable >= Math.min(f, t)) {
             if(this._enable > f) this.enable = this._enable - 1;
@@ -782,14 +778,14 @@ class LightDictJSON extends PrefPage {
         this._saveCommands();
     }
 
-    _onCopy(w, index) {
+    _onCopy(_w, index) {
         let text = this._cmds[index];
         if(!text) return;
         this.get_clipboard().set(text);
         this.get_root().add_toast(new Adw.Toast({ title: _('Content copied'), timeout: 5 }));
     }
 
-    _onPaneChange(widget, prop) {
+    _onPaneChange(_w, prop) {
         let index = this._side.selected;
         if(!this._cmds[index]) return;
         this._cmds[index] = JSON.stringify({ ...JSON.parse(this._cmds[index]), ...prop }, null, 0);
