@@ -10,6 +10,10 @@
     /* box-shadow: 0 0 3px rgba(233, 233, 233, 0.5); */
 }
 
+.light-dict-systray:busy {
+    color: deepskyblue;
+}
+
 .light-dict-scroll:scrolled {
     max-height: 30em !important; /* min height to scroll */
 }

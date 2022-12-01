@@ -516,10 +516,10 @@ class DictAct extends EventEmitter {
         return this._pid === pid.deepUnpack()[0];
     }
 
-    invokeOCR(params = '', addtion = '') {
+    invokeOCR(params = '', supply = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this._ocr_cmd + (params || [this.ocr_params, addtion, '-m', this._ocr_mode].join(' ')))
+        this.execute(this._ocr_cmd + (params || [this.ocr_params, supply, '-m', this._ocr_mode].join(' ')))
             .catch(noop).finally(() => { this.screenshot = false; this._pid = null; });
     }
 
@@ -577,7 +577,8 @@ class DictBtn extends PanelMenu.Button {
     }
 
     _buildWidgets() {
-        this._icon = new St.Icon({ style_class: 'light-dict-systray system-status-icon' });
+        this.add_style_class_name('light-dict-systray');
+        this._icon = new St.Icon({ style_class: 'system-status-icon' });
         this.menu.actor.add_style_class_name('app-menu'); // popup-ornament-width: 0;
         this.add_actor(this._icon);
     }
@@ -619,8 +620,8 @@ class DictBtn extends PanelMenu.Button {
     set dwell_ocr(dwell_ocr) {
         this._dwell_ocr = dwell_ocr;
         this._menus?.dwell.setToggleState(dwell_ocr);
-        if(dwell_ocr) this.add_style_class_name('screen-sharing-indicator');
-        else this.remove_style_class_name('screen-sharing-indicator');
+        if(dwell_ocr) this.add_style_pseudo_class('busy');
+        else this.remove_style_pseudo_class('busy');
     }
 
     set enable_ocr(enable) {

@@ -8,7 +8,7 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const _ = ExtensionUtils.gettext;
 const _GTK = imports.gettext.domain('gtk40').gettext;
-const { Fields } = Me.imports.fields;
+const { Fields, Block } = Me.imports.fields;
 const UI = Me.imports.ui;
 const noop = () => {};
 const genColor = (r, g, b, alpha = 1) => new Gdk.RGBA({ red: r / 255, green: g / 255, blue: b / 255, alpha });
@@ -601,57 +601,55 @@ class LightDictBasic extends PrefPage {
     }
 
     _buildWidgets() {
-        let gsettings = ExtensionUtils.getSettings();
-        this._field_ocr_shortcut = new UI.Short(gsettings, Fields.OCRSHORTCUT);
-        this._ocr_help_button    = new Gtk.MenuButton({ label: _('Help'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
-        this._field = {
-            OCRPARAMS: ['text',     new UI.LazyEntry()],
-            PAGESIZE:  ['value',    new UI.Spin(1, 10, 1)],
-            SHORTOCR:  ['active',   new Gtk.CheckButton()],
-            AUTOHIDE:  ['value',    new UI.Spin(500, 10000, 250)],
-            LCOMMAND:  ['text',     new UI.LazyEntry('notify-send LDWORD')],
-            RCOMMAND:  ['text',     new UI.LazyEntry('notify-send LDWORD')],
-            TXTFILTER: ['text',     new UI.LazyEntry('^[^\\n\\.\\t/:{3,50}$')],
-            PASSIVE:   ['selected', new UI.Drop([_('Proactive'), _('Passive')])],
-            LISTTYPE:  ['selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            DWELLOCR:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            TXTSTRIP:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            SYSTRAY:   ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            TOOLTIP:   ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            HIDETITLE: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            APPLIST:   ['apps',     new AppsBox(_('Click the app icon to remove'))],
-            TRIGGER:   ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
-            OCRMODE:   ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
-            ENABLEOCR: ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
-        };
-        Object.entries(this._field).forEach(([x, [y, z]]) => gsettings.bind(Fields[x], z, y, Gio.SettingsBindFlags.DEFAULT));
-        this._buildHelpPopover().then(scc => this._ocr_help_button.set_popover(scc)).catch(noop);
+        this._block = new Block({
+            param:   [Fields.OCRPARAMS, 'text',     new UI.LazyEntry()],
+            size:    [Fields.PAGESIZE,  'value',    new UI.Spin(1, 10, 1)],
+            en_keys: [Fields.SHORTOCR,  'active',   new Gtk.CheckButton()],
+            hide:    [Fields.AUTOHIDE,  'value',    new UI.Spin(500, 10000, 250)],
+            lcmd:    [Fields.LCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
+            rcmd:    [Fields.RCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
+            filter:  [Fields.TXTFILTER, 'text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
+            passive: [Fields.PASSIVE,   'selected', new UI.Drop([_('Proactive'), _('Passive')])],
+            list:    [Fields.LISTTYPE,  'selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
+            dwell:   [Fields.DWELLOCR,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            strip:   [Fields.TXTSTRIP,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            tray:    [Fields.SYSTRAY,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            tip:     [Fields.TOOLTIP,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            title:   [Fields.HIDETITLE, 'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            apps:    [Fields.APPLIST,   'apps',     new AppsBox(_('Click the app icon to remove'))],
+            trigger: [Fields.TRIGGER,   'selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+            mode:    [Fields.OCRMODE,   'selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
+            en_ocr:  [Fields.ENABLEOCR, 'enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
+        });
+        this._block.keys = new UI.Keys(this._block.gset, Fields.OCRSHORTCUT);
+        this._block.help = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
+        this._buildHelpPopover().then(scc => this._block.help.set_popover(scc)).catch(noop);
     }
 
     _buildUI() {
         [
-            [[_('Enable systray')], this._field.SYSTRAY[1]],
-            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._field.PASSIVE[1], this._field.TRIGGER[1]],
-            [[_('Application list')], this._field.APPLIST[1], this._field.LISTTYPE[1]],
+            [[_('Enable systray')], this._block.tray],
+            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._block.passive, this._block.trigger],
+            [[_('Application list')], this._block.apps, this._block.list],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
         [
-            [this._field.SHORTOCR[1], [_('Shortcut')], this._field_ocr_shortcut],
-            [[_('Dwell OCR')], this._field.DWELLOCR[1]],
-            [[_('Work mode')], this._field.OCRMODE[1]],
-            [[_('Parameters')], this._field.OCRPARAMS[1], this._ocr_help_button],
-        ].forEach(xs => this._field.ENABLEOCR[1].add_row(new UI.PrefRow(...xs)));
+            [this._block.en_keys, [_('Shortcut')], this._block.keys],
+            [[_('Dwell OCR')], this._block.dwell],
+            [[_('Work mode')], this._block.mode],
+            [this._block.help, [], this._block.param],
+        ].forEach(xs => this._block.en_ocr.add_row(new UI.PrefRow(...xs)));
         [this._buildExpander(_('Other'),
-            [[_('Trim blank lines')], this._field.TXTSTRIP[1]],
-            [[_('Autohide interval')], this._field.AUTOHIDE[1]],
-            [[_('RegExp filter')], this._field.TXTFILTER[1]]),
+            [[_('Trim blank lines')], this._block.strip],
+            [[_('Autohide interval')], this._block.hide],
+            [[_('RegExp filter')], this._block.filter]),
         this._buildExpander(_('Panel'),
-            [[_('Hide title')], this._field.HIDETITLE[1]],
-            [[_('Right command'), _('Right click to run and hide panel')], this._field.RCOMMAND[1]],
-            [[_('Left command'), _('Left click to run')], this._field.LCOMMAND[1]]),
+            [[_('Hide title')], this._block.title],
+            [[_('Right command'), _('Right click to run and hide panel')], this._block.rcmd],
+            [[_('Left command'), _('Left click to run')], this._block.lcmd]),
         this._buildExpander(_('Popup'),
-            [[_('Enable tooltip')], this._field.TOOLTIP[1]],
-            [[_('Page size')], this._field.PAGESIZE[1]])].forEach(x => this._add(x));
-        this._add(this._field.ENABLEOCR[1]);
+            [[_('Enable tooltip')], this._block.tip],
+            [[_('Page size')], this._block.size])].forEach(x => this._add(x));
+        this._add(this._block.en_ocr);
     }
 
     _buildExpander(title, ...list) {
