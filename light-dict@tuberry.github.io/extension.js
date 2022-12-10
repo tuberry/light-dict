@@ -642,7 +642,7 @@ class DictBtn extends PanelMenu.Button {
             dwell:   new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this.setf('dwell_ocr', x)),
             passive: new SwitchItem(_('Passive mode'), !!this.passive, x => this.setf('passive', x ? 1 : 0)),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
-            trigger: new RadioItem(_('Trigger'), Trigger, this.trigger, x => this.setf('trigger', x, this)),
+            trigger: new RadioItem(_('Trigger'), Trigger, this.trigger, x => this.setf('trigger', x)),
             scmds:   new DRadioItem(_('Swift'), this._scmds, this.scommand, x => this.setf('scommand', x)),
             ocr:     new RadioItem(_('OCR'), OCRMode, this.ocr_mode, x => this.setf('ocr_mode', x)),
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
