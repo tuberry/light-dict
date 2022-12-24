@@ -20,6 +20,25 @@ gettext.bindtextdomain(domain, Path(__file__).absolute().parent / 'locale')
 gettext.textdomain(domain)
 _ = gettext.gettext
 
+class Result:
+    def __init__(self, text=None, area=None, error=None, cancel=None):
+        self.text, self.area, self.error, self.cancel, self.style = text, area, error, cancel, 'swift'
+
+    def set_style(self, style, name):
+        self.style = style + ':' + name if name else style
+
+    def set_quiet(self, quiet):
+        if quiet and self.is_error: self.cancel = True
+
+    @property
+    def is_error(self):
+        return self.error or self.text is None
+
+    @property
+    def param(self):
+        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.is_error else [self.style, self.text, '']
+        return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
+
 def main():
     args = parser()
     ret = exe_mode(args)
@@ -41,38 +60,10 @@ def parser():
     ap.add_argument('-q', '--quiet',  help=_('suppress error messages'), action=argparse.BooleanOptionalAction)
     return ap.parse_args()
 
-class Result:
-    def __init__(self, text=None, area=None, error=None, cancel=None):
-        self.text, self.area, self.error, self.cancel, self.style = text, area, error, cancel, 'swift'
-
-    def set_style(self, style, name):
-        self.style = style + ':' + name if name else style
-
-    def set_quiet(self, quiet):
-        if quiet and self.is_error: self.cancel = True
-
-    @property
-    def is_error(self):
-        return self.error or self.text is None
-
-    @property
-    def param(self):
-        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.is_error else [self.style, self.text, '']
-        return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
-
 def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
-    param = parameters and GLib.Variant(*parameters)
     proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
-    try:
-        return proxy.call_sync(method_name, param, Gio.DBusCallFlags.NONE, -1, None).unpack()
-    except Exception as e:
-        return False, str(e)
-
-def ld_dbus_get(*property_names):
-    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell',
-                                           '/org/gnome/Shell/Extensions/LightDict', 'org.gnome.Shell.Extensions.LightDict', None)
-    return map(lambda x: (lambda y: y and list(y))(proxy.get_cached_property(x)), property_names)
+    return proxy.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
 
 def bincount_img(img):
     # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
@@ -125,41 +116,47 @@ def typeset_str(para): return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n',
 def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
 
 def ocr_word(lang, sz=(250, 50)):
-    pt, sc = ld_dbus_get('Pointer', 'DisplaySize')
-    if pt is None or sc is None: return Result(error=_('LD DBus error. (~_~)'))
-    w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
-    if w < 5 or h < 5: return Result(error=_('Too marginal. (>_<)'))
-    ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
-    with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
-        if not ok: return Result(error=fn)
-        dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
-        bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
-        rct = find_rect(bxs, (w, h))
-        return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                      area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR preprocess failed. (-_-;)'))
+    try:
+        pt, sc = gs_dbus_call('Get', ('(as)', (['pointer', 'display'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
+        w, h = [min(a, b - a, c) for (a, b, c) in zip(pt, sc, sz)]
+        if w < 5 or h < 5: return Result(error=_('Too marginal. (>_<)'))
+        ar = [pt[0] - w, pt[1] - h, w * 2, h * 2]
+        with NamedTemporaryFile(suffix='.png') as f:
+            ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
+            if not ok: return Result(error=fn)
+            dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
+            bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
+            rct = find_rect(bxs, (w, h))
+            return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
+                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR preprocess failed. (~_~)'))
+    except Exception as e:
+        return Result(error=str(e))
 
 def ocr_area(lang):
-    area = gs_dbus_call('SelectArea', None)
-    if area[0] is False: return Result(cancel=True) if 'cancel' in area[1] else Result(error=area[1])
-    with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
-        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
-                      area=area) if ok else Result(error=fn)
+    try:
+        area = gs_dbus_call('SelectArea', None)
+        with NamedTemporaryFile(suffix='.png') as f:
+            ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
+            return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
+                          area=area) if ok else Result(error=fn)
+    except Exception as e:
+        return Result(cancel=True) if 'cancel' in str(e) else Result(error=str(e))
 
 def ocr_prln(lang, line=False):
-    pt, fw = ld_dbus_get('Pointer', 'FocusWindow')
-    if pt is None or fw is None: return Result(error=_('LD DBus error. (~_~)'))
-    pt = [a - b for (a, b) in zip(pt, fw)]
-    with NamedTemporaryFile(suffix='.png') as f:
-        ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
-        # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
-        if not ok: return Result(error=fn)
-        kn, it = ((15, 3), 1) if line else ((9, 6), 3)
-        img = read_img(fn, trim=True)
-        rct = crop_img(img, pt, kn, it)
-        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
-                      area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=_('OCR preprocess failed. (-_-;)'))
+    try:
+        pt, fw = gs_dbus_call('Get', ('(as)', (['pointer', 'focused'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
+        pt = [a - b for (a, b) in zip(pt, fw)]
+        with NamedTemporaryFile(suffix='.png') as f:
+            ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
+            # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
+            if not ok: return Result(error=fn)
+            kn, it = ((15, 3), 1) if line else ((9, 6), 3)
+            img = read_img(fn, trim=True)
+            rct = crop_img(img, pt, kn, it)
+            return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
+                          area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=_('OCR preprocess failed. (~_~)'))
+    except Exception as e:
+        return Result(error=str(e))
 
 def exe_mode(args):
     ret = (lambda m: m[0](*m[1]))({

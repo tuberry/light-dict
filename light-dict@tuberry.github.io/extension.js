@@ -32,8 +32,8 @@ const genEmpty = () => (x => x[Math.floor(Math.random() * x.length)])(['_(:з」
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
 const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
-const LD_MODR = Clutter.ModifierType.MOD1_MASK;
-const LD_DBUS =
+const LDMod = Clutter.ModifierType.MOD1_MASK;
+const LDIface =
 `<node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Toggle"/>
@@ -54,9 +54,10 @@ const LD_DBUS =
             <arg type="i" direction="in" name="width"/>
             <arg type="i" direction="in" name="height"/>
         </method>
-        <property name="Pointer" type="au" access="read"/>
-        <property name="DisplaySize" type="au" access="read"/>
-        <property name="FocusWindow" type="au" access="read"/>
+        <method name="Get">
+            <arg type="as" direction="in" name="props"/>
+            <arg type="aai" direction="out" name="results"/>
+        </method>
     </interface>
 </node>`;
 
@@ -490,7 +491,7 @@ class DictAct extends EventEmitter {
         this._ppt = this._pt = dwell_ocr ? gs_pointer() : null;
         this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr && setInterval(() => {
             let pt = gs_pointer();
-            if(still(this._pt, pt)) (dw => dw && this.emit('dict-act-dwelled', dw, this._ppt))(dwell(this._ppt, this._pt, pt, LD_MODR));
+            if(still(this._pt, pt)) (dw => dw && this.emit('dict-act-dwelled', dw, this._ppt))(dwell(this._ppt, this._pt, pt, LDMod));
             [this._ppt, this._pt] = [this._pt, pt];
         }, 300);
     }
@@ -506,12 +507,12 @@ class DictAct extends EventEmitter {
     }
 
     set screenshot(shot) {
-        if(global.context.unsafe_mode ?? true) return;
         let checker = Main.shellDBusService._screenshotService._senderChecker;
-        checker._isSenderAllowed = shot ? this._screenshotChecker.bind(this) : DBusSenderChecker.prototype._isSenderAllowed.bind(checker);
+        checker._isSenderAllowed = shot ? this._dbusChecker.bind(this) : DBusSenderChecker.prototype._isSenderAllowed.bind(checker);
     }
 
-    async _screenshotChecker(x) {
+    async _dbusChecker(x) {
+        if(global.context.unsafe_mode) return true;
         let pid = await this._proxy.call('GetConnectionUnixProcessID', new GLib.Variant('(s)', [x]), Gio.DBusCallFlags.NONE, -1, null);
         return this._pid === pid.deepUnpack()[0];
     }
@@ -685,7 +686,7 @@ class LightDict {
         this._act = new DictAct(this._field);
         this._box = new DictBox(this._field);
         this._bar = new DictBar(this._field);
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_DBUS, this);
+        this._dbus = Gio.DBusExportedObject.wrapJSObject(LDIface, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         this._bar.connect('dict-bar-clicked', (_a, cmd) => { this._dlock[0] = true; this._exeCmd(cmd); });
         this._act.connect('dict-act-dwelled', (_a, dw, ppt) => {
@@ -738,7 +739,7 @@ class LightDict {
         if(this._slock.pop()) return;
         if(!this.isAllowed() || this.trigger === Trigger.Disable) return;
         let mods = gs_pointer()[2];
-        if(this.passive && !(mods & LD_MODR)) return;
+        if(this.passive && !(mods & LDMod)) return;
         if(mods & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseId = setInterval(() => {
                 if((mods ^ gs_pointer()[2]) !== Clutter.ModifierType.BUTTON1_MASK) return;
@@ -842,12 +843,12 @@ class LightDict {
         }
     }
 
-    async Run(type, text, info) {
-        await this._run(type, text, info).catch(noop);
+    Run(type, text, info) {
+        this._run(type, text, info).catch(noop);
     }
 
-    async RunAt(type, text, info, x, y, w, h) {
-        await this._run(type, text, info, [x, y, w, h]).catch(noop);
+    RunAt(type, text, info, x, y, w, h) {
+        this._run(type, text, info, [x, y, w, h]).catch(noop);
     }
 
     OCR(temp) {
@@ -860,16 +861,23 @@ class LightDict {
         this.setf('trigger', next);
     }
 
-    get Pointer() {
-        return gs_pointer().slice(0, 2);
-    }
-
-    get DisplaySize() {
-        return gs_size();
-    }
-
-    get FocusWindow() {
-        return (r => r ? [r.x, r.y, r.width, r.height] : null)(gs_focus()?.get_frame_rect?.());
+    async GetAsync(params, invocation) {
+        if(await this._act._dbusChecker(invocation.get_sender())) {
+            try {
+                invocation.return_value(new GLib.Variant('(aai)', [params[0].map(x => {
+                    switch(x) {
+                    case 'display': return gs_size();
+                    case 'pointer': return gs_pointer().slice(0, 2);
+                    case 'focused': return (r => r ? [r.x, r.y, r.width, r.height] : null)(gs_focus()?.get_frame_rect?.());
+                    default: return null;
+                    }
+                })]));
+            } catch(e) {
+                invocation.return_error_literal(Gio.DBusError, Gio.DBusError.FAILED, `${invocation.get_method_name()} failed`);
+            }
+        } else {
+            invocation.return_error_literal(Gio.DBusError, Gio.DBusError.ACCESS_DENIED, `${invocation.get_method_name()} is not allowed`);
+        }
     }
 
     destroy() {
