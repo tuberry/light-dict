@@ -1,0 +1,374 @@
+# Dutch translations for gnome-shell-extension-light-dict package.
+# Copyright (C) 2021 THE gnome-shell-extension-light-dict'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the gnome-shell-extension-light-dict package.
+# Automatically generated, 2021.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: gnome-shell-extension-light-dict\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"PO-Revision-Date: 2021-09-15 20:14+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: none\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.0\n"
+
+#: src/ui.js:32
+msgid "Clear"
+msgstr ""
+
+#: src/ui.js:266
+msgid "Click or press ENTER to commit changes"
+msgstr ""
+
+#: src/prefs.js:36
+msgid "Basic"
+msgstr "Eenvoudig"
+
+#: src/prefs.js:37 src/prefs.js:620 src/extension.js:647
+msgid "Swift"
+msgstr "Swift"
+
+#: src/prefs.js:38 src/prefs.js:620 src/prefs.js:649
+msgid "Popup"
+msgstr "Pop-up"
+
+#: src/prefs.js:39
+msgid "About"
+msgstr "Over"
+
+#: src/prefs.js:365
+msgid "Add"
+msgstr ""
+
+#: src/prefs.js:367
+msgid "Remove"
+msgstr ""
+
+#: src/prefs.js:372
+msgid "Copy"
+msgstr ""
+
+#: src/prefs.js:374
+msgid "Paste"
+msgstr ""
+
+#: src/prefs.js:378
+msgid "Paste content parsing failed"
+msgstr ""
+
+#: src/prefs.js:428 src/prefs.js:619
+msgid "Click the app icon to remove"
+msgstr "Klik op een toepassingspictogram om te verwijderen"
+
+#: src/prefs.js:428 src/prefs.js:613
+msgid "Allowlist"
+msgstr "Witte lijst"
+
+#: src/prefs.js:434 src/prefs.js:502
+msgid "Run command"
+msgstr "Opdracht uitvoeren"
+
+#: src/prefs.js:435 src/prefs.js:503
+msgid "Command type"
+msgstr "Soort opdracht"
+
+#: src/prefs.js:436 src/prefs.js:505
+msgid "Show result"
+msgstr "Resultaat tonen"
+
+#: src/prefs.js:437 src/prefs.js:506
+msgid "Copy result"
+msgstr "Resultaat kopiëren"
+
+#: src/prefs.js:438 src/prefs.js:507
+msgid "Select result"
+msgstr "Resultaat selecteren"
+
+#: src/prefs.js:439 src/prefs.js:508
+msgid "Commit result"
+msgstr "Resultaat vastleggen"
+
+#: src/prefs.js:440 src/prefs.js:509 src/prefs.js:633
+msgid "Application list"
+msgstr "Toepassingenlijst"
+
+#: src/prefs.js:441 src/prefs.js:510
+msgid "RegExp matcher"
+msgstr "RegExp-overeenkomst"
+
+#: src/prefs.js:504
+msgid "Icon name"
+msgstr "Pictogramnaam"
+
+#: src/prefs.js:511
+msgid "Icon tooltip"
+msgstr "Pictogram-hulpballon"
+
+#: src/prefs.js:558
+#, javascript-format
+msgid "Version %d"
+msgstr "Versie %d"
+
+#: src/prefs.js:559
+#, fuzzy
+msgid ""
+"Lightweight extension for on-the-fly manipulation to primary selections, "
+"especially optimized for Dictionary lookups."
+msgstr ""
+"Een lichte uitbreiding voor het uitvoeren van directie acties op selecties, "
+"gericht op woordenboekopzoekingen."
+
+#: src/prefs.js:571
+msgid "Leave RegExp/application list blank for no restriction"
+msgstr "Laat de lijsten leeg om geen beperkingen in te voeren"
+
+#: src/prefs.js:572
+msgid "Middle click the panel to copy the result to clipboard"
+msgstr "Middelklik op het paneel om het resultaat te kopiëren"
+
+#: src/prefs.js:573
+msgid "Substitute <b>LDWORD</b> for the selected text in the command"
+msgstr "Vervang <b>LDWORD</b> in de geselecteerde tekst in de opdracht"
+
+#: src/prefs.js:574
+msgid "Simulate keyboard input in JS statement: <i>key(\"Control_L+c\")</i>"
+msgstr ""
+"Simuleer toetsenbordinvoer in de JS-opdracht <i>key(\"Control_L+c\")</i>"
+
+#: src/prefs.js:577
+msgid "Tips"
+msgstr "Tips"
+
+#: src/prefs.js:612
+msgid "Proactive"
+msgstr "Pro-actief"
+
+#: src/prefs.js:612
+msgid "Passive"
+msgstr "Passief"
+
+#: src/prefs.js:613
+msgid "Blocklist"
+msgstr "Zwarte lijst"
+
+#: src/prefs.js:620
+msgid "Disable"
+msgstr "Uitschakelen"
+
+#: src/prefs.js:621
+msgid "Word"
+msgstr "Woord"
+
+#: src/prefs.js:621
+msgid "Paragraph"
+msgstr "Paragraaf"
+
+#: src/prefs.js:621
+msgid "Area"
+msgstr "Gebied"
+
+#: src/prefs.js:621
+msgid "Line"
+msgstr "Regel"
+
+#: src/prefs.js:622 src/extension.js:648
+msgid "OCR"
+msgstr "OCR"
+
+#: src/prefs.js:622
+#, fuzzy
+msgid "Depends on python-opencv and python-pytesseract"
+msgstr ""
+"Afhankelijkheden: python-opencv, python-pytesseract en python-googletrans "
+"(optioneel)"
+
+#: src/prefs.js:625
+msgid "Parameters"
+msgstr "Aanvullende opties"
+
+#: src/prefs.js:631
+msgid "Enable systray"
+msgstr "Systeemvakpictogram tonen"
+
+#: src/prefs.js:632
+msgid "Trigger style"
+msgstr "Aanroepingsstijl"
+
+#: src/prefs.js:632
+msgid "Passive means that pressing Alt to trigger"
+msgstr ""
+
+#: src/prefs.js:636
+msgid "Shortcut"
+msgstr "Sneltoets"
+
+#: src/prefs.js:637 src/extension.js:643
+msgid "Dwell OCR"
+msgstr ""
+
+#: src/prefs.js:638
+msgid "Work mode"
+msgstr "Werkmodus"
+
+#: src/prefs.js:641
+msgid "Other"
+msgstr ""
+
+#: src/prefs.js:642
+msgid "Trim blank lines"
+msgstr "Aantal witregels beperken"
+
+#: src/prefs.js:643
+msgid "Autohide interval"
+msgstr "Automatisch verbergen na"
+
+#: src/prefs.js:644
+msgid "RegExp filter"
+msgstr "RegExp-filter"
+
+#: src/prefs.js:645
+msgid "Panel"
+msgstr "Paneel"
+
+#: src/prefs.js:646
+msgid "Hide title"
+msgstr "Naam verbergen"
+
+#: src/prefs.js:647
+msgid "Right command"
+msgstr "Rechteropdracht"
+
+#: src/prefs.js:647
+msgid "Right click to run and hide panel"
+msgstr "Rechtsklikken om uit te voeren en paneel te verbergen"
+
+#: src/prefs.js:648
+msgid "Left command"
+msgstr "Linkeropdracht"
+
+#: src/prefs.js:648
+msgid "Left click to run"
+msgstr "Linksklikken om uit te voeren"
+
+#: src/prefs.js:650
+msgid "Enable tooltip"
+msgstr "Hulpballon tonen"
+
+#: src/prefs.js:651
+msgid "Page size"
+msgstr "Paginagrootte"
+
+#: src/prefs.js:783
+msgid "Content copied"
+msgstr ""
+
+#: src/extension.js:644
+msgid "Passive mode"
+msgstr "Passieve modus"
+
+#: src/extension.js:646
+#, fuzzy
+msgid "Trigger"
+msgstr "Aanroeping: "
+
+#: src/extension.js:650
+msgid "Settings"
+msgstr "Voorkeuren"
+
+#: src/extension.js:860
+#, javascript-format
+msgid "Switch to %s style"
+msgstr "Overschakelen naar %s"
+
+#: src/ldocr.py:39
+msgid "OCR process failed. (-_-;)"
+msgstr ""
+
+#: src/ldocr.py:53
+msgid "show this help message and exit"
+msgstr ""
+
+#: src/ldocr.py:54
+#, python-format
+msgid "specify work mode: [%(choices)s] (default: %(default)s)"
+msgstr ""
+
+#: src/ldocr.py:55
+#, python-format
+msgid "specify LD trigger style: [%(choices)s] (default: %(default)s)"
+msgstr ""
+
+#: src/ldocr.py:56
+#, python-format
+msgid "specify language(s) used by Tesseract OCR (default: %(default)s)"
+msgstr ""
+
+#: src/ldocr.py:57
+msgid "specify LD swift style name"
+msgstr ""
+
+#: src/ldocr.py:58
+msgid "invoke LD around the cursor"
+msgstr ""
+
+#: src/ldocr.py:59
+msgid "flash on the detected area"
+msgstr ""
+
+#: src/ldocr.py:60
+msgid "suppress error messages"
+msgstr ""
+
+#: src/ldocr.py:122
+msgid "Too marginal. (>_<)"
+msgstr ""
+
+#: src/ldocr.py:131 src/ldocr.py:157
+msgid "OCR preprocess failed. (~_~)"
+msgstr ""
+
+#~ msgid "Swift: "
+#~ msgstr "Swift: "
+
+#~ msgid "OCR: "
+#~ msgstr "OCR: "
+
+#~ msgid "Add/remove current app"
+#~ msgstr "Huidige toepassing toevoegen/verwijderen"
+
+#~ msgid "Only one item can be enabled in swift style.\n"
+#~ msgstr "In de swift-stijl kan er slechts één item worden ingeschakeld.\n"
+
+#~ msgid "The first one will be used by default if none is enabled.\n"
+#~ msgstr ""
+#~ "Als er niks is ingeschakeld, wordt de eerste op de lijst gebruikt.\n"
+
+#~ msgid "Double click a list item on the left to change the name."
+#~ msgstr "Dubbelklik op een lijstitem om de naam ervan te wijzigen."
+
+#~ msgid "Add the icon to <i>~/.local/share/icons/hicolor/symbolic/apps/</i>"
+#~ msgstr ""
+#~ "Voeg het pictogram toe aan <i>~/.local/share/icons/hicolor/symbolic/apps/"
+#~ "</i>"
+
+#~ msgid ""
+#~ "Hold <b>Alt/Shift</b> to function when highlighting in <b>Passive mode</b>"
+#~ msgstr ""
+#~ "Houd <b>Alt/Shift</b> ingedrukt om uit te voeren tijdens markeren in de "
+#~ "<b>passieve modus</b>"
+
+#~ msgid "Need modifier to trigger or not"
+#~ msgstr "Of er een sneltoets moet worden gebruikt bij deze aanroeping"
+
+#, fuzzy
+#~ msgid "Enable OCR"
+#~ msgstr "Inschakelen"
+
+#~ msgid "Common"
+#~ msgstr "Algemeen"

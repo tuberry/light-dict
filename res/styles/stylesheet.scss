@@ -1,0 +1,58 @@
+$variant: 'dark';
+
+@import 'gnome-shell-sass/_colors';
+
+$pfx: 'light-dict';
+
+// .#{$pfx}-box-boxpointer {
+//     -arrow-rize: 30px;
+//     box-shadow: 0 0 3px rgba(233, 233, 233, 0.5);
+// }
+
+.#{$pfx}-systray:busy {
+    color: lighten($selected_bg_color, 10%);
+}
+
+.#{$pfx}-scroll:scrolled {
+    max-height: 30em !important; /* min height to scroll */
+}
+
+.#{$pfx}-content {
+    padding: 0.4em;
+    color: $light_1;
+    font-size: 1.25em;
+    border-radius: 0.4em;
+    max-width: 40em !important; /* for text line wrap */
+    background-color: darken($dark_2, 10);
+    &:error { border: 0.1em solid $red_3; }
+}
+
+.#{$pfx}-text {
+    border-width: 0;
+    border-style: dashed;
+    border-bottom-width: 0.1em;
+    border-color: transparentize($dark_1, 0.62);
+}
+
+.#{$pfx}-iconbox {
+    padding: 0;
+    & StIcon {
+        icon-size: 2em;
+        padding: 0 0.1em;
+    }
+}
+
+.#{$pfx}-button {
+    font-weight: bold;
+    padding: 0.5em 0.3em;
+    &:hover {
+        border-width: 0;
+        border-style: double;
+        border-bottom-width: 0.2em;
+        border-color: $selected_bg_color;
+        padding: 0.3em 0.3em 0.5em 0.3em;
+    }
+}
+
+// .#{$pfx}-tooltip {
+// }

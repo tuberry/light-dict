@@ -27,7 +27,7 @@ const gs_focus = () => global.display.get_focus_window();
 const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const dwell = (u, v, w, m) => !still(u, v) * 2 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
 const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
-const genIcon = x => Gio.Icon.new_for_string(Me.dir.get_child('icons').get_child(`${x}.svg`).get_path());
+const genIcon = x => Gio.Icon.new_for_string('%s/icons/hicolor/scalable/status/%s.svg'.format(Me.dir.get_path(), x));
 const genEmpty = () => (x => x[Math.floor(Math.random() * x.length)])(['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']); // placeholder
 
 const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
@@ -155,7 +155,7 @@ class DictPop extends St.Button {
             this.set_label(label || 'LD');
         } else if(icon !== this._icon) {
             let gicon = Gio.Icon.new_for_string(icon);
-            this.set_child(new St.Icon({ gicon, style_class: 'light-dict-button-icon candidate-label' }));
+            this.set_child(new St.Icon({ gicon, style_class: 'candidate-label' }));
         }
         this._icon = icon;
         this._index = index;
@@ -521,7 +521,7 @@ class DictAct extends EventEmitter {
         if(!this._enable_ocr) return;
         this.screenshot = true;
         this.execute(this._ocr_cmd + (params || [this.ocr_params, supply, '-m', this._ocr_mode].join(' ')))
-            .catch(noop).finally(() => { this.screenshot = false; this._pid = null; });
+            .catch(noop).finally(() => { this.screenshot = this._pid = null; });
     }
 
     stroke(keystring) {
@@ -861,10 +861,10 @@ class LightDict {
         this.setf('trigger', next);
     }
 
-    async GetAsync(params, invocation) {
+    async GetAsync([params], invocation) {
         if(await this._act._dbusChecker(invocation.get_sender())) {
             try {
-                invocation.return_value(new GLib.Variant('(aai)', [params[0].map(x => {
+                invocation.return_value(new GLib.Variant('(aai)', [params.map(x => {
                     switch(x) {
                     case 'display': return gs_size();
                     case 'pointer': return gs_pointer().slice(0, 2);

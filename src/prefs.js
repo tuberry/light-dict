@@ -29,7 +29,7 @@ function fillPreferencesWindow(win) {
     provider.load_from_data(`.ld-drop-up { background: linear-gradient(to bottom, #000a 0%, #0000 35%); }
                             .ld-drop-down { background: linear-gradient(to bottom, #0000 65%, #000a 100%); }
                             .ld-drop-up-dark { background: linear-gradient(to bottom, #fffa 0%, #fff0 35%); }
-                            .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`);
+                            .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`, -1);
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(Me.dir.get_child('icons').get_path());
     [
