@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-10 05:36+0800\n"
+"POT-Creation-Date: 2023-02-12 10:37+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -277,50 +277,50 @@ msgstr "设置"
 msgid "Switch to %s style"
 msgstr "切换至%s风格"
 
-#: src/ldocr.py:39
+#: src/ldocr.py:35
 msgid "OCR process failed. (-_-;)"
 msgstr "OCR处理失败。(-_-;)"
 
-#: src/ldocr.py:53
+#: src/ldocr.py:56
 msgid "show this help message and exit"
 msgstr "显示此帮助信息并退出"
 
-#: src/ldocr.py:54
+#: src/ldocr.py:57
 #, python-format
 msgid "specify work mode: [%(choices)s] (default: %(default)s)"
 msgstr "指定工作模式: [%(choices)s] (默认: %(default)s)"
 
-#: src/ldocr.py:55
+#: src/ldocr.py:58
 #, python-format
 msgid "specify LD trigger style: [%(choices)s] (default: %(default)s)"
 msgstr "指定LD触发风格: [%(choices)s] (默认: %(default)s)"
 
-#: src/ldocr.py:56
+#: src/ldocr.py:59
 #, python-format
 msgid "specify language(s) used by Tesseract OCR (default: %(default)s)"
 msgstr "指定 Tesseract OCR 所用语言(默认: %(default)s)"
 
-#: src/ldocr.py:57
+#: src/ldocr.py:60
 msgid "specify LD swift style name"
 msgstr "指定LD即时风格名称"
 
-#: src/ldocr.py:58
+#: src/ldocr.py:61
 msgid "invoke LD around the cursor"
 msgstr "在光标附近唤起LD"
 
-#: src/ldocr.py:59
+#: src/ldocr.py:62
 msgid "flash on the detected area"
 msgstr "在目标区域上闪烁"
 
-#: src/ldocr.py:60
+#: src/ldocr.py:63
 msgid "suppress error messages"
 msgstr "禁言报错消息"
 
-#: src/ldocr.py:122
+#: src/ldocr.py:125
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/ldocr.py:131 src/ldocr.py:157
+#: src/ldocr.py:134 src/ldocr.py:160
 msgid "OCR preprocess failed. (~_~)"
 msgstr "OCR预处理失败。(~_~)"
 

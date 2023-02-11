@@ -5,7 +5,7 @@ project(
 )
 
 NAME = 'Light Dict'
-DESCRIPTION = 'Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.\\n\\nFor support, please report any issues via the homepage link below.'
+INFO = 'Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups'
 EID = meson.project_name().replace('gnome-shell-extension-', '')
 UUID = EID + '@tuberry.github.io'
 EGO = 'EGO=2959' / EID

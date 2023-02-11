@@ -14,10 +14,6 @@ from gi.repository import Gio, GLib # type: ignore
 from tempfile import NamedTemporaryFile
 
 DEBUG = False
-
-domain = 'gnome-shell-extension-light-dict'
-gettext.bindtextdomain(domain, Path(__file__).absolute().parent / 'locale')
-gettext.textdomain(domain)
 _ = gettext.gettext
 
 class Result:
@@ -40,6 +36,7 @@ class Result:
         return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
 
 def main():
+    locale()
     args = parser()
     ret = exe_mode(args)
     if ret.cancel: return
@@ -47,6 +44,12 @@ def main():
     if args.cursor: ret.area = None
     # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
     gs_dbus_call(*ret.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
+
+def locale():
+    domain = 'gnome-shell-extension-light-dict'
+    locale = Path(__file__).absolute().parent / 'locale'
+    gettext.bindtextdomain(domain, locale if locale.exists() else None)
+    gettext.textdomain(domain)
 
 def parser():
     ap = argparse.ArgumentParser(add_help=False)
