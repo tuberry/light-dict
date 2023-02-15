@@ -21,12 +21,12 @@ const { Fields, Field } = Me.imports.fields;
 const _ = ExtensionUtils.gettext;
 
 const noop = () => {};
+const xnor = (x, y) => !x === !y;
 const gs_pointer = () => global.get_pointer();
 const gs_size = () => global.display.get_size();
 const gs_focus = () => global.display.get_focus_window();
 const still = (u, v) => u[0] === v[0] && u[1] === v[1];
-const dwell = (u, v, w, m) => !still(u, v) * 2 | !(u[2] & m) & !!(v[2] & m) & !!(w[2] & m);
-const outOf = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
+const outside = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
 const genIcon = x => Gio.Icon.new_for_string('%s/icons/hicolor/scalable/status/%s.svg'.format(Me.dir.get_path(), x));
 const genEmpty = () => (x => x[Math.floor(Math.random() * x.length)])(['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']); // placeholder
 
@@ -62,6 +62,15 @@ const LDIface =
 </node>`;
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
+
+function safeRegTest(exp, str) {
+    try {
+        return RegExp(exp).test(str);
+    } catch(e) {
+        logError(e, exp);
+        return true;
+    }
+}
 
 class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
     static {
@@ -204,11 +213,11 @@ class DictBar extends BoxPointer.BoxPointer {
         let cmds = pcmds.map(x => JSON.parse(x)).filter(x => x.enable);
         let pk = x => JSON.stringify(x.map(y => [y.icon, y.name]));
         if(pk(cmds) === pk(this._cmds ?? [])) { this._cmds = cmds; return; }
-        let icons = this._icons;
+        let icons = this._box.get_children();
         let diff = cmds.length - icons.length;
         if(diff > 0) for(let a = 0; a < diff; a++) this._box.add(new DictPop(this.click.bind(this), this.tip.bind(this)));
         else if(diff < 0) for(let a = 0; a > diff; a--) icons.at(a - 1).destroy();
-        this._icons.forEach((x, i) => x.setButton(cmds[i], i));
+        this._box.get_children().forEach((x, i) => x.setButton(cmds[i], i));
         this._cmds = cmds;
     }
 
@@ -230,8 +239,8 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _updatePages() {
-        this._icons.forEach(x => (x.visible = x._visible));
-        let icons = this._icons.filter(x => x.visible);
+        this._box.get_children().forEach(x => (x.visible = x._visible));
+        let icons = this._box.get_children().filter(x => x.visible);
         this._pages = icons.length && this.pgsize ? Math.ceil(icons.length / this.pgsize) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
@@ -240,32 +249,20 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _updateViz(app, text) {
-        let ics = this._icons;
-        this._cmds.forEach(({ regexp, apps }, i) => {
-            switch(!!regexp * 2 | !!apps) {
-            case 0: ics[i]._visible = true; break;
-            case 1: ics[i]._visible = apps.includes(app); break;
-            case 2: ics[i]._visible = RegExp(regexp).test(text); break;
-            case 3: ics[i]._visible = apps.includes(app) && RegExp(regexp).test(text); break;
-            }
-        });
+        let icons = this._box.get_children();
+        this._cmds.forEach(({ regexp: r, apps: a }, i) => { icons[i]._visible = (!r || safeRegTest(r, text)) && (!a || a.includes(app)); });
         this._updatePages();
     }
 
     set tooltip(tooltip) {
+        if(xnor(tooltip, this._tooltip)) return;
         if(tooltip) {
-            if(this._tooltip) return;
             this._tooltip = new St.Label({ visible: false, style_class: 'light-dict-tooltip dash-label' });
             Main.layoutManager.addTopChrome(this._tooltip);
         } else {
-            if(!this._tooltip) return;
             this._tooltip.destroy();
             this._tooltip = null;
         }
-    }
-
-    get _icons() {
-        return this._box.get_children();
     }
 
     _onScroll(_a, event) {
@@ -382,7 +379,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _onLeave(actor) {
         clearTimeout(this._delayId);
-        this._delayId = setTimeout(outOf(this.getRect(), gs_pointer()) ? this.dispel.bind(this)
+        this._delayId = setTimeout(outside(this.getRect(), gs_pointer()) ? this.dispel.bind(this)
             : () => this._onLeave(true), actor ? this.autohide / 10 : this.autohide);
     }
 
@@ -399,9 +396,8 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     set error(error) {
-        if(!(error ^ this._error)) return;
-        this._error = !!error;
-        this._error ? this._box.add_style_pseudo_class('error') : this._box.remove_style_pseudo_class('error');
+        if(xnor(error, this._error)) return;
+        this._box[`${((this._error = error)) ? 'add' : 'remove'}_style_pseudo_class`]('error');
     }
 
     summon(info, text, error) {
@@ -491,7 +487,7 @@ class DictAct extends EventEmitter {
         this._ppt = this._pt = dwell_ocr ? gs_pointer() : null;
         this._dwellId = (this._dwell_ocr = dwell_ocr) && this._enable_ocr && setInterval(() => {
             let pt = gs_pointer();
-            if(still(this._pt, pt)) (dw => dw && this.emit('dict-act-dwelled', dw, this._ppt))(dwell(this._ppt, this._pt, pt, LDMod));
+            if(still(this._pt, pt) && !still(this._pt, this._ppt)) this.emit('dict-act-dwelled', pt[2], this._ppt);
             [this._ppt, this._pt] = [this._pt, pt];
         }, 300);
     }
@@ -520,7 +516,7 @@ class DictAct extends EventEmitter {
     invokeOCR(params = '', supply = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this._ocr_cmd + (params || [this.ocr_params, supply, '-m', this._ocr_mode].join(' ')))
+        this.execute(this._ocr_cmd + (params || ['-m', this._ocr_mode, this.ocr_params, supply].join(' ')))
             .catch(noop).finally(() => { this.screenshot = this._pid = null; });
     }
 
@@ -614,8 +610,7 @@ class DictBtn extends PanelMenu.Button {
         let cmds = scmds.map(x => JSON.parse(x).name);
         if(this._scmds?.length === cmds.length && this._scmds?.every((x, i) => x === cmds[i])) return;
         this._scmds = cmds;
-        this._menus?.scmds.setList(this._scmds);
-        this._menus?.scmds.setSelected(this.scommand);
+        this._menus?.scmds.setList(cmds, this.scommand);
     }
 
     set dwell_ocr(dwell_ocr) {
@@ -689,23 +684,21 @@ class LightDict {
         this._dbus = Gio.DBusExportedObject.wrapJSObject(LDIface, this);
         this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         this._bar.connect('dict-bar-clicked', (_a, cmd) => { this._dlock[0] = true; this._exeCmd(cmd); });
-        this._act.connect('dict-act-dwelled', (_a, dw, ppt) => {
-            if(this._dlock.pop()) return;
-            if(this._box._rect && !outOf(this._box._rect, ppt) ||
+        this._act.connect('dict-act-dwelled', (_a, mod, ppt) => {
+            if(this._dlock.pop() || this._box._rect && !outside(this._box._rect, ppt) ||
                this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
-            if(this.passive && dw & 0b01 || !this.passive && dw & 0b10) this._act.invokeOCR('', '--quiet');
+            if(!this.passive || mod & LDMod) this._act.invokeOCR('', '--quiet');
         });
         global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), this);
         global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
     }
 
     set systray(systray) {
+        if(xnor(systray, this._button)) return;
         if(systray) {
-            if(this._button) return;
             this._button = new DictBtn(this._field, 0.5, Me.metadata.uuid);
             Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
         } else {
-            if(!this._button) return;
             this._button.destroy();
             this._button = null;
         }
@@ -719,12 +712,12 @@ class LightDict {
         this._cur.set_size(w, h);
     }
 
-    isAllowed() {
-        return !this.app_list || this.list_type ^ this.app_list.includes(this._app);
+    isFobidden() {
+        return this.app_list && xnor(this.list_type, this.app_list.includes(this._app));
     }
 
     getAppid() {
-        return (v => v ? (w => !w || w.is_window_backed() ? '' : w.get_id())(Shell.WindowTracker.get_default().get_window_app(v)) : '')(gs_focus());
+        return (v => v ? Shell.WindowTracker.get_default().get_window_app(v)?.get_id() ?? '' : '')(gs_focus());
     }
 
     _onWindowChanged() {
@@ -736,10 +729,8 @@ class LightDict {
     _onSelectChanged(_sel, type) {
         if(type !== St.ClipboardType.PRIMARY) return;
         clearInterval(this._mouseId);
-        if(this._slock.pop()) return;
-        if(!this.isAllowed() || this.trigger === Trigger.Disable) return;
         let mods = gs_pointer()[2];
-        if(this.passive && !(mods & LDMod)) return;
+        if(this._slock.pop() || this.isFobidden() || this.passive && !(mods & LDMod) || this.trigger === Trigger.Disable) return;
         if(mods & Clutter.ModifierType.BUTTON1_MASK) {
             this._mouseId = setInterval(() => {
                 if((mods ^ gs_pointer()[2]) !== Clutter.ModifierType.BUTTON1_MASK) return;
@@ -799,9 +790,7 @@ class LightDict {
 
     _swift(name) {
         let cmd = this._act.getCommand(name);
-        if(!cmd) return;
-        if(cmd.apps && !cmd.apps.includes(this._app)) return;
-        if(cmd.regexp && !RegExp(cmd.regexp).test(this._selection)) return;
+        if(!cmd || cmd.apps && !cmd.apps.includes(this._app) || cmd.regexp && !safeRegTest(cmd.regexp, this._selection)) return;
         this._exeCmd(cmd);
     }
 
@@ -818,7 +807,7 @@ class LightDict {
     }
 
     _store(text) {
-        let selection = this.text_strip ? text.replace(/\n\s*\n/g, '\r') : text;
+        let selection = this.text_strip ? text.replace(/\n\s*\n/g, '\n') : text;
         if(!selection) throw new Error('Empty string');
         this._selection = selection.replace(/\n/g, '\r'); // shell args
     }
@@ -831,7 +820,7 @@ class LightDict {
         this.cursor = cursor;
         if(type === undefined) {
             this._store(await this._fetch());
-            if(!this.passive && this.filter && !RegExp(this.filter).test(this._selection)) return;
+            if(!this.passive && this.filter && safeRegTest(this.filter, this._selection)) return;
             this.trigger ? this._popup() : this._swift();
         } else {
             let [ty, pe] = type.split(':');

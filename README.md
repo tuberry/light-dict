@@ -15,7 +15,7 @@ Lightweight extension for on-the-fly manipulation to primary selections, especia
 The latest and supported version should only work on the most current stable version of GNOME Shell.
 
 ```bash
-git clone https://github.com/tuberry/light-dict.git && cd light-dict
+git clone --recurse-submodules https://github.com/tuberry/light-dict.git && cd light-dict
 meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```

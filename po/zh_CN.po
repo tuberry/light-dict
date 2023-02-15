@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-02-12 10:37+0800\n"
+"POT-Creation-Date: 2023-02-12 21:54+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -277,7 +277,7 @@ msgstr "设置"
 msgid "Switch to %s style"
 msgstr "切换至%s风格"
 
-#: src/ldocr.py:35
+#: src/ldocr.py:35 src/ldocr.py:134
 msgid "OCR process failed. (-_-;)"
 msgstr "OCR处理失败。(-_-;)"
 
@@ -320,7 +320,7 @@ msgstr "禁言报错消息"
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/ldocr.py:134 src/ldocr.py:160
+#: src/ldocr.py:160
 msgid "OCR preprocess failed. (~_~)"
 msgstr "OCR预处理失败。(~_~)"
 

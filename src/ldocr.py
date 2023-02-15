@@ -131,7 +131,7 @@ def ocr_word(lang, sz=(250, 50)):
             bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
             rct = find_rect(bxs, (w, h))
             return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR preprocess failed. (~_~)'))
+                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR process failed. (-_-;)'))
     except Exception as e:
         return Result(error=str(e))
 
