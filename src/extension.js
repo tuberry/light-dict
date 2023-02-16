@@ -61,6 +61,7 @@ const LDIface =
     </interface>
 </node>`;
 
+Gio._promisify(Gio.DBusProxy.prototype, 'call', 'call_finish');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
 function safeRegTest(exp, str) {
@@ -274,14 +275,14 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _onEnter() {
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
         this._entered = true;
         this._box.visible = true;
     }
 
     _onLeave(actor) {
-        clearTimeout(this._delayId);
-        this._delayId = setTimeout(() => this.dispel(), actor ? this.autohide / 10 : this.autohide);
+        clearTimeout(this._hideId);
+        this._hideId = setTimeout(() => this.dispel(), actor ? this.autohide / 10 : this.autohide);
     }
 
     summon(fw, text) {
@@ -298,7 +299,7 @@ class DictBar extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._box.visible) return;
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
         this._entered = false;
         this._box.visible = false;
         this.close(BoxPointer.PopupAnimation.FADE);
@@ -310,7 +311,7 @@ class DictBar extends BoxPointer.BoxPointer {
     destroy() {
         this._field.detach(this);
         clearTimeout(this._tooltipId);
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
         this.tooltips = false;
         super.destroy();
     }
@@ -374,12 +375,12 @@ class DictBox extends BoxPointer.BoxPointer {
     _onEnter() {
         this._entered = true;
         this._view.visible = true;
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
     }
 
     _onLeave(actor) {
-        clearTimeout(this._delayId);
-        this._delayId = setTimeout(outside(this.getRect(), gs_pointer()) ? this.dispel.bind(this)
+        clearTimeout(this._hideId);
+        this._hideId = setTimeout(outside(this.getRect(), gs_pointer()) ? this.dispel.bind(this)
             : () => this._onLeave(true), actor ? this.autohide / 10 : this.autohide);
     }
 
@@ -428,7 +429,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._view.visible) return;
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
         this._rect = this.getRect();
         this._view.visible = false;
         this._info.set_text(genEmpty());
@@ -438,7 +439,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     destroy() {
         this._field.detach(this);
-        clearTimeout(this._delayId);
+        clearTimeout(this._hideId);
         super.destroy();
     }
 }
@@ -780,7 +781,12 @@ class LightDict {
     }
 
     _exeCmd(cmd) {
-        cmd.type ? this._exeJS(cmd) : this._exeSh(cmd);
+        if(cmd.type) {
+            clearTimeout(this._evalId); // FIXME: delay to avoid `clutter-stage.c:3957: ... assertion` when search() since 44.beta
+            this._evalId = setTimeout(() => this._exeJS(cmd), 30); // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
+        } else {
+            this._exeSh(cmd);
+        }
     }
 
     _select(x) {
@@ -873,6 +879,7 @@ class LightDict {
         this._field.detach(this);
         this._dbus.flush();
         this._dbus.unexport();
+        clearTimeout(this._evalId);
         clearInterval(this._mouseId);
         this.systray = this._dbus = null;
         global.display.disconnectObject(this);

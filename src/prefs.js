@@ -15,7 +15,6 @@ const genColor = (r, g, b, alpha = 1) => new Gdk.RGBA({ red: r / 255, green: g /
 const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 const genRect = (width, height, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width, height }) });
 
-Gio._promisify(Gio.File.prototype, 'query_info_async');
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
