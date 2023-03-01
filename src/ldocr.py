@@ -3,12 +3,12 @@
 
 import re
 import cv2
+import numpy
 import string
 import gettext
 import colorsys
 import argparse
 import pytesseract
-import numpy as np
 from pathlib import Path
 from gi.repository import Gio, GLib # type: ignore
 from tempfile import NamedTemporaryFile
@@ -37,19 +37,19 @@ class Result:
 
 def main():
     locale()
-    args = parser()
-    ret = exe_mode(args)
-    if ret.cancel: return
-    if args.flash and ret.area: gs_dbus_call('FlashArea', ('(iiii)', (*ret.area,)))
-    if args.cursor: ret.area = None
+    ag = parser()
+    rt = exe_mode(ag)
+    if rt.cancel: return
+    if ag.flash and rt.area: gs_dbus_call('FlashArea', ('(iiii)', (*rt.area,)))
+    if ag.cursor: rt.area = None
     # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
-    gs_dbus_call(*ret.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
+    gs_dbus_call(*rt.param, '', '/Extensions/LightDict', '.Extensions.LightDict') # type: ignore
 
 def locale():
-    domain = 'gnome-shell-extension-light-dict'
-    locale = Path(__file__).absolute().parent / 'locale'
-    gettext.bindtextdomain(domain, locale if locale.exists() else None)
-    gettext.textdomain(domain)
+    dm = 'gnome-shell-extension-light-dict'
+    lc = Path(__file__).absolute().parent / 'locale'
+    gettext.bindtextdomain(dm, lc if lc.exists() else None)
+    gettext.textdomain(dm)
 
 def parser():
     ap = argparse.ArgumentParser(add_help=False)
@@ -64,49 +64,52 @@ def parser():
     return ap.parse_args()
 
 def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
-    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
+    px = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
-    return proxy.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
+    return px.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
 
 def bincount_img(img):
     # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
-    i1d = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
-    rgb = np.unravel_index(np.bincount(i1d).argmax(), (256, 256, 256))[:3]
-    return colorsys.rgb_to_hls(*[x.astype(int) / 255 for x in rgb])[1] < 0.5
+    cs = numpy.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
+    bg = numpy.unravel_index(numpy.bincount(cs).argmax(), (256, 256, 256))
+    return colorsys.rgb_to_hls(*map(lambda x: x.astype(int) / 255, bg))[1] < 0.5
 
 def read_img(filename, trim=False):
-    img = cv2.imread(filename)
+    im = cv2.imread(filename)
     if trim:
         # ISSUE: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
-        msk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
-        edg = next((x for x in range(min(*msk.shape[:2])) if msk[x][x][3] == 255), 0)
-        img = img[edg: img.shape[0] - edg, edg: img.shape[1] - edg]
-    return cv2.bitwise_not(img) if bincount_img(img) else img
+        mk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
+        eg = next((x for x in range(min(*mk.shape[:2])) if mk[x][x][3] == 255), 0)
+        im = im[eg: im.shape[0] - eg, eg: im.shape[1] - eg]
+    return cv2.bitwise_not(im) if bincount_img(im) else im
 
 def pt_in_rect(p, r): return p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
 
 def pt_rect_dis(p, r): return sum([max(a - b, 0, b - a - c) ** 2 for (b, a, c) in zip(p, r[0:2], r[2:4])])
 
-def find_rect(rs, p): return next((x for x in rs if pt_in_rect(p, x)), None) or min(rs, key=lambda x: pt_rect_dis(p, x)) if rs else None
+def find_rect(rs, p): return min(filter(lambda x: pt_in_rect(p, x), rs), key=lambda x: x[4], default=None) \
+    or min(rs, key=lambda x: pt_rect_dis(p, x), default=None)
 
-def crop_img(img, point, kernel, iterations, blur=False):
+def crop_img(img, point, line, blur=False):
     # Ref: https://stackoverflow.com/a/57262099
-    gry = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-    blr = cv2.GaussianBlur(gry, (3, 3), 0) if blur else gry
-    thr = cv2.threshold(blr, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
-    dlt = cv2.dilate(thr, cv2.getStructuringElement(cv2.MORPH_RECT, kernel), iterations=iterations)
-    cts = cv2.findContours(dlt, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    kn = (6, 3) if line else (9, 7)
+    ar = img.shape[0] * img.shape[1]
+    gr = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+    br = cv2.GaussianBlur(gr, (5, 3), cv2.BORDER_DEFAULT) if blur else gr
+    tr = cv2.threshold(br, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
+    dl = cv2.dilate(tr, cv2.getStructuringElement(cv2.MORPH_RECT, kn), iterations=3)
+    cs = cv2.findContours(dl, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
+    rs = list(filter(lambda x: x[4] > 0.002 and x[4] < 0.95, [x + (x[2] * x[3] / ar,) for x in map(cv2.boundingRect, cs)]))
     if DEBUG:
-        # cv2.drawContours(img, cts, -1, (40, 240, 80), 2)
-        rts = list(map(cv2.boundingRect, cts))
-        for x in rts: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
+        # cv2.drawContours(img, cs, -1, (40, 240, 80), 2)
+        for x in rs: cv2.rectangle(img, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
         cv2.circle(img, point, 20, (240, 80, 40))
         show_img(img)
-    return find_rect(list(map(cv2.boundingRect, cts)), point)
+    return find_rect(rs, point)
 
 def scale_img(image, rect=None, factor=2):
-    img = image if rect is None else image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
-    return img if factor == 1 else cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
+    im = image if rect is None else image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
+    return im if factor == 1 else cv2.resize(im, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
 
 def show_img(image, title='img'):
     cv2.imshow(title, image)
@@ -127,25 +130,25 @@ def ocr_word(lang, sz=(250, 50)):
         with NamedTemporaryFile(suffix='.png') as f:
             ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
             if not ok: return Result(error=fn)
-            dat = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
-            bxs = [[dat[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dat['text']) if x]
-            rct = find_rect(bxs, (w, h))
-            return Result(text=rct[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                          area=(rct[0] + ar[0], rct[1] + ar[1], rct[2], rct[3] + 5)) if rct else Result(error=_('OCR process failed. (-_-;)'))
+            dt = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
+            bx = [[dt[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dt['text']) if x]
+            rc = find_rect(bx, (w, h))
+            return Result(text=rc[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
+                          area=(rc[0] + ar[0], rc[1] + ar[1], rc[2], rc[3] + 5)) if rc else Result(error=_('OCR process failed. (-_-;)'))
     except Exception as e:
         return Result(error=str(e))
 
 def ocr_area(lang):
     try:
-        area = gs_dbus_call('SelectArea', None)
+        ar = gs_dbus_call('SelectArea', None)
         with NamedTemporaryFile(suffix='.png') as f:
-            ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
+            ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
             return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
-                          area=area) if ok else Result(error=fn)
+                          area=ar) if ok else Result(error=fn)
     except Exception as e:
         return Result(cancel=True) if 'cancel' in str(e) else Result(error=str(e))
 
-def ocr_prln(lang, line=False):
+def ocr_auto(lang, line=False):
     try:
         pt, fw = gs_dbus_call('Get', ('(as)', (['pointer', 'focused'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
         pt = [a - b for (a, b) in zip(pt, fw)]
@@ -153,24 +156,23 @@ def ocr_prln(lang, line=False):
             ok, fn = gs_dbus_call('ScreenshotWindow', ('(bbbs)', (False, False, False, f.name)))
             # ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*fw, False, f.name)))
             if not ok: return Result(error=fn)
-            kn, it = ((15, 3), 1) if line else ((9, 6), 3)
-            img = read_img(fn, trim=True)
-            rct = crop_img(img, pt, kn, it)
-            return Result(text=typeset_str(pytesseract.image_to_string(scale_img(img, rct, detect_cjk(lang)), lang=lang)) or None,
-                          area=(rct[0] + fw[0], rct[1] + fw[1], rct[2], rct[3])) if rct else Result(error=_('OCR preprocess failed. (~_~)'))
+            im = read_img(fn, trim=True)
+            rc = crop_img(im, pt, line)
+            return Result(text=typeset_str(pytesseract.image_to_string(scale_img(im, rc, detect_cjk(lang)), lang=lang)) or None,
+                          area=(rc[0] + fw[0], rc[1] + fw[1], rc[2], rc[3])) if rc else Result(error=_('OCR preprocess failed. (~_~)'))
     except Exception as e:
         return Result(error=str(e))
 
 def exe_mode(args):
-    ret = (lambda m: m[0](*m[1]))({
+    rt = (lambda m: m[0](*m[1]))({
         'word': (ocr_word, (args.lang,)),
         'area': (ocr_area, (args.lang,)),
-        'paragraph': (ocr_prln, (args.lang,)),
-        'line': (ocr_prln, (args.lang, True)),
+        'paragraph': (ocr_auto, (args.lang,)),
+        'line': (ocr_auto, (args.lang, True)),
     }[args.mode])
-    ret.set_style(args.style, args.name)
-    ret.set_quiet(args.quiet)
-    return ret
+    rt.set_style(args.style, args.name)
+    rt.set_quiet(args.quiet)
+    return rt
 
 if __name__ == '__main__':
     main()

@@ -15,6 +15,7 @@ const { loadInterfaceXML } = imports.misc.fileUtils;
 const { DBusSenderChecker } = imports.misc.util;
 const { EventEmitter } = imports.misc.signals;
 
+const DBusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
 const InputSourceManager = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
 const { Fields, Field } = Me.imports.fields;
@@ -362,7 +363,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     set hide_title(hide) {
         this._hide_title = hide;
-        this._text?.set_visible(!this._hide_title);
+        if(this._text) this._text.visible = !hide;
     }
 
     needScroll() {
@@ -448,11 +449,9 @@ class DictAct extends EventEmitter {
     constructor(field) {
         super();
         this._bindSettings(field);
-        this._ocr_cmd = `python ${Me.dir.get_child('ldocr.py').get_path()} `;
-        let DbusProxy = Gio.DBusProxy.makeProxyWrapper(loadInterfaceXML('org.freedesktop.DBus'));
-        this._proxy = new DbusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', null);
+        this._ldocr = `python ${Me.dir.get_child('ldocr.py').get_path()} `;
+        this._proxy = new DBusProxy(Gio.DBus.session, 'org.freedesktop.DBus', '/org/freedesktop/DBus', noop);
         this._kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
-        this._proxy.init_async(GLib.PRIORITY_DEFAULT, null).catch(noop);
     }
 
     _bindSettings(field) {
@@ -494,8 +493,8 @@ class DictAct extends EventEmitter {
     }
 
     set short_ocr(short) {
-        this._shortId && Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
-        this._shortId = (this._short_ocr = short) && this._enable_ocr &&
+        if(this._keysId) Main.wm.removeKeybinding(Fields.OCRSHORTCUT);
+        this._keysId = (this._short_ocr = short) && this._enable_ocr &&
             Main.wm.addKeybinding(Fields.OCRSHORTCUT, this._field.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.invokeOCR());
     }
 
@@ -517,7 +516,7 @@ class DictAct extends EventEmitter {
     invokeOCR(params = '', supply = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this._ocr_cmd + (params || ['-m', this._ocr_mode, this.ocr_params, supply].join(' ')))
+        this.execute(this._ldocr + (params || ['-m', this._ocr_mode, this.ocr_params, supply].join(' ')))
             .catch(noop).finally(() => { this.screenshot = this._pid = null; });
     }
 
@@ -682,8 +681,6 @@ class LightDict {
         this._act = new DictAct(this._field);
         this._box = new DictBox(this._field);
         this._bar = new DictBar(this._field);
-        this._dbus = Gio.DBusExportedObject.wrapJSObject(LDIface, this);
-        this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         this._bar.connect('dict-bar-clicked', (_a, cmd) => { this._dlock[0] = true; this._exeCmd(cmd); });
         this._act.connect('dict-act-dwelled', (_a, mod, ppt) => {
             if(this._dlock.pop() || this._box._rect && !outside(this._box._rect, ppt) ||
@@ -692,6 +689,19 @@ class LightDict {
         });
         global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), this);
         global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
+        this.dbus = true;
+    }
+
+    set dbus(dbus) {
+        if(xnor(dbus, this._dbus)) return;
+        if(dbus) {
+            this._dbus = Gio.DBusExportedObject.wrapJSObject(LDIface, this);
+            this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
+        } else {
+            this._dbus.flush();
+            this._dbus.unexport();
+            this._dbus = null;
+        }
     }
 
     set systray(systray) {
@@ -782,8 +792,14 @@ class LightDict {
 
     _exeCmd(cmd) {
         if(cmd.type) {
-            clearTimeout(this._evalId); // FIXME: delay to avoid `clutter-stage.c:3957: ... assertion` when search() since 44.beta
-            this._evalId = setTimeout(() => this._exeJS(cmd), 30); // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
+            // FIXME: idle to avoid `clutter-stage.c:3957: ... assertion` when search() since 44.beta
+            // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
+            if(this._evalId) GLib.source_remove(this._evalId), this._evalId = 0;
+            this._evalId = GLib.idle_add(GLib.PRIORITY_LOW, () => {
+                this._exeJS(cmd);
+                this._evalId = 0;
+                return GLib.SOURCE_REMOVE;
+            });
         } else {
             this._exeSh(cmd);
         }
@@ -877,13 +893,11 @@ class LightDict {
 
     destroy() {
         this._field.detach(this);
-        this._dbus.flush();
-        this._dbus.unexport();
-        clearTimeout(this._evalId);
         clearInterval(this._mouseId);
-        this.systray = this._dbus = null;
+        this.systray = this.dbus = null;
         global.display.disconnectObject(this);
         global.display.get_selection().disconnectObject(this);
+        if(this._evalId) GLib.source_remove(this._evalId), this._evalId = 0;
         ['_bar', '_box', '_act', '_cur'].forEach(x => { this[x].destroy(); this[x] = null; });
     }
 }

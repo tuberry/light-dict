@@ -31,7 +31,7 @@ $pfx: 'light-dict';
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
-    border-color: transparentize($dark_1, 0.62);
+    border-color: transparentize($dark_1, 0.5);
 }
 
 .#{$pfx}-iconbox {

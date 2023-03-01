@@ -180,7 +180,7 @@ class SideItem extends GObject.Object { // required GObject.Object by Gtk.Signal
     static {
         GObject.registerClass({
             Properties: {
-                name: genParam('string', 'name', 'name'),
+                name: genParam('string', 'name', 'Name'),
                 enable: genParam('boolean', 'enable', false),
             },
         }, this);
@@ -196,18 +196,14 @@ class SideItem extends GObject.Object { // required GObject.Object by Gtk.Signal
     }
 
     from_string(str) {
-        try {
-            let { enable, name } = JSON.parse(str);
-            this.name = name || 'name';
-            this.enable = enable ?? false;
-        } catch(e) {
-            //
-        }
+        let { enable, name } = JSON.parse(str);
+        this.name = name || 'Name';
+        this.enable = enable ?? false;
         return this;
     }
 
     to_string() {
-        return JSON.stringify({ enable: this.enable || undefined, name: this.name || 'name' }, null, 0);
+        return JSON.stringify({ enable: this.enable || undefined, name: this.name || 'Name' }, null, 0);
     }
 }
 
@@ -346,7 +342,7 @@ class SideBar extends Gtk.Box {
         this.emit('move', this.drag, to);
     }
 
-    add(text = '{"name": "name"}') {
+    add(text = '{"name": "Name"}') {
         let index = this.selected;
         let item = new SideItem().from_string(text);
         if(this.swift) item.enable = false;
@@ -454,12 +450,12 @@ class SwiftBox extends Adw.PreferencesPage {
     }
 
     _emit(key, value) {
-        if(this._blocked) return;
+        if(this._syncing) return;
         this.emit('change', { [key]: value || undefined });
     }
 
     set config(config) {
-        this._blocked = true;
+        this._syncing = true;
         let temp = { ...this._temp, ...config };
         Object.keys(temp).forEach(x => {
             let prop = temp[x];
@@ -475,7 +471,7 @@ class SwiftBox extends Adw.PreferencesPage {
             } break;
             }
         });
-        this._blocked = false;
+        this._syncing = false;
     }
 }
 
@@ -600,7 +596,7 @@ class LightDictBasic extends PrefPage {
     }
 
     _buildWidgets() {
-        this._block = new Block({
+        this._blk = new Block({
             param:   [Fields.OCRPARAMS, 'text',     new UI.LazyEntry()],
             size:    [Fields.PAGESIZE,  'value',    new UI.Spin(1, 10, 1)],
             en_keys: [Fields.SHORTOCR,  'active',   new Gtk.CheckButton()],
@@ -620,35 +616,35 @@ class LightDictBasic extends PrefPage {
             mode:    [Fields.OCRMODE,   'selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
             en_ocr:  [Fields.ENABLEOCR, 'enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
         });
-        this._block.keys = new UI.Keys(this._block.gset, Fields.OCRSHORTCUT);
-        this._block.help = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
-        this._buildHelpPopover().then(scc => this._block.help.set_popover(scc)).catch(noop);
+        this._blk.keys = new UI.Keys(this._blk.gset, Fields.OCRSHORTCUT);
+        this._blk.help = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
+        this._buildHelpPopover().then(scc => this._blk.help.set_popover(scc)).catch(noop);
     }
 
     _buildUI() {
         [
-            [[_('Enable systray')], this._block.tray],
-            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._block.passive, this._block.trigger],
-            [[_('Application list')], this._block.apps, this._block.list],
+            [[_('Enable systray')], this._blk.tray],
+            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._blk.passive, this._blk.trigger],
+            [[_('Application list')], this._blk.apps, this._blk.list],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
         [
-            [this._block.en_keys, [_('Shortcut')], this._block.keys],
-            [[_('Dwell OCR')], this._block.dwell],
-            [[_('Work mode')], this._block.mode],
-            [this._block.help, [], this._block.param],
-        ].forEach(xs => this._block.en_ocr.add_row(new UI.PrefRow(...xs)));
+            [this._blk.en_keys, [_('Shortcut')], this._blk.keys],
+            [[_('Dwell OCR')], this._blk.dwell],
+            [[_('Work mode')], this._blk.mode],
+            [this._blk.help, [], this._blk.param],
+        ].forEach(xs => this._blk.en_ocr.add_row(new UI.PrefRow(...xs)));
         [this._buildExpander(_('Other'),
-            [[_('Trim blank lines')], this._block.strip],
-            [[_('Autohide interval')], this._block.hide],
-            [[_('RegExp filter')], this._block.filter]),
+            [[_('Trim blank lines')], this._blk.strip],
+            [[_('Autohide interval')], this._blk.hide],
+            [[_('RegExp filter')], this._blk.filter]),
         this._buildExpander(_('Panel'),
-            [[_('Hide title')], this._block.title],
-            [[_('Right command'), _('Right click to run and hide panel')], this._block.rcmd],
-            [[_('Left command'), _('Left click to run')], this._block.lcmd]),
+            [[_('Hide title')], this._blk.title],
+            [[_('Right command'), _('Right click to run and hide panel')], this._blk.rcmd],
+            [[_('Left command'), _('Left click to run')], this._blk.lcmd]),
         this._buildExpander(_('Popup'),
-            [[_('Enable tooltip')], this._block.tip],
-            [[_('Page size')], this._block.size])].forEach(x => this._add(x));
-        this._add(this._block.en_ocr);
+            [[_('Enable tooltip')], this._blk.tip],
+            [[_('Page size')], this._blk.size])].forEach(x => this._add(x));
+        this._add(this._blk.en_ocr);
     }
 
     _buildExpander(title, ...list) {
