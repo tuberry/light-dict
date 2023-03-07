@@ -39,7 +39,7 @@ def main():
     locale()
     ag = parser()
     rt = exe_mode(ag)
-    if rt.cancel: return
+    if rt.cancel: exit(125)
     if ag.flash and rt.area: gs_dbus_call('FlashArea', ('(iiii)', (*rt.area,)))
     if ag.cursor: rt.area = None
     # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207

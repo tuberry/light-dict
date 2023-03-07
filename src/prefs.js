@@ -6,17 +6,14 @@
 const { Adw, Gtk, GObject, Gio, GLib, Gdk, Graphene } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const _ = ExtensionUtils.gettext;
-const _GTK = imports.gettext.domain('gtk40').gettext;
-const { Fields, Block } = Me.imports.fields;
+const { _, _GTK, noop, fl, genParam, execute, fquery } = Me.imports.util;
+const { Field } = Me.imports.const;
 const UI = Me.imports.ui;
-const noop = () => {};
+
 const genColor = (r, g, b, alpha = 1) => new Gdk.RGBA({ red: r / 255, green: g / 255, blue: b / 255, alpha });
-const genParam = (type, name, ...dflt) => GObject.ParamSpec[type](name, name, name, GObject.ParamFlags.READWRITE, ...dflt);
 const genRect = (width, height, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width, height }) });
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
-Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
 function init() {
     ExtensionUtils.initTranslations();
@@ -33,8 +30,8 @@ function fillPreferencesWindow(win) {
     Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(Me.dir.get_child('icons').get_path());
     [
         new LightDictBasic({ title: _('Basic'), icon_name: 'disable-passive-symbolic' }),
-        new LightDictJSON({ title: _('Swift'),  icon_name: 'swift-passive-symbolic' }, Fields.SCOMMANDS),
-        new LightDictJSON({ title: _('Popup'),  icon_name: 'popup-passive-symbolic' }, Fields.PCOMMANDS),
+        new LightDictJSON({ title: _('Swift'),  icon_name: 'swift-passive-symbolic' }, Field.SCOMMANDS),
+        new LightDictJSON({ title: _('Popup'),  icon_name: 'popup-passive-symbolic' }, Field.PCOMMANDS),
         new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }),
     ].forEach(x => win.add(x));
 }
@@ -74,8 +71,8 @@ class IconBtn extends UI.File {
     }
 
     async _setFile(path) {
-        let file = Gio.File.new_for_path(path);
-        let info = await file.query_info_async(this._attr, Gio.FileQueryInfoFlags.NONE, GLib.PRIORITY_DEFAULT, null);
+        let file = fl(path);
+        let info = await fquery(file, this._attr);
         this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
         let icon = this._checkIcon(path);
         icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
@@ -330,7 +327,7 @@ class SideBar extends Gtk.Box {
     }
 
     getPos(x) {
-        return this._model.find(x._item)[1];
+        return this._model.find(x._item).at(1);
     }
 
     drop(drop) {
@@ -530,7 +527,7 @@ class LightDictAbout extends PrefPage {
     _buildIcon() {
         let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 }),
             gsettings = ExtensionUtils.getSettings(),
-            active = gsettings.get_strv(Fields.PCOMMANDS).slice(0, gsettings.get_uint(Fields.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
+            active = gsettings.get_strv(Field.PCOMMANDS).slice(0, gsettings.get_uint(Field.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
         if(active.length) {
             active.forEach(x => {
                 let icon = this._checkIcon(x);
@@ -596,27 +593,27 @@ class LightDictBasic extends PrefPage {
     }
 
     _buildWidgets() {
-        this._blk = new Block({
-            param:   [Fields.OCRPARAMS, 'text',     new UI.LazyEntry()],
-            size:    [Fields.PAGESIZE,  'value',    new UI.Spin(1, 10, 1)],
-            en_keys: [Fields.SHORTOCR,  'active',   new Gtk.CheckButton()],
-            hide:    [Fields.AUTOHIDE,  'value',    new UI.Spin(500, 10000, 250)],
-            lcmd:    [Fields.LCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
-            rcmd:    [Fields.RCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
-            filter:  [Fields.TXTFILTER, 'text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
-            passive: [Fields.PASSIVE,   'selected', new UI.Drop([_('Proactive'), _('Passive')])],
-            list:    [Fields.LISTTYPE,  'selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            dwell:   [Fields.DWELLOCR,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            strip:   [Fields.TXTSTRIP,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            tray:    [Fields.SYSTRAY,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            tip:     [Fields.TOOLTIP,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            title:   [Fields.HIDETITLE, 'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            apps:    [Fields.APPLIST,   'apps',     new AppsBox(_('Click the app icon to remove'))],
-            trigger: [Fields.TRIGGER,   'selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
-            mode:    [Fields.OCRMODE,   'selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
-            en_ocr:  [Fields.ENABLEOCR, 'enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
+        this._blk = new UI.Block({
+            param:   [Field.OCRPARAMS, 'text',     new UI.LazyEntry()],
+            size:    [Field.PAGESIZE,  'value',    new UI.Spin(1, 10, 1)],
+            en_keys: [Field.SHORTOCR,  'active',   new Gtk.CheckButton()],
+            hide:    [Field.AUTOHIDE,  'value',    new UI.Spin(500, 10000, 250)],
+            lcmd:    [Field.LCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
+            rcmd:    [Field.RCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
+            filter:  [Field.TXTFILTER, 'text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
+            passive: [Field.PASSIVE,   'selected', new UI.Drop([_('Proactive'), _('Passive')])],
+            list:    [Field.LISTTYPE,  'selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
+            dwell:   [Field.DWELLOCR,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            strip:   [Field.TXTSTRIP,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            tray:    [Field.SYSTRAY,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            tip:     [Field.TOOLTIP,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            title:   [Field.HIDETITLE, 'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            apps:    [Field.APPLIST,   'apps',     new AppsBox(_('Click the app icon to remove'))],
+            trigger: [Field.TRIGGER,   'selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+            mode:    [Field.OCRMODE,   'selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
+            en_ocr:  [Field.ENABLEOCR, 'enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
         });
-        this._blk.keys = new UI.Keys(this._blk.gset, Fields.OCRSHORTCUT);
+        this._blk.keys = new UI.Keys(this._blk.gset, Field.OCRSHORTCUT);
         this._blk.help = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
         this._buildHelpPopover().then(scc => this._blk.help.set_popover(scc)).catch(noop);
     }
@@ -654,14 +651,12 @@ class LightDictBasic extends PrefPage {
     }
 
     async _buildHelpPopover() {
-        let proc = new Gio.Subprocess({
-            argv: ['python', Me.dir.get_child('ldocr.py').get_path(), '-h'],
-            flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-        });
-        proc.init(null);
-        let [stdout, stderr] = await proc.communicate_utf8_async(null, null);
-        let label = proc.get_successful() ? stdout : stderr;
-        return new Gtk.Popover({ child: new Gtk.Label({ label: label.trim() }) });
+        try {
+            let label = await execute(`python ${Me.dir.get_child('ldocr.py').get_path()} -h`);
+            return new Gtk.Popover({ child: new Gtk.Label({ label }) });
+        } catch(e) {
+            return new Gtk.Popover({ child: new Gtk.Label({ label: e.messaage }) });
+        }
     }
 }
 
@@ -673,7 +668,7 @@ class LightDictJSON extends PrefPage {
     constructor(params, key) {
         super(params);
         this._key = key;
-        this._swift = key === Fields.SCOMMANDS;
+        this._swift = key === Field.SCOMMANDS;
         this._gset = ExtensionUtils.getSettings();
         this._cmds = this._gset.get_strv(key);
         this._buildWidgets();
@@ -702,7 +697,7 @@ class LightDictJSON extends PrefPage {
         this._side.connect('remove', this._onRemove.bind(this));
         this._side.connect('change', this._onSideChange.bind(this));
         this._pane.connect('change', this._onPaneChange.bind(this));
-        if(this._swift) this._gset.connect(`changed::${Fields.SCOMMAND}`, () => this._onSettingChanged());
+        if(this._swift) this._gset.connect(`changed::${Field.SCOMMAND}`, () => this._onSettingChanged());
         this._side.grabFocus(0);
     }
 
@@ -722,13 +717,13 @@ class LightDictJSON extends PrefPage {
     }
 
     get enable() {
-        return this._gset.get_int(Fields.SCOMMAND);
+        return this._gset.get_int(Field.SCOMMAND);
     }
 
     set enable(index) {
         if(!this._swift || this._enable === index) return;
         this._enable = index;
-        this._gset.set_int(Fields.SCOMMAND, index);
+        this._gset.set_int(Field.SCOMMAND, index);
     }
 
     _onSelect(_w, index) {
@@ -761,7 +756,7 @@ class LightDictJSON extends PrefPage {
     }
 
     _onMove(_w, f, t) {
-        this._cmds.splice(t, 0, this._cmds.splice(f, 1)[0]);
+        this._cmds.splice(t, 0, this._cmds.splice(f, 1).at(0));
         if(this._enable <= Math.max(f, t) && this._enable >= Math.min(f, t)) {
             if(this._enable > f) this.enable = this._enable - 1;
             else if(this._enable === f) this.enable = t;

@@ -1,7 +1,7 @@
 project(
   'gnome-shell-extension-light-dict',
   license: 'GPL3+',
-  version: '44.beta',
+  version: '44.rc',
 )
 
 NAME = 'Light Dict'
