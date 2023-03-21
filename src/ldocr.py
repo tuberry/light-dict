@@ -121,6 +121,8 @@ def typeset_str(para): return re.sub(r'\n+', '\r', re.sub(r'([^\n\.\?!; ] *)\n',
 
 def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
 
+def catch_error(e): return Result(error=str(e)) if DEBUG is True else Result(cancel=True)
+
 def ocr_word(lang, sz=(250, 50)):
     try:
         pt, sc = gs_dbus_call('Get', ('(as)', (['pointer', 'display'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
@@ -136,7 +138,7 @@ def ocr_word(lang, sz=(250, 50)):
             return Result(text=rc[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
                           area=(rc[0] + ar[0], rc[1] + ar[1], rc[2], rc[3] + 5)) if rc else Result(error=_('OCR process failed. (-_-;)'))
     except Exception as e:
-        return Result(error=str(e))
+        return catch_error(e)
 
 def ocr_area(lang):
     try:
@@ -146,7 +148,7 @@ def ocr_area(lang):
             return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
                           area=ar) if ok else Result(error=fn)
     except Exception as e:
-        return Result(cancel=True) if 'cancel' in str(e) else Result(error=str(e))
+        return catch_error(e)
 
 def ocr_auto(lang, line=False):
     try:
@@ -161,7 +163,7 @@ def ocr_auto(lang, line=False):
             return Result(text=typeset_str(pytesseract.image_to_string(scale_img(im, rc, detect_cjk(lang)), lang=lang)) or None,
                           area=(rc[0] + fw[0], rc[1] + fw[1], rc[2], rc[3])) if rc else Result(error=_('OCR preprocess failed. (~_~)'))
     except Exception as e:
-        return Result(error=str(e))
+        return catch_error(e)
 
 def exe_mode(args):
     rt = (lambda m: m[0](*m[1]))({

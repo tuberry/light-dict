@@ -10,27 +10,28 @@ const PopupMenu = imports.ui.popupMenu;
 const BoxPointer = imports.ui.boxpointer;
 const Keyboard = imports.ui.status.keyboard;
 const ExtensionUtils = imports.misc.extensionUtils;
-const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango, Gdk } = imports.gi;
+const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango } = imports.gi;
 const { DBusSenderChecker } = imports.misc.util;
 
 const InputSourceManager = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
-const { Fulu, Extension, Symbiont, DEventEmitter } = Me.imports.fubar;
-const { noop, xnor, _ } = Me.imports.util;
+const { Fulu, Extension, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
+const { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } = Me.imports.menu;
+const { noop, scap, omap, bmap, xnor, _, gerror } = Me.imports.util;
 const { Field } = Me.imports.const;
 
 const gs_pointer = () => global.get_pointer();
 const gs_size = () => global.display.get_size();
 const gs_focus = () => global.display.get_focus_window();
+const lot = x => x[Math.floor(Math.random() * x.length)];
 const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const outside = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
-const genIcon = x => Gio.Icon.new_for_string('%s/icons/hicolor/scalable/status/%s.svg'.format(Me.dir.get_path(), x));
-const genEmpty = () => (x => x[Math.floor(Math.random() * x.length)])(['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']); // placeholder
 
-const Trigger = { Swift: 0, Popup: 1, Disable: 2 };
-const OCRMode = { Word: 0, Paragraph: 1, Area: 2, Line: 3 };
-const LDMdf = Clutter.ModifierType.MOD1_MASK;
-const LDIface =
+const Trigger = bmap({ swift: 0, popup: 1, disable: 2 });
+const OCRMode = bmap({ word: 0, paragraph: 1, area: 2, line: 3 });
+const Kaomoji = ['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']; // placeholder
+const LD_MDF = Clutter.ModifierType.MOD1_MASK;
+const LD_IFACE =
 `<node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Toggle"/>
@@ -67,82 +68,6 @@ function safeRegTest(exp, str) {
     }
 }
 
-class SwitchItem extends PopupMenu.PopupSwitchMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(text, active, callback, params) {
-        super(text, active, params);
-        this.connect('toggled', (_x, y) => callback(y));
-    }
-}
-
-class MenuItem extends PopupMenu.PopupMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(text, callback, params) {
-        super(text, params);
-        this.connect('activate', callback);
-    }
-
-    setLabel(label) {
-        if(this.label.text !== label) this.label.set_text(label);
-    }
-}
-
-class RadioItem extends PopupMenu.PopupSubMenuMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(name, modes, index, callback) {
-        super('');
-        this._name = name;
-        this._list = Object.keys(modes);
-        this._list.map((x, i) => new MenuItem(_(x), () => callback(i))).forEach(x => this.menu.addMenuItem(x));
-        this.setSelected(index);
-    }
-
-    setSelected(index) {
-        if(!(index in this._list)) return;
-        this.label.set_text(`${this._name}：${_(this._list[index])}`);
-        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
-    }
-}
-
-class DRadioItem extends PopupMenu.PopupSubMenuMenuItem {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(name, list, index, cb1, cb2) {
-        super('');
-        this._name = name;
-        this._cb1 = cb1;
-        this._cb2 = cb2 || (x => this._list[x]);
-        this.setList(list, index);
-    }
-
-    setSelected(index) {
-        this._index = index;
-        this.label.set_text(`${this._name}：${this._cb2(this._index) || ''}`);
-        this.menu._getMenuItems().forEach((y, i) => y.setOrnament(index === i ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE));
-    }
-
-    setList(list, index) {
-        let items = this.menu._getMenuItems();
-        let diff = list.length - items.length;
-        if(diff > 0) for(let a = 0; a < diff; a++) this.menu.addMenuItem(new MenuItem('', () => this._cb1(items.length + a)));
-        else if(diff < 0) for(let a = 0; a > diff; a--) items.at(a - 1).destroy();
-        this._list = list;
-        this.menu._getMenuItems().forEach((x, i) => x.setLabel(list[i]));
-        this.setSelected(index ?? this._index);
-    }
-}
-
 class DictPop extends St.Button {
     static {
         GObject.registerClass(this);
@@ -154,13 +79,9 @@ class DictPop extends St.Button {
         this.connect('enter-event', () => cb2(this._index));
     }
 
-    setButton({ icon = null, name: label }, index) {
-        if(!icon) {
-            this.set_label(label || 'LD');
-        } else if(icon !== this._icon) {
-            let gicon = Gio.Icon.new_for_string(icon);
-            this.set_child(new St.Icon({ gicon, style_class: 'candidate-label' }));
-        }
+    setButton({ icon = '', name: label }, index) {
+        if(!icon) this.set_label(label || 'LD');
+        else if(icon !== this._icon) this.set_child(new St.Icon({ gicon: Gio.Icon.new_for_string(icon), style_class: 'candidate-label' }));
         this._icon = icon;
         this._index = index;
     }
@@ -192,17 +113,24 @@ class DictBar extends BoxPointer.BoxPointer {
         this.bin.set_child(this._box);
         this._box.connectObject('leave-event', this._onLeave.bind(this),
             'enter-event', this._onEnter.bind(this),
-            'scroll-event', this._onScroll.bind(this), this);
-        this._sbt_h = new Symbiont(x => clearTimeout(x), this, x => setTimeout(() => this.dispel(), x ? this.autohide / 10 : this.autohide));
-        new Symbiont(() => { this.tooltip = false; }, this);
+            'scroll-event', this._onScroll.bind(this), onus(this));
+        this._sbt = symbiose(this, () => omit(this, 'tooltip'), {
+            hide: [x => clearTimeout(x), x => setTimeout(() => this.dispel(), x ? this.autohide / 10 : this.autohide)],
+            tip: [x => clearTimeout(x), i => setTimeout(() => {
+                if(!this._box.visible) return;
+                this._tooltip.set_position(gs_pointer().at(0) - 10, this.get_position().at(1) + this.get_size().at(1) + 5);
+                this._tooltip.set_text(this._cmds[i].tooltip || this._cmds[i].name || 'LD');
+                this._tooltip.show();
+            }, this.autohide / 5)],
+        });
     }
 
     _bindSettings(fulu) {
         this._fulu = fulu.attach({
-            pgsize:    [Field.PAGESIZE,  'uint'],
-            tooltip:   [Field.TOOLTIP,   'boolean'],
-            autohide:  [Field.AUTOHIDE,  'uint'],
-            pcommands: [Field.PCOMMANDS, 'strv'],
+            ps:       [Field.PGSZ,  'uint'],
+            tooltip:   [Field.TIP,   'boolean'],
+            autohide:  [Field.ATHD,  'uint'],
+            pcommands: [Field.PCMDS, 'strv'],
         }, this);
     }
 
@@ -221,7 +149,7 @@ class DictBar extends BoxPointer.BoxPointer {
     tip(index) {
         if(!this._tooltip) return;
         this._tooltip.hide();
-        this._sbt_t.reset(index);
+        this._sbt.tip.revive(index);
     }
 
     click(index) {
@@ -232,11 +160,11 @@ class DictBar extends BoxPointer.BoxPointer {
     _updatePages() {
         this._box.get_children().forEach(x => (x.visible = x._visible));
         let icons = this._box.get_children().filter(x => x.visible);
-        this._pages = icons.length && this.pgsize ? Math.ceil(icons.length / this.pgsize) : 0;
+        this._pages = icons.length && this.ps ? Math.ceil(icons.length / this.ps) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
-        if(this._idx === this._pages && icons.length % this.pgsize) icons.forEach((x, i) => (x.visible = i >= icons.length - this.pgsize && i < icons.length));
-        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.pgsize && i < this._idx * this.pgsize));
+        if(this._idx === this._pages && icons.length % this.ps) icons.forEach((x, i) => (x.visible = i >= icons.length - this.ps && i < icons.length));
+        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.ps && i < this._idx * this.ps));
     }
 
     _updateViz(app, text) {
@@ -250,15 +178,8 @@ class DictBar extends BoxPointer.BoxPointer {
         if(tooltip) {
             this._tooltip = new St.Label({ visible: false, style_class: 'light-dict-tooltip dash-label' });
             Main.layoutManager.addTopChrome(this._tooltip);
-            this._sbt_t = new Symbiont(x => clearTimeout(x), this._tooltip, i => setTimeout(() => {
-                if(!this._box.visible) return;
-                this._tooltip.set_position(gs_pointer().at(0) - 10, this.get_position().at(1) + this.get_size().at(1) + 5);
-                this._tooltip.set_text(this._cmds[i].tooltip || this._cmds[i].name || 'LD');
-                this._tooltip.show();
-            }, this.autohide / 5));
         } else {
-            this._tooltip.destroy();
-            this._tooltip = null;
+            omit(this, '_tooltip');
         }
     }
 
@@ -271,13 +192,13 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _onEnter() {
-        this._sbt_h.dispel();
+        this._sbt.hide.dispel();
         this._entered = true;
         this._box.visible = true;
     }
 
     _onLeave(actor) {
-        this._sbt_h.reset(actor);
+        this._sbt.hide.revive(actor);
     }
 
     summon(fw, text) {
@@ -294,12 +215,12 @@ class DictBar extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._box.visible) return;
-        this._sbt_h.dispel();
+        this._sbt.hide.dispel();
         this._entered = false;
         this._box.visible = false;
         this.close(BoxPointer.PopupAnimation.FADE);
         if(!this._tooltip) return;
-        this._sbt_t.dispel();
+        this._sbt.tip.dispel();
         this._tooltip.hide();
     }
 }
@@ -325,7 +246,7 @@ class DictBox extends BoxPointer.BoxPointer {
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
-            'button-press-event', this._onClick.bind(this), this);
+            'button-press-event', this._onClick.bind(this), onus(this));
         this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
         [this._text, this._info].forEach(x => {
@@ -336,16 +257,18 @@ class DictBox extends BoxPointer.BoxPointer {
         });
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
-        this._sbt_h = new Symbiont(x => clearTimeout(x), this, x => setTimeout(outside(this.getRect(), gs_pointer()) ? this.dispel.bind(this)
-            : () => this._onLeave(true), x ? this.autohide / 10 : this.autohide));
+        this._sbt = symbiose(this, null, {
+            hide: [x => clearTimeout(x), x => setTimeout(outside(this.getRect(), gs_pointer())
+                ? this.dispel.bind(this) : () => this._onLeave(true), x ? this.autohide / 10 : this.autohide)],
+        });
     }
 
     _bindSettings(fulu) {
         this._fulu = fulu.attach({
-            lcommand:   [Field.LCOMMAND,  'string'],
-            rcommand:   [Field.RCOMMAND,  'string'],
-            autohide:   [Field.AUTOHIDE,  'uint'],
-            hide_title: [Field.HIDETITLE, 'boolean'],
+            lcommand:   [Field.LCMD, 'string'],
+            rcommand:   [Field.RCMD, 'string'],
+            autohide:   [Field.ATHD, 'uint'],
+            hide_title: [Field.HDTT, 'boolean'],
         }, this);
     }
 
@@ -364,16 +287,16 @@ class DictBox extends BoxPointer.BoxPointer {
     _onEnter() {
         this._entered = true;
         this._view.visible = true;
-        this._sbt_h.dispel();
+        this._sbt.hide.dispel();
     }
 
     _onLeave(actor) {
-        this._sbt_h.reset(actor);
+        this._sbt.hide.revive(actor);
     }
 
     _onClick(_a, event) {
         switch(event.get_button()) {
-        case Clutter.BUTTON_MIDDLE: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text()); break;
+        case Clutter.BUTTON_MIDDLE: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text().trimStart()); break;
         case Clutter.BUTTON_PRIMARY: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
         case Clutter.BUTTON_SECONDARY: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
         }
@@ -393,9 +316,10 @@ class DictBox extends BoxPointer.BoxPointer {
         this._selection = text;
         try {
             Pango.parse_markup(info, -1, '');
-            this._info.clutter_text.set_markup(info || genEmpty());
+            // FIXME: workaround for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/1125
+            this._info.clutter_text.set_markup(info ? info.startsWith('<') ? ` ${info}` : info : lot(Kaomoji));
         } catch(e) {
-            this._info.set_text(info || genEmpty());
+            this._info.set_text(info || lot(Kaomoji));
         }
         if(this._text.visible) this._text.set_text(text);
         if(this.needScroll()) {
@@ -416,10 +340,10 @@ class DictBox extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._view.visible) return;
-        this._sbt_h.dispel();
+        this._sbt.hide.dispel();
         this._rect = this.getRect();
         this._view.visible = false;
-        this._info.set_text(genEmpty());
+        this._info.set_text(lot(Kaomoji));
         this.close(BoxPointer.PopupAnimation.FADE);
         this._entered = false;
     }
@@ -435,31 +359,33 @@ class DictAct extends DEventEmitter {
     _buildWidgets(fulu) {
         this._fulu = fulu;
         this._ldocr = `python ${Me.dir.get_child('ldocr.py').get_path()} `;
-        this._sbt_c = new Symbiont(x => x?.cancel(), this, () => new Gio.Cancellable());
         this._kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
-        this._sbt_k = new Symbiont(x => x?.forEach(y => clearTimeout(y)), this, x => x.split(/\s+/).map(y => y.split('+')).map((z, i) => setTimeout(() => {
-            z.forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, Gdk.keyval_from_name(k), Clutter.KeyState.PRESSED));
-            z.reverse().forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, Gdk.keyval_from_name(k), Clutter.KeyState.RELEASED));
-        }, i * 100)));
-        this._sbt_d = new Symbiont(x => clearInterval(x), this, x => x && setInterval(() => {
-            let pt = gs_pointer();
-            if(still(this._pt, pt) && !still(this._pt, this._ppt)) this.emit('dict-act-dwelled', pt[2], this._ppt);
-            [this._ppt, this._pt] = [this._pt, pt];
-        }, 300));
-        this._sbt_s = new Symbiont(x => x && Main.wm.removeKeybinding(Field.OCRSHORTCUT), this,
-            x => x && Main.wm.addKeybinding(Field.OCRSHORTCUT, this._fulu.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.invokeOCR()));
-        new Symbiont(() => { this.screenshot = this.enable_ocr = this._kbd = null; }, this);
+        this._tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE });
+        this._sbt = symbiose(this, () => omit(this, '_kbd', '_tty', 'screenshot'), {
+            cancel: [x => x?.cancel(), () => new Gio.Cancellable()],
+            stroke: [x => x?.forEach(y => clearTimeout(y)), x => x.split(/\s+/).map(y => y.split('+')).map((z, i) => setTimeout(() => {
+                z.forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, IBus.keyval_from_name(k), Clutter.KeyState.PRESSED));
+                z.reverse().forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, IBus.keyval_from_name(k), Clutter.KeyState.RELEASED));
+            }, i * 100))],
+            dwell: [x => clearInterval(x), x => x && setInterval(() => {
+                let pt = gs_pointer();
+                if(still(this._pt, pt) && !still(this._pt, this._ppt)) this.emit('dict-act-dwelled', pt[2], this._ppt);
+                [this._ppt, this._pt] = [this._pt, pt];
+            }, 300)],
+            keys: [x => x && Main.wm.removeKeybinding(Field.KEYS),
+                x => x && Main.wm.addKeybinding(Field.KEYS, this._fulu.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.invokeOCR())],
+        });
     }
 
     _bindSettings() {
         this._fulu.attach({
-            ocr_params: [Field.OCRPARAMS, 'string'],
-            ocr_mode:   [Field.OCRMODE,   'uint'],
-            scommand:   [Field.SCOMMAND,  'int'],
-            dwell_ocr:  [Field.DWELLOCR,  'boolean'],
-            short_ocr:  [Field.SHORTOCR,  'boolean'],
-            enable_ocr: [Field.ENABLEOCR, 'boolean'],
-            scommands:  [Field.SCOMMANDS, 'strv'],
+            ocr_params: [Field.OCRP,  'string'],
+            ocr_mode:   [Field.OCRS,  'uint'],
+            scommand:   [Field.SCMD,  'int'],
+            dwell_ocr:  [Field.DOCR,  'boolean'],
+            short_ocr:  [Field.KEY,   'boolean'],
+            enable_ocr: [Field.OCR,   'boolean'],
+            scommands:  [Field.SCMDS, 'strv'],
         }, this);
     }
 
@@ -480,15 +406,15 @@ class DictAct extends DEventEmitter {
 
     set dwell_ocr(dwell_ocr) {
         this._ppt = this._pt = dwell_ocr ? gs_pointer() : null;
-        this._sbt_d.reset((this._dwell_ocr = dwell_ocr) && this._enable_ocr);
+        this._sbt.dwell.revive((this._dwell_ocr = dwell_ocr) && this._enable_ocr);
     }
 
     set short_ocr(short) {
-        this._sbt_s.reset((this._short_ocr = short) && this._enable_ocr);
+        this._sbt.keys.revive((this._short_ocr = short) && this._enable_ocr);
     }
 
     set ocr_mode(mode) {
-        this._ocr_mode = Object.keys(OCRMode)[mode].toLowerCase();
+        this._ocr_mode = OCRMode[mode];
     }
 
     set screenshot(shot) {
@@ -511,11 +437,11 @@ class DictAct extends DEventEmitter {
         if(!this._enable_ocr) return;
         this.screenshot = true;
         this.execute(this._ldocr + (params || ['-m', this._ocr_mode, this.ocr_params, supply].join(' ')))
-            .catch(noop).finally(() => { this._pid = this.screenshot = null; });
+            .catch(noop).finally(() => omit(this, '_pid', 'screenshot'));
     }
 
     stroke(keys) {
-        this._sbt_k.reset(keys);
+        this._sbt.stroke.revive(keys);
     }
 
     commit(string) {
@@ -532,22 +458,17 @@ class DictAct extends DEventEmitter {
     }
 
     async execute(cmd) {
-        let proc = new Gio.Subprocess({
-            argv: GLib.shell_parse_argv(cmd).at(1),
-            flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-        });
-        let cancel = this._sbt_c.reset();
-        cancel.connect(() => proc.force_exit());
-        proc.init(cancel);
-        this._pid = parseInt(proc.get_identifier());
-        try {
-            let [stdout, stderr] = await proc.communicate_utf8_async(null, cancel);
+        let cancel = this._sbt.cancel.revive(); // FIXME: '|' as an arg like `echo "|" | cat` not covered
+        let cmdv = GLib.shell_parse_argv(cmd).at(1).reduce((a, x) => (x === '|' ? a.push([]) : a.at(-1).push(x)) && a, [[]]);
+        let ret = await cmdv.filter(x => x.length).reduce(async (a, x) => {
+            let proc = this._tty.spawnv(x);
+            this._pid = parseInt(proc.get_identifier());
+            let [stdout, stderr] = await proc.communicate_utf8_async(await a, cancel);
             let status = proc.get_exit_status();
-            if(status) throw new Gio.IOErrorEnum({ code: Gio.io_error_from_errno(status), message: stderr.trim() || GLib.strerror(status) });
-            return stdout.trim();
-        } finally {
-            this._sbt_c._delegate = null;
-        }
+            if(status) throw gerror(Gio.io_error_from_errno(status), stderr.trimEnd());
+            return stdout;
+        }, null);
+        return ret?.trimEnd() ?? '';
     }
 }
 
@@ -564,31 +485,32 @@ class DictBtn extends PanelMenu.Button {
     }
 
     _buildWidgets() {
+        this._icon = new TrayIcon();
         this.add_style_class_name('light-dict-systray');
-        this._icon = new St.Icon({ style_class: 'system-status-icon' });
         this.menu.actor.add_style_class_name('app-menu'); // popup-ornament-width: 0;
         this.add_actor(this._icon);
     }
 
     _bindSettings(fulu) {
         this._fulu = fulu.attach({
-            dwell_ocr:  [Field.DWELLOCR,  'boolean'],
-            enable_ocr: [Field.ENABLEOCR, 'boolean'],
-            scommands:  [Field.SCOMMANDS, 'strv'],
+            dwell_ocr:  [Field.DOCR,  'boolean'],
+            enable_ocr: [Field.OCR,   'boolean'],
+            scommands:  [Field.SCMDS, 'strv'],
         }, this).attach({
-            passive: [Field.PASSIVE, 'uint', x => this._menus?.passive.setToggleState(!!x)],
-            trigger: [Field.TRIGGER, 'uint', x => this._menus?.trigger.setSelected(x)],
+            passive: [Field.PSV, 'uint', x => this._menus?.passive.setToggleState(!!x)],
+            trigger: [Field.TRG, 'uint', x => this._menus?.trigger.setSelected(x)],
         }, this, 'icon').attach({
-            ocr_mode: [Field.OCRMODE,  'uint', x => this._menus?.ocr.setSelected(x)],
-            scommand: [Field.SCOMMAND, 'int', x => this._menus?.scmds.setSelected(x)],
+            ocr_mode: [Field.OCRS, 'uint', x => this._menus?.ocr.setSelected(x)],
+            scommand: [Field.SCMD, 'int', x => this._menus?.scmds.setSelected(x)],
         }, this, 'mode');
     }
 
     set icon([k, v, out]) {
         out(this[k] = v);
-        if(!('trigger' in this && 'passive' in this)) return;
-        let style = Object.keys(Trigger)[this.trigger ?? 0].toLowerCase();
-        this._icon.set_gicon(genIcon(`${style}-${this.passive ?? 0 ? 'passive' : 'proactive'}-symbolic`));
+        if(!['trigger', 'passive'].every(x => x in this)) return;
+        let icon = `ld-${Trigger[this.trigger]}-${this.passive ? 'passive' : 'proactive'}-symbolic`;
+        this._icon.set_fallback_gicon(gicon(icon));
+        this._icon.set_icon_name(icon);
     }
 
     set mode([k, v, out]) {
@@ -616,20 +538,20 @@ class DictBtn extends PanelMenu.Button {
 
     vfunc_scroll_event(event) {
         switch(event.direction) {
-        case Clutter.ScrollDirection.UP: this.setf('trigger', (this.trigger + 1) % 2); break;
-        case Clutter.ScrollDirection.DOWN: this.setf('passive', 1 - this.passive); break;
+        case Clutter.ScrollDirection.UP: this._fulu.set('trigger', (this.trigger + 1) % 2, this); break;
+        case Clutter.ScrollDirection.DOWN: this._fulu.set('passive', 1 - this.passive, this); break;
         }
         return Clutter.EVENT_STOP;
     }
 
     _addMenuItems() {
         this._menus = {
-            dwell:   new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this.setf('dwell_ocr', x)),
-            passive: new SwitchItem(_('Passive mode'), !!this.passive, x => this.setf('passive', x ? 1 : 0)),
+            dwell:   new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this._fulu.set('dwell_ocr', x, this)),
+            passive: new SwitchItem(_('Passive mode'), !!this.passive, x => this._fulu.set('passive', x ? 1 : 0, this)),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
-            trigger: new RadioItem(_('Trigger'), Trigger, this.trigger, x => this.setf('trigger', x)),
-            scmds:   new DRadioItem(_('Swift'), this._scmds, this.scommand, x => this.setf('scommand', x)),
-            ocr:     new RadioItem(_('OCR'), OCRMode, this.ocr_mode, x => this.setf('ocr_mode', x)),
+            trigger: new RadioItem(_('Trigger'), omap(Trigger, ([k, v]) => isNaN(k) ? [[v, _(scap(k))]] : []), this.trigger, x => this._fulu.set('trigger', x, this)),
+            scmds:   new DRadioItem(_('Swift'), this._scmds, this.scommand, x => this._fulu.set('scommand', x, this)),
+            ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => isNaN(k) ? [[v, _(scap(k))]] : []), this.ocr_mode, x => this._fulu.set('ocr_mode', x, this)),
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
             prefs:   new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
         };
@@ -647,70 +569,61 @@ class LightDict extends DEventEmitter {
 
     _bindSettings() {
         this._fulu.attach({
-            filter:     [Field.TXTFILTER, 'string'],
-            app_list:   [Field.APPLIST,   'string'],
-            passive:    [Field.PASSIVE,   'uint'],
-            systray:    [Field.SYSTRAY,   'boolean'],
-            trigger:    [Field.TRIGGER,   'uint'],
-            list_type:  [Field.LISTTYPE,  'uint'],
-            text_strip: [Field.TXTSTRIP,  'boolean'],
+            filter:     [Field.TFLT, 'string'],
+            app_list:   [Field.APPS, 'string'],
+            passive:    [Field.PSV,  'uint'],
+            systray:    [Field.STRY, 'boolean'],
+            trigger:    [Field.TRG,  'uint'],
+            list_type:  [Field.APP,  'uint'],
+            text_strip: [Field.TSTP, 'boolean'],
         }, this);
     }
 
     _buildWidgets() {
         this.dbus = true;
         this._app = this.getAppid();
-        this._dlock = this._slock = [];
+        this._lock_d = this._lock_s = [];
         this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
         this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
         this._act = new DictAct(this._fulu);
         this._box = new DictBox(this._fulu);
         this._bar = new DictBar(this._fulu);
-        this._act.connect('dict-act-dwelled', this._onActDwelled.bind(this));
-        this._bar.connect('dict-bar-clicked', (_a, cmd) => { this._dlock[0] = true; this._exeCmd(cmd); });
-        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), this);
-        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
+        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), onus(this));
+        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, onus(this));
+        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), onus(this));
+        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), onus(this));
         // FIXME: idle to avoid clutter-stage.c assertion when search() since 44.beta
+        // related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/6491
         // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
-        this._sbt_e = new Symbiont(x => x && GLib.source_remove(x), this, x => GLib.idle_add(GLib.PRIORITY_LOW, () => {
-            x(); this._sbt_e._delegate = null;
-            return GLib.SOURCE_REMOVE;
-        }));
-        this._sbt_m = new Symbiont(x => clearInterval(x), this, x => setInterval(() => {
-            if((x ^ gs_pointer().at(2)) !== Clutter.ModifierType.BUTTON1_MASK) return;
-            this._sbt_m.dispel();
-            this._run().catch(noop);
-        }, 50));
-        new Symbiont(() => {
-            this.systray = this.dbus = null;
-            global.display.disconnectObject(this);
-            global.display.get_selection().disconnectObject(this);
-            ['_bar', '_box', '_act', '_cur'].forEach(x => { this[x].destroy(); this[x] = null; });
-        }, this);
+        this._sbt = symbiose(this, () => omit(this, 'dbus', 'systray', '_bar', '_box', '_act', '_cur'), {
+            eval: [x => x && GLib.source_remove(x), x => GLib.idle_add(GLib.PRIORITY_LOW, () => {
+                x(); delete this._sbt.eval._delegate; return GLib.SOURCE_REMOVE;
+            })],
+            select: [x => clearInterval(x), x => setInterval(() => {
+                if((x ^ gs_pointer().at(2)) !== Clutter.ModifierType.BUTTON1_MASK) return;
+                this._sbt.select.dispel();
+                this._run().catch(noop);
+            }, 50)],
+        });
     }
 
     set dbus(dbus) {
         if(xnor(dbus, this._dbus)) return;
         if(dbus) {
-            this._dbus = Gio.DBusExportedObject.wrapJSObject(LDIface, this);
+            this._dbus = Gio.DBusExportedObject.wrapJSObject(LD_IFACE, this);
             this._dbus.export(Gio.DBus.session, '/org/gnome/Shell/Extensions/LightDict');
         } else {
             this._dbus.flush();
             this._dbus.unexport();
-            this._dbus = null;
+            delete this._dbus;
         }
     }
 
     set systray(systray) {
-        if(xnor(systray, this._button)) return;
-        if(systray) {
-            this._button = new DictBtn(this._fulu, 0.5, Me.metadata.uuid);
-            Main.panel.addToStatusArea(Me.metadata.uuid, this._button);
-        } else {
-            this._button.destroy();
-            this._button = null;
-        }
+        if(xnor(systray, this._btn)) return;
+        if(systray) this._btn = Main.panel.addToStatusArea(Me.metadata.uuid, new DictBtn(this._fulu, 0.5, Me.metadata.uuid));
+        else omit(this, '_btn');
     }
 
     set cursor(cursor) {
@@ -730,9 +643,9 @@ class LightDict extends DEventEmitter {
     }
 
     _onActDwelled(_a, mdf, ppt) {
-        if(this._dlock.pop() || this._box._rect && !outside(this._box._rect, ppt) ||
+        if(this._lock_d.pop() || this._box._rect && !outside(this._box._rect, ppt) ||
            this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
-        if(!this.passive || mdf & LDMdf) this._act.invokeOCR('', '--quiet');
+        if(!this.passive || mdf & LD_MDF) this._act.invokeOCR('', '--quiet');
     }
 
     _onWindowChanged() {
@@ -743,10 +656,10 @@ class LightDict extends DEventEmitter {
 
     _onSelectChanged(_sel, type) {
         if(type !== St.ClipboardType.PRIMARY) return;
-        this._sbt_m.dispel();
+        this._sbt.select.dispel();
         let mdf = gs_pointer().at(2);
-        if(this._slock.pop() || this.isFobidden() || this.passive && !(mdf & LDMdf) || this.trigger === Trigger.Disable) return;
-        if(mdf & Clutter.ModifierType.BUTTON1_MASK) this._sbt_m.summon(mdf);
+        if(this._lock_s.pop() || this.isFobidden() || this.passive && !(mdf & LD_MDF) || this.trigger === Trigger.disable) return;
+        if(mdf & Clutter.ModifierType.BUTTON1_MASK) this._sbt.select.summon(mdf);
         else this._run().catch(noop);
     }
 
@@ -790,11 +703,11 @@ class LightDict extends DEventEmitter {
 
     async _exeCmd(cmd) {
         if(!cmd.type) await this._exeSh(cmd);
-        else this._sbt_e.reset(() => this._exeJS(cmd));
+        else this._sbt.eval.revive(() => this._exeJS(cmd));
     }
 
     _select(x) {
-        this._slock[0] = true;
+        this._lock_s[0] = true;
         this._act.select(x);
     }
 
@@ -817,9 +730,9 @@ class LightDict extends DEventEmitter {
     }
 
     _store(text) {
-        let selection = this.text_strip ? text.replace(/\n\s*\n/g, '\n') : text;
+        let selection = this.text_strip ? text.replaceAll(/((?<=^)|(?<=\n))\s*(\n|$(?![\r\n]))/gm, '') : text;
         if(!selection) throw new Error('Empty string');
-        this._selection = selection.replace(/\n/g, '\r'); // shell args
+        this._selection = selection.replaceAll(/\n/gm, '\\n'); // escape \n
     }
 
     _fetch() {
@@ -834,10 +747,10 @@ class LightDict extends DEventEmitter {
             this.trigger ? this._popup() : await this._swift();
         } else {
             let [ty, pe] = type.split(':');
-            switch(ty === 'auto' ? Object.keys(Trigger)[this.trigger].toLowerCase() : ty) {
+            switch(ty === 'auto' ? Trigger[this.trigger] : ty) {
             case 'swift':   this._store(text || await this._fetch()); await this._swift(pe); break;
             case 'popup':   this._store(text || await this._fetch()); this._popup(); break;
-            case 'display': this._store(text || 'ERROR'); this._display(info.trim() || genEmpty(), !text); break;
+            case 'display': this._store(text || 'Oops'); this._display(info.trimEnd() || lot(Kaomoji), !text); break;
             }
         }
     }
@@ -877,8 +790,8 @@ class LightDict extends DEventEmitter {
 
     Toggle() {
         let next = (this.trigger + 1) % 2;
-        Main.notify(Me.metadata.name, _('Switch to %s style').format(_(Object.keys(Trigger)[next])));
-        this.setf('trigger', next);
+        Main.notify(Me.metadata.name, _('Switch to %s style').format(_(Trigger[next])));
+        this._fulu.set('trigger', next, this);
     }
 }
 

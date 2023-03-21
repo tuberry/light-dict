@@ -3,15 +3,12 @@
 /* exported init fillPreferencesWindow */
 'use strict';
 
-const { Adw, Gtk, GObject, Gio, GLib, Gdk, Graphene } = imports.gi;
+const { Adw, Gtk, GObject, Gio, GLib, Gdk, Gsk, Graphene } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, noop, fl, genParam, execute, fquery } = Me.imports.util;
+const { _, _GTK, grect, noop, gparam, execute } = Me.imports.util;
 const { Field } = Me.imports.const;
 const UI = Me.imports.ui;
-
-const genColor = (r, g, b, alpha = 1) => new Gdk.RGBA({ red: r / 255, green: g / 255, blue: b / 255, alpha });
-const genRect = (width, height, x = 0, y = 0) => new Graphene.Rect({ origin: new Graphene.Point({ x, y }), size: new Graphene.Size({ width, height }) });
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
@@ -28,11 +25,12 @@ function fillPreferencesWindow(win) {
                             .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`, -1);
     Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
     Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(Me.dir.get_child('icons').get_path());
+    let gset = ExtensionUtils.getSettings();
     [
-        new LightDictBasic({ title: _('Basic'), icon_name: 'disable-passive-symbolic' }),
-        new LightDictJSON({ title: _('Swift'),  icon_name: 'swift-passive-symbolic' }, Field.SCOMMANDS),
-        new LightDictJSON({ title: _('Popup'),  icon_name: 'popup-passive-symbolic' }, Field.PCOMMANDS),
-        new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }),
+        new LightDictBasic({ title: _('Basic'), icon_name: 'ld-disable-passive-symbolic' }, gset),
+        new LightDictJSON({ title: _('Swift'),  icon_name: 'ld-swift-passive-symbolic' }, gset, Field.SCMDS),
+        new LightDictJSON({ title: _('Popup'),  icon_name: 'ld-popup-passive-symbolic' }, gset, Field.PCMDS),
+        new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }, gset),
     ].forEach(x => win.add(x));
 }
 
@@ -52,47 +50,11 @@ class PrefPage extends Adw.PreferencesPage {
     }
 }
 
-class IconBtn extends UI.File {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor() {
-        super({ filter: 'image/svg+xml' }, Gio.FILE_ATTRIBUTE_STANDARD_NAME);
-    }
-
-    set_icon(icon) {
-        this.file = icon;
-    }
-
-    _checkIcon(path) {
-        let name = GLib.basename(path).replace('.svg', '');
-        return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
-    }
-
-    async _setFile(path) {
-        let file = fl(path);
-        let info = await fquery(file, this._attr);
-        this._setLabel(info.get_name().replace(RegExp(/(-symbolic)*.svg$/), ''));
-        let icon = this._checkIcon(path);
-        icon ? this._icon.set_from_icon_name(icon) : this._icon.set_from_gicon(Gio.Icon.new_for_string(path));
-        if(!this.file) this.chooser.set_file(file);
-        this._file = path;
-        this._icon.show();
-    }
-
-    _setEmpty() {
-        this._icon.hide();
-        this._setLabel(null);
-        this._file = null;
-    }
-}
-
-class AppsBox extends Gtk.Box {
+class AppsBox extends UI.Box {
     static {
         GObject.registerClass({
             Properties: {
-                apps: genParam('string', 'apps', ''),
+                value: gparam('string', 'value', ''),
             },
             Signals: {
                 changed: { param_types: [GObject.TYPE_STRING] },
@@ -101,84 +63,70 @@ class AppsBox extends Gtk.Box {
     }
 
     constructor(tip1, tip2) {
-        super({ valign: Gtk.Align.CENTER, hexpand: true, css_classes: ['linked'] });
-        this._box = new Gtk.Box({ hexpand: true, tooltip_text: tip1 || '', css_name: 'entry', css_classes: ['linked'] });
+        super();
+        this._box = new UI.Box(null, { hexpand: true, tooltip_text: tip1 || ''  });
         this._btn = new Gtk.Button({ tooltip_text: tip2 || '', icon_name: 'list-add-symbolic' });
-        this._btn.connect('clicked', this._onActivated.bind(this));
-        [new Gtk.ScrolledWindow({ child: this._box, vscrollbar_policy: Gtk.PolicyType.NEVER }), this._btn].forEach(x => this.append(x));
-        this._buildChooser();
+        let scroll = new Gtk.ScrolledWindow({ child: this._box, css_name: 'entry', vscrollbar_policy: Gtk.PolicyType.NEVER });
+        this._btn.connect('clicked', this._onClick.bind(this));
+        [scroll, this._btn].forEach(x => this.append(x));
+    }
+
+    _buildDialog() {
+        this._dlg = new UI.AppDialog();
+        this._dlg.connect('selected', (_x, id) => {
+            if(this.value.includes(id)) return;
+            this._setValue(this._value ? `${this._value},${id}` : id);
+            this._appendApp(id);
+        });
+    }
+
+    _onClick() {
+        if(!this._dlg) this._buildDialog();
+        this._dlg.present();
+        let root = this.get_root();
+        if(this._dlg.transient_for !== root) this._dlg.set_transient_for(root);
+    }
+
+    set value(value) {
+        if(value === this.value) return;
+        this._value = value;
+        let items = this._box.observe_children();
+        while(items.get_n_items() > 0) this._box.remove(items.get_item(0));
+        this._value.split(',').forEach(a => this._appendApp(a));
+    }
+
+    get value() {
+        return this._value ?? '';
+    }
+
+    _appendApp(id) {
+        let a = Gio.DesktopAppInfo.new(id);
+        let btn = a ? new Gtk.Button({ child: new Gtk.Image({ gicon: a.get_icon() }), tooltip_text: a.get_display_name(), has_frame: false })
+            : new Gtk.Button({ icon_name: 'help-browser-symbolic', tooltip_text: id, has_frame: false });
+        btn.connect('clicked', w => {
+            this._setValue(this.value.split(',').filter(x => x !== id).join(','));
+            this._box.remove(w);
+        });
+        this._box.append(btn);
+    }
+
+    _setValue(v) {
+        this._value = v;
+        this.notify('value');
+        this.emit('changed', this.value);
     }
 
     vfunc_mnemonic_activate() {
         this._btn.activate();
     }
-
-    set apps(apps) {
-        let widgets = [];
-        let children = this._box.observe_children();
-        for(let i = 0, x; (x = children.get_item(i)); i++) widgets.push(x);
-        widgets.forEach(w => this._box.remove(w));
-        apps.split(',').forEach(a => this._appendApp(a));
-        this._apps = apps;
-        this.notify('apps');
-    }
-
-    get apps() {
-        return this._apps ?? '';
-    }
-
-    set_apps(apps) { // set new apps
-        this.apps = apps;
-    }
-
-    _buildChooser() {
-        this.chooser = new Gtk.AppChooserDialog({ modal: Gtk.DialogFlags.MODAL });
-        this.chooser.get_widget().set({ show_all: true, show_other: true });
-        this.chooser.get_widget().connect('application-selected', () => this._updateResponse());
-        this.chooser.connect('response', (wdg, res) => {
-            if(res === Gtk.ResponseType.OK) {
-                let id = wdg.get_widget().get_app_info().get_id();
-                this._apps = this.apps ? [this.apps, id].join(',') : id;
-                this._appendApp(id);
-                this.emit('changed', this.apps);
-                this.notify('apps');
-            }
-            this.chooser.hide();
-        });
-    }
-
-    _updateResponse() {
-        let app = this.chooser.get_widget().get_app_info();
-        this.chooser.set_response_sensitive(Gtk.ResponseType.OK, app && !this.apps.includes(app.get_id()));
-    }
-
-    _onActivated(w) {
-        this.chooser.set_transient_for(w.get_root());
-        this._updateResponse();
-        this.chooser.show();
-    }
-
-    _appendApp(id) {
-        let appInfo = Gio.DesktopAppInfo.new(id);
-        if(!appInfo) return;
-        let app = new Gtk.Button({ tooltip_text: appInfo.get_display_name(), has_frame: false });
-        app.set_child(new Gtk.Image({ gicon: appInfo.get_icon(), css_classes: ['icon-dropshadow'] }));
-        app.connect('clicked', widget => {
-            this._box.remove(widget);
-            this._apps = this.apps.split(',').filter(x => x !== id).join(',');
-            this.emit('changed', this.apps);
-            this.notify('apps');
-        });
-        this._box.append(app);
-    }
 }
 
-class SideItem extends GObject.Object { // required GObject.Object by Gtk.SignalListItemFactory
+class SideItem extends GObject.Object {
     static {
         GObject.registerClass({
             Properties: {
-                name: genParam('string', 'name', 'Name'),
-                enable: genParam('boolean', 'enable', false),
+                name: gparam('string', 'name', 'Name'),
+                enable: gparam('boolean', 'enable', false),
             },
         }, this);
     }
@@ -198,10 +146,6 @@ class SideItem extends GObject.Object { // required GObject.Object by Gtk.Signal
         this.enable = enable ?? false;
         return this;
     }
-
-    to_string() {
-        return JSON.stringify({ enable: this.enable || undefined, name: this.name || 'Name' }, null, 0);
-    }
 }
 
 class SideRow extends Gtk.Box {
@@ -219,10 +163,10 @@ class SideRow extends Gtk.Box {
     constructor(group) {
         super({ spacing: 5, hexpand: false });
         this._btn = new Gtk.CheckButton({ group });
-        this._btn.connect('toggled', () => this.emit('toggle', this._btn.active));
+        this._btn.connect('toggled', () => this._emit('toggle', this._btn.active));
         this._txt = new Gtk.EditableLabel({ max_width_chars: 9 });
-        this._txt.get_delegate().connect('activate', () => this.emit('edit', this._txt.text));
-        this._txt.connect('changed', () => !this._txt.get_position() && this.emit('edit', this._txt.text));
+        this._txt.get_delegate().connect('activate', () => this._emit('edit', this._txt.text));
+        this._txt.connect('changed', () => !this._txt.get_position() && this._emit('edit', this._txt.text));
         this._img = new Gtk.Image({ icon_name: 'open-menu-symbolic' });
         ['_btn', '_txt', '_img'].forEach(x => this.append(this[x]));
         this._buildDND(group);
@@ -230,52 +174,49 @@ class SideRow extends Gtk.Box {
 
     _buildDND(group) {
         // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
-        this._type = !group;
+        this._group = !group;
         let drag = new Gtk.DragSource({ actions: Gdk.DragAction.MOVE });
         drag.connect('prepare', dg => {
             this.emit('drag');
-            let { width: x, height: y } = this.get_allocation(),
-                ss = new Gtk.Snapshot(),
-                fg = this.get_style_context().get_color().red;
-            ss.append_color(fg ? genColor(53, 132, 228) : genColor(255, 255, 255), genRect(x, y));
-            new Gtk.WidgetPaintable({ widget: this }).snapshot(ss, x, y);
-            let cr = ss.append_cairo(genRect(x, y));
-            cr.setSourceRGBA(0, 0, 0, 1);
-            cr.setLineWidth(2);
-            cr.rectangle(0, 0, x, y);
-            cr.stroke();
-            let { width: a, height: b } = this._img.get_allocation();
-            dg.set_icon(ss.to_paintable(null), x - a / 2, y - b / 2); // ?? wrong pos on Wayland
+            let ss = new Gtk.Snapshot(),
+                { width: w, height: h } = this.get_allocation(),
+                { width: a, height: b } = this._img.get_allocation(),
+                bd = new Gsk.RoundedRect().init(grect(w, h), ...Array(4).fill(new Graphene.Size()));
+            ss.append_color(this.get_color().red ? UI.grgba('#3584e4').at(1) : UI.grgba('white').at(1), grect(w, h));
+            ss.append_border(bd, Array(4).fill(1), Array(4).fill(UI.grgba('black').at(1)));
+            new Gtk.WidgetPaintable({ widget: this }).snapshot(ss, w, h);
+            dg.set_icon(ss.to_paintable(null), w - a / 2, h - b / 2);
             return Gdk.ContentProvider.new_for_value(this);
         });
         this._img.add_controller(drag);
-        let drop = new Gtk.DropTarget({ actions: Gdk.DragAction.MOVE });
-        drop.set_gtypes([this.constructor.$gtype]);
-        drop.connect('motion', (_a, _x, y) => {
-            let dark = this.get_style_context().get_color().red ? '-dark' : '';
-            let [add, del] = y > this.get_allocation().height / 2 ? ['down', 'up'] : ['up', 'down'];
-            this.get_style_context().add_class(`ld-drop-${add}${dark}`);
-            this.get_style_context().remove_class(`ld-drop-${del}`);
-            this.get_style_context().remove_class(`ld-drop-${del}-dark`);
+        let drop = Gtk.DropTarget.new(this.constructor.$gtype, Gdk.DragAction.MOVE);
+        UI.conns(drop, ['motion', (_a, _x, y) => {
+            let dark = this.get_color().red ? '-dark' : '';
+            let [add, del] = y > this.get_height() / 2 ? ['down', 'up'] : ['up', 'down'];
+            this.add_css_class(`ld-drop-${add}${dark}`);
+            ['', '-dark'].forEach(z => this.remove_css_class(`ld-drop-${del}${z}`));
             return Gdk.DragAction.MOVE;
-        });
-        drop.connect('leave', () => this._clearDropStyle());
-        drop.connect('drop', (_a, t, _x, y) => {
+        }], ['leave', () => this._clearDropStyle()], ['drop', (_a, t, _x, y) => {
             this._clearDropStyle();
-            if(t._type === this._type) this.emit('drop', y > this.get_allocation().height / 2);
-        });
+            if(t._group === this._group) this.emit('drop', y > this.get_allocation().height / 2);
+        }]);
         this.add_controller(drop);
     }
 
     _clearDropStyle() {
-        ['up', 'down', 'up-dark', 'down-dark'].forEach(x => this.get_style_context().remove_class(`ld-drop-${x}`));
+        ['up', 'down', 'up-dark', 'down-dark'].forEach(x => this.remove_css_class(`ld-drop-${x}`));
+    }
+
+    _emit(s, v) {
+        if(!this._syncing) this.emit(s, v);
     }
 
     binds(item) {
-        if(this._item === item) return;
+        this._syncing = true;
         this._item = item;
-        item.bind_property('name', this._txt, 'text', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
-        item.bind_property('enable', this._btn, 'active', GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE);
+        this._txt.text = item.name;
+        this._btn.active = item.enable;
+        this._syncing = false;
     }
 }
 
@@ -304,23 +245,15 @@ class SideBar extends Gtk.Box {
         this.swift = swift ? new Gtk.CheckButton() : null;
         this._model = new Gio.ListStore({ item_type: SideItem });
         cmds.forEach(x => this._model.append(new SideItem(x)));
-        this._select = new Gtk.SingleSelection({ model: this._model });
+        this._select = new Gtk.SingleSelection({ autoselect: false, model: this._model });
         this._select.connect('selection-changed', () => this.emit('select', this.selected));
         let factory = new Gtk.SignalListItemFactory();
-        factory.connect('setup', (_f, x) => x.set_child(new SideRow(this.swift)));
-        factory.connect('bind', (_f, x) => {
-            let w = x.get_child();
-            w.binds(x.get_item());
-            w._dragId ??= w.connect('drag', a => { this.drag = this.getPos(a); });
-            w._dropId ??= w.connect('drop', (a, down) => this.drop(this.getPos(a) + down));
-            w._editId ??= w.connect('edit', (a, name) => this.emit('change', this.getPos(a), name));
-            w._toggleId ??= w.connect('toggle', (a, enable) => {
-                if(this.swift && !enable) return;
-                this.emit('enable', this.getPos(a), enable);
-                this.emit('select', this.getPos(a));
-            });
-        });
-        // do not `unbind` on small lists, also avoid offending gjs warnings
+        UI.conns(factory, ['setup', (_f, x) => {
+            let row = new SideRow(this.swift);
+            UI.conns(row, ['edit', (a, y) => this.edit(a, y)], ['toggle', (a, y) => this.toggle(a, y)],
+                ['drag', a => { this.drag = this.getPos(a); }], ['drop', (a, down) => this.drop(this.getPos(a) + down)]);
+            x.set_child(row);
+        }], ['bind', (_f, x) => x.get_child().binds(x.get_item())]);
         this._list = new Gtk.ListView({ model: this._select, factory, vexpand: true });
         this._list.connect('activate', () => this.emit('select', this.selected));
         return new Gtk.ScrolledWindow({ child: this._list });
@@ -328,6 +261,19 @@ class SideBar extends Gtk.Box {
 
     getPos(x) {
         return this._model.find(x._item).at(1);
+    }
+
+    toggle(a, enable) {
+        if(this.swift && !enable) return;
+        a._item.enable = enable;
+        let pos = this.getPos(a);
+        this.emit('enable', pos, enable);
+        this.emit('select', pos);
+    }
+
+    edit(a, name) {
+        a._item.name = name;
+        this.emit('change', this.getPos(a), name);
     }
 
     drop(drop) {
@@ -343,38 +289,33 @@ class SideBar extends Gtk.Box {
         let index = this.selected;
         let item = new SideItem().from_string(text);
         if(this.swift) item.enable = false;
-        if(index === Gtk.INVALID_LIST_POSITION) {
-            this._model.append(item);
-            this.emit('add', -1, text);
-        } else {
-            this._model.insert(index + 1, item);
-            this.emit('add', index, text);
-        }
+        if(index === Gtk.INVALID_LIST_POSITION) index = -1;
+        this._model.insert(index + 1, item);
+        this.emit('add', index, text);
     }
 
     _buildTool() {
-        let box = new Gtk.Box({ css_classes: ['linked'] });
-        [['list-add-symbolic', _('Add'), () => {
-            this.add();
-        }], ['list-remove-symbolic', _('Remove'), () => {
-            let index = this.selected;
-            if(index === Gtk.INVALID_LIST_POSITION) return;
-            this._model.remove(index);
-            this.emit('remove', index);
-        }], ['edit-copy-symbolic', _('Copy'), () => {
-            this.emit('copy', this.selected);
-        }], ['edit-paste-symbolic', _('Paste'), async () => {
-            try {
-                this.add(await this.get_clipboard().read_text_async(null));
-            } catch(e) {
-                this.get_root().add_toast(new Adw.Toast({ title: _('Paste content parsing failed'), timeout: 5 }));
-            }
-        }]].map(([icon_name, tooltip_text, y]) => {
-            let btn = new Gtk.Button({ icon_name, tooltip_text, has_frame: false });
-            btn.connect('clicked', y);
-            return btn;
-        }).forEach(x => box.append(x));
-        return box;
+        return new UI.Box(
+            [['list-add-symbolic', _('Add'), () => {
+                this.add();
+            }], ['list-remove-symbolic', _('Remove'), () => {
+                let index = this.selected;
+                if(index === Gtk.INVALID_LIST_POSITION) return;
+                this._model.remove(index);
+                this.emit('remove', index);
+            }], ['edit-copy-symbolic', _('Copy'), () => {
+                this.emit('copy', this.selected);
+            }], ['edit-paste-symbolic', _('Paste'), async () => {
+                try {
+                    this.add(await this.get_clipboard().read_text_async(null));
+                } catch(e) {
+                    this.get_root().add_toast(new Adw.Toast({ title: _('Paste content parsing failed'), timeout: 5 }));
+                }
+            }]].map(([icon_name, tooltip_text, y]) => {
+                let btn = new Gtk.Button({ icon_name, tooltip_text, has_frame: false });
+                btn.connect('clicked', y);
+                return btn;
+            }));
     }
 
     get selected() {
@@ -436,14 +377,14 @@ class SwiftBox extends Adw.PreferencesPage {
     }
 
     _bindValues() {
+        this._type.connect('notify::selected', w => this._emit('type', w.get_selected()));
         this._popup.connect('state-set', (_w, state) => this._emit('popup', state));
         this._commit.connect('state-set', (_w, state) => this._emit('commit', state));
         this._select.connect('state-set', (_w, state) => this._emit('select', state));
         this._copy.connect('state-set', (_w, state) => this._emit('copy', state));
-        this._apps.connect('changed', (_w, apps) => this._emit('apps', apps));
-        this._type.connect('notify::selected', widget => this._emit('type', widget.get_selected()));
-        this._regexp.connect('changed', widget => this._emit('regexp', widget.get_text()));
-        this._command.connect('changed', widget => this._emit('command', widget.get_text()));
+        this._apps.connect('changed', (_w, value) => this._emit('apps', value));
+        this._regexp.connect('changed', w => this._emit('regexp', w.get_text()));
+        this._command.connect('changed', w => this._emit('command', w.get_text()));
     }
 
     _emit(key, value) {
@@ -462,8 +403,8 @@ class SwiftBox extends Adw.PreferencesPage {
             case 'boolean': widget.set_state(prop); break;
             case 'number':  widget.set_selected(prop); break;
             case 'string': switch(x) {
-            case 'apps': widget.set_apps(prop); break;
-            case 'icon': widget.set_icon(prop); break;
+            case 'apps': widget.value = prop; break;
+            case 'icon': widget.value = prop; break;
             default: widget.set_text(prop); break;
             } break;
             }
@@ -484,7 +425,7 @@ class PopupBox extends SwiftBox {
 
     _buildWidgets() {
         super._buildWidgets();
-        this._icon = new IconBtn();
+        this._icon = new UI.Icon();
         this._tooltip = new UI.LazyEntry('Open URL');
     }
 
@@ -517,17 +458,16 @@ class LightDictAbout extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params) {
+    constructor(params, gset) {
         super(params);
         let box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 30, margin_bottom: 30 });
-        [this._buildIcon(), this._buildInfo(), this._buildTips(), new Gtk.Box({ vexpand: true }), this._buildLicense()].forEach(x => box.append(x));
+        [this._buildIcon(gset), this._buildInfo(), this._buildTips(), new Gtk.Box({ vexpand: true }), this._buildLicense()].forEach(x => box.append(x));
         this._add(box);
     }
 
-    _buildIcon() {
+    _buildIcon(gset) {
         let box = new Gtk.Box({ halign: Gtk.Align.CENTER, margin_bottom: 30 }),
-            gsettings = ExtensionUtils.getSettings(),
-            active = gsettings.get_strv(Field.PCOMMANDS).slice(0, gsettings.get_uint(Field.PAGESIZE)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
+            active = gset.get_strv(Field.PCMDS).slice(0, gset.get_uint(Field.PGSZ)).flatMap(x => (y => y?.icon ? [y.icon] : [])(JSON.parse(x)));
         if(active.length) {
             active.forEach(x => {
                 let icon = this._checkIcon(x);
@@ -586,62 +526,62 @@ class LightDictBasic extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params) {
+    constructor(params, gset) {
         super(params);
-        this._buildWidgets();
+        this._buildWidgets(gset);
         this._buildUI();
     }
 
-    _buildWidgets() {
-        this._blk = new UI.Block({
-            param:   [Field.OCRPARAMS, 'text',     new UI.LazyEntry()],
-            size:    [Field.PAGESIZE,  'value',    new UI.Spin(1, 10, 1)],
-            en_keys: [Field.SHORTOCR,  'active',   new Gtk.CheckButton()],
-            hide:    [Field.AUTOHIDE,  'value',    new UI.Spin(500, 10000, 250)],
-            lcmd:    [Field.LCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
-            rcmd:    [Field.RCOMMAND,  'text',     new UI.LazyEntry('notify-send LDWORD')],
-            filter:  [Field.TXTFILTER, 'text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
-            passive: [Field.PASSIVE,   'selected', new UI.Drop([_('Proactive'), _('Passive')])],
-            list:    [Field.LISTTYPE,  'selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            dwell:   [Field.DWELLOCR,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            strip:   [Field.TXTSTRIP,  'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            tray:    [Field.SYSTRAY,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            tip:     [Field.TOOLTIP,   'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            title:   [Field.HIDETITLE, 'active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            apps:    [Field.APPLIST,   'apps',     new AppsBox(_('Click the app icon to remove'))],
-            trigger: [Field.TRIGGER,   'selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
-            mode:    [Field.OCRMODE,   'selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
-            en_ocr:  [Field.ENABLEOCR, 'enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
-        });
-        this._blk.keys = new UI.Keys(this._blk.gset, Field.OCRSHORTCUT);
-        this._blk.help = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
-        this._buildHelpPopover().then(scc => this._blk.help.set_popover(scc)).catch(noop);
+    _buildWidgets(gset) {
+        this._blk = UI.block({
+            OCRP: ['text',     new UI.LazyEntry()],
+            PGSZ: ['value',    new UI.Spin(1, 10, 1)],
+            KEY:  ['active',   new Gtk.CheckButton()],
+            ATHD: ['value',    new UI.Spin(500, 10000, 250)],
+            LCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
+            RCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
+            TFLT: ['text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
+            PSV:  ['selected', new UI.Drop([_('Proactive'), _('Passive')])],
+            APP:  ['selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
+            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            TSTP: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            STRY: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            TIP:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            HDTT: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            APPS: ['value',    new AppsBox(_('Click the app icon to remove'))],
+            TRG:  ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+            OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
+            OCR:  ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
+        }, gset);
+        this._blk.KEYS = new UI.Keys(gset, Field.KEYS);
+        this._blk.HELP = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
+        this._buildHelpPopover().then(scc => this._blk.HELP.set_popover(scc)).catch(noop);
     }
 
     _buildUI() {
         [
-            [[_('Enable systray')], this._blk.tray],
-            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._blk.passive, this._blk.trigger],
-            [[_('Application list')], this._blk.apps, this._blk.list],
+            [[_('Enable systray')], this._blk.STRY],
+            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._blk.PSV, this._blk.TRG],
+            [[_('Application list')], this._blk.APPS, this._blk.APP],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
         [
-            [this._blk.en_keys, [_('Shortcut')], this._blk.keys],
-            [[_('Dwell OCR')], this._blk.dwell],
-            [[_('Work mode')], this._blk.mode],
-            [this._blk.help, [], this._blk.param],
-        ].forEach(xs => this._blk.en_ocr.add_row(new UI.PrefRow(...xs)));
+            [this._blk.KEY, [_('Shortcut')], this._blk.KEYS],
+            [[_('Dwell OCR')], this._blk.DOCR],
+            [[_('Work mode')], this._blk.OCRS],
+            [this._blk.HELP, [], this._blk.OCRP],
+        ].forEach(xs => this._blk.OCR.add_row(new UI.PrefRow(...xs)));
         [this._buildExpander(_('Other'),
-            [[_('Trim blank lines')], this._blk.strip],
-            [[_('Autohide interval')], this._blk.hide],
-            [[_('RegExp filter')], this._blk.filter]),
+            [[_('Trim blank lines')], this._blk.TSTP],
+            [[_('Autohide interval')], this._blk.ATHD],
+            [[_('RegExp filter')], this._blk.TFLT]),
         this._buildExpander(_('Panel'),
-            [[_('Hide title')], this._blk.title],
-            [[_('Right command'), _('Right click to run and hide panel')], this._blk.rcmd],
-            [[_('Left command'), _('Left click to run')], this._blk.lcmd]),
+            [[_('Hide title')], this._blk.HDTT],
+            [[_('Right command'), _('Right click to run and hide panel')], this._blk.RCMD],
+            [[_('Left command'), _('Left click to run')], this._blk.LCMD]),
         this._buildExpander(_('Popup'),
-            [[_('Enable tooltip')], this._blk.tip],
-            [[_('Page size')], this._blk.size])].forEach(x => this._add(x));
-        this._add(this._blk.en_ocr);
+            [[_('Enable tooltip')], this._blk.TIP],
+            [[_('Page size')], this._blk.PGSZ])].forEach(x => this._add(x));
+        this._add(this._blk.OCR);
     }
 
     _buildExpander(title, ...list) {
@@ -665,11 +605,11 @@ class LightDictJSON extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params, key) {
+    constructor(params, gset, key) {
         super(params);
         this._key = key;
-        this._swift = key === Field.SCOMMANDS;
-        this._gset = ExtensionUtils.getSettings();
+        this._gset = gset;
+        this._swift = key === Field.SCMDS;
         this._cmds = this._gset.get_strv(key);
         this._buildWidgets();
         this._bindValues();
@@ -689,15 +629,12 @@ class LightDictJSON extends PrefPage {
     }
 
     _bindValues() {
-        this._side.connect('add',    this._onAdd.bind(this));
-        this._side.connect('move',   this._onMove.bind(this));
-        this._side.connect('copy',   this._onCopy.bind(this));
-        this._side.connect('enable', this._onEnable.bind(this));
-        this._side.connect('select', this._onSelect.bind(this));
-        this._side.connect('remove', this._onRemove.bind(this));
-        this._side.connect('change', this._onSideChange.bind(this));
+        UI.conns(this._side, ['add', this._onAdd.bind(this)], ['move', this._onMove.bind(this)],
+            ['copy',   this._onCopy.bind(this)], ['enable', this._onEnable.bind(this)],
+            ['select', this._onSelect.bind(this)], ['remove', this._onRemove.bind(this)],
+            ['change', this._onSideChange.bind(this)]);
         this._pane.connect('change', this._onPaneChange.bind(this));
-        if(this._swift) this._gset.connect(`changed::${Field.SCOMMAND}`, () => this._onSettingChanged());
+        if(this._swift) this._gset.connect(`changed::${Field.SCMD}`, () => this._onSettingChanged());
         this._side.grabFocus(0);
     }
 
@@ -717,13 +654,13 @@ class LightDictJSON extends PrefPage {
     }
 
     get enable() {
-        return this._gset.get_int(Field.SCOMMAND);
+        return this._gset.get_int(Field.SCMD);
     }
 
     set enable(index) {
         if(!this._swift || this._enable === index) return;
         this._enable = index;
-        this._gset.set_int(Field.SCOMMAND, index);
+        this._gset.set_int(Field.SCMD, index);
     }
 
     _onSelect(_w, index) {
