@@ -39,8 +39,8 @@ class PrefPage extends Adw.PreferencesPage {
         GObject.registerClass(this);
     }
 
-    constructor(params) {
-        super(params);
+    constructor(param) {
+        super(param);
         this._group = new Adw.PreferencesGroup();
         this.add(this._group);
     }
@@ -90,8 +90,7 @@ class AppsBox extends UI.Box {
     set value(value) {
         if(value === this.value) return;
         this._value = value;
-        let items = this._box.observe_children();
-        while(items.get_n_items() > 0) this._box.remove(items.get_item(0));
+        for(let x of this._box) this._box.remove(x);
         this._value.split(',').forEach(a => this._appendApp(a));
     }
 
@@ -133,7 +132,7 @@ class SideItem extends GObject.Object {
 
     constructor(param) {
         super();
-        if(param) Object.assign(this, param);
+        Object.assign(this, param);
     }
 
     copy() {
@@ -458,8 +457,8 @@ class LightDictAbout extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params, gset) {
-        super(params);
+    constructor(param, gset) {
+        super(param);
         let box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, margin_top: 30, margin_bottom: 30 });
         [this._buildIcon(gset), this._buildInfo(), this._buildTips(), new Gtk.Box({ vexpand: true }), this._buildLicense()].forEach(x => box.append(x));
         this._add(box);
@@ -480,7 +479,7 @@ class LightDictAbout extends PrefPage {
     }
 
     _checkIcon(path) {
-        let name = GLib.basename(path).replace('.svg', '');
+        let name = GLib.basename(path).replace(/\.svg$/, '');
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).has_icon(name) ? name : '';
     }
 
@@ -526,8 +525,8 @@ class LightDictBasic extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params, gset) {
-        super(params);
+    constructor(param, gset) {
+        super(param);
         this._buildWidgets(gset);
         this._buildUI();
     }
@@ -605,8 +604,8 @@ class LightDictJSON extends PrefPage {
         GObject.registerClass(this);
     }
 
-    constructor(params, gset, key) {
-        super(params);
+    constructor(param, gset, key) {
+        super(param);
         this._key = key;
         this._gset = gset;
         this._swift = key === Field.SCMDS;
