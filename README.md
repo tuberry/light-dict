@@ -86,6 +86,7 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 * [youdaodict]: the idea of popup
 * [gsconnect]: fake keyboard input
 * [swift-selection-search]: the stylesheet of iconbar
+* [capture2text]: the idea of bubble OCR (dialog OCR here)
 
 [python-opencv]:https://opencv.org/
 [dict-cedict]:https://github.com/tuberry/dict-cedict
@@ -98,3 +99,4 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 [gsconnect]:https://github.com/andyholmes/gnome-shell-extension-gsconnect
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
 [python-pytesseract]:https://github.com/madmaze/pytesseract
+[capture2text]:https://capture2text.sourceforge.net/

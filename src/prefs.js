@@ -6,7 +6,7 @@
 const { Adw, Gtk, GObject, Gio, GLib, Gdk, Gsk, Graphene } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, grect, noop, gparam, execute } = Me.imports.util;
+const { _, _GTK, grect, noop, gprops, execute } = Me.imports.util;
 const { Field } = Me.imports.const;
 const UI = Me.imports.ui;
 
@@ -53,9 +53,9 @@ class PrefPage extends Adw.PreferencesPage {
 class AppsBox extends UI.Box {
     static {
         GObject.registerClass({
-            Properties: {
-                value: gparam('string', 'value', ''),
-            },
+            Properties: gprops({
+                value: ['string', ''],
+            }),
             Signals: {
                 changed: { param_types: [GObject.TYPE_STRING] },
             },
@@ -123,10 +123,10 @@ class AppsBox extends UI.Box {
 class SideItem extends GObject.Object {
     static {
         GObject.registerClass({
-            Properties: {
-                name: gparam('string', 'name', 'Name'),
-                enable: gparam('boolean', 'enable', false),
-            },
+            Properties: gprops({
+                name: ['string', 'Name'],
+                enable: ['boolean', false],
+            }),
         }, this);
     }
 
@@ -549,7 +549,7 @@ class LightDictBasic extends PrefPage {
             HDTT: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             APPS: ['value',    new AppsBox(_('Click the app icon to remove'))],
             TRG:  ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
-            OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line')])],
+            OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
             OCR:  ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
         }, gset);
         this._blk.KEYS = new UI.Keys(gset, Field.KEYS);

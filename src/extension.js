@@ -16,7 +16,7 @@ const { DBusSenderChecker } = imports.misc.util;
 const InputSourceManager = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
 const { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } = Me.imports.menu;
-const { Fulu, Extension, DEventEmitter, symbiose, omit, onus } = Me.imports.fubar;
+const { Fulu, Extension, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
 const { noop, scap, omap, bmap, xnor, raise, _, gerror, lot } = Me.imports.util;
 const { Field } = Me.imports.const;
 
@@ -27,7 +27,7 @@ const still = (u, v) => u[0] === v[0] && u[1] === v[1];
 const outside = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
 
 const Trigger = bmap({ swift: 0, popup: 1, disable: 2 });
-const OCRMode = bmap({ word: 0, paragraph: 1, area: 2, line: 3 });
+const OCRMode = bmap({ word: 0, paragraph: 1, area: 2, line: 3, dialog: 4 });
 const Kaomoji = ['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']; // placeholder
 const LD_MDF = Clutter.ModifierType.MOD1_MASK;
 const LD_IFACE =
@@ -349,7 +349,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 }
 
-class DictAct extends DEventEmitter {
+class DictAct extends DummyActor {
     constructor(fulu) {
         super();
         this._buildWidgets(fulu);
@@ -560,7 +560,7 @@ class DictBtn extends PanelMenu.Button {
     }
 }
 
-class LightDict extends DEventEmitter {
+class LightDict extends DummyActor {
     constructor() {
         super();
         this._buildWidgets();
@@ -642,7 +642,7 @@ class LightDict extends DEventEmitter {
     }
 
     _onActDwelled(_a, mdf, ppt) {
-        if(this._lock_d.pop() || this._box._rect && !outside(this._box._rect, ppt) ||
+        if(this._lock_d.pop() || this._box._rect && !outside(this._box._rect, ppt) || this._act._ocr_mode === OCRMode.area ||
            this._box.visible && this._box._entered || this._bar.visible && this._bar._entered) return;
         if(!this.passive || mdf & LD_MDF) this._act.invokeOCR('', '--quiet');
     }
