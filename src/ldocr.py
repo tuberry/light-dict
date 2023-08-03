@@ -106,8 +106,6 @@ def dialog_img(filename, point):
     m1 = cv2.floodFill(dl, np.zeros((h + 2, w + 2), np.uint8), point, 0, flags=cv2.FLOODFILL_MASK_ONLY | (255 << 8) | 8)[2]
     m2 = cv2.floodFill(np.zeros((h, w), np.uint8), m1, (0, 0), 255)[1]
     return cv2.bitwise_or(img, cv2.bitwise_or(m2, m1[1:-1, 1:-1]))
-    # tr = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-    # return cv2.bitwise_or(cv2.fastNlMeansDenoising(tr, None, 30, 7, 21), cv2.bitwise_or(m2, m1[1:-1, 1:-1]))
 
 def show_img(image, title='img'):
     cv2.imshow(title, image)

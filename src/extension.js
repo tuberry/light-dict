@@ -16,7 +16,7 @@ const { DBusSenderChecker } = imports.misc.util;
 const InputSourceManager = Keyboard.getInputSourceManager();
 const Me = ExtensionUtils.getCurrentExtension();
 const { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } = Me.imports.menu;
-const { Fulu, Extension, DummyActor, symbiose, omit, onus } = Me.imports.fubar;
+const { Fulu, Extension, Destroyable, symbiose, omit } = Me.imports.fubar;
 const { noop, scap, omap, bmap, xnor, raise, _, gerror, lot } = Me.imports.util;
 const { Field } = Me.imports.const;
 
@@ -112,7 +112,7 @@ class DictBar extends BoxPointer.BoxPointer {
         this.bin.set_child(this._box);
         this._box.connectObject('leave-event', this._onLeave.bind(this),
             'enter-event', this._onEnter.bind(this),
-            'scroll-event', this._onScroll.bind(this), onus(this));
+            'scroll-event', this._onScroll.bind(this), this);
         this._sbt = symbiose(this, () => omit(this, 'tooltip'), {
             hide: [clearTimeout, x => setTimeout(() => this.dispel(), x ? this.autohide / 10 : this.autohide)],
             tip: [clearTimeout, i => setTimeout(() => {
@@ -246,7 +246,7 @@ class DictBox extends BoxPointer.BoxPointer {
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
-            'button-press-event', this._onClick.bind(this), onus(this));
+            'button-press-event', this._onClick.bind(this), this);
         this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
         [this._text, this._info].forEach(x => {
@@ -349,7 +349,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 }
 
-class DictAct extends DummyActor {
+class DictAct extends Destroyable {
     constructor(fulu) {
         super();
         this._buildWidgets(fulu);
@@ -486,9 +486,8 @@ class DictBtn extends PanelMenu.Button {
 
     _buildWidgets() {
         this._icon = new TrayIcon();
-        this.add_style_class_name('light-dict-systray');
-        this.menu.actor.add_style_class_name('app-menu'); // popup-ornament-width: 0;
         this.add_actor(this._icon);
+        this.add_style_class_name('light-dict-systray');
     }
 
     _bindSettings(fulu) {
@@ -560,7 +559,7 @@ class DictBtn extends PanelMenu.Button {
     }
 }
 
-class LightDict extends DummyActor {
+class LightDict extends Destroyable {
     constructor() {
         super();
         this._buildWidgets();
@@ -590,10 +589,10 @@ class LightDict extends DummyActor {
         this._act = new DictAct(this._fulu);
         this._box = new DictBox(this._fulu);
         this._bar = new DictBar(this._fulu);
-        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), onus(this));
-        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, onus(this));
-        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), onus(this));
-        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), onus(this));
+        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), this);
+        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, this);
+        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), this);
+        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
         // FIXME: idle eval to avoid clutter-stage.c assertion when search() since 44.beta
         // related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/6491
         // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
