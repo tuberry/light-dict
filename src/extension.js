@@ -1,30 +1,37 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init */
-'use strict';
 
-const Main = imports.ui.main;
-const Util = imports.misc.util;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const BoxPointer = imports.ui.boxpointer;
-const Keyboard = imports.ui.status.keyboard;
-const ExtensionUtils = imports.misc.extensionUtils;
-const { Meta, Shell, Clutter, IBus, Gio, GLib, GObject, St, Pango } = imports.gi;
-const { DBusSenderChecker } = imports.misc.util;
+import St from 'gi://St';
+import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
+import IBus from 'gi://IBus';
+import Meta from 'gi://Meta';
+import Pango from 'gi://Pango';
+import Shell from 'gi://Shell';
+import Clutter from 'gi://Clutter';
+import GObject from 'gi://GObject';
+
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Util from 'resource:///org/gnome/shell/misc/util.js';
+import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
+import * as Keyboard from 'resource:///org/gnome/shell/ui/status/keyboard.js';
+import { DBusSenderChecker } from 'resource:///org/gnome/shell/misc/util.js';
+
+import { Field } from './const.js';
+import { noop, scap, omap, bmap, xnor, raise, gerror, lot } from './util.js';
+import { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } from './menu.js';
+import { Fulu, BaseExtension, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
 
 const InputSourceManager = Keyboard.getInputSourceManager();
-const Me = ExtensionUtils.getCurrentExtension();
-const { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } = Me.imports.menu;
-const { Fulu, Extension, Destroyable, symbiose, omit } = Me.imports.fubar;
-const { noop, scap, omap, bmap, xnor, raise, _, gerror, lot } = Me.imports.util;
-const { Field } = Me.imports.const;
 
 const gs_pointer = () => global.get_pointer();
 const gs_size = () => global.display.get_size();
 const gs_focus = () => global.display.get_focus_window();
-const still = (u, v) => u[0] === v[0] && u[1] === v[1];
-const outside = (r, p) => p[0] < r[0] || p[1] < r[1] || p[0] > r[0] + r[2] || p[1] > r[1] + r[3];
+const still = ([x1, y1], [x2, y2]) => x1 === x2 && y1 === y2;
+const outside = ([x, y, w, h], [m, n]) => m < x || n < y || m > x + w || n > y + h;
+const ahomo = (a, b, f = (x, y) => x === y) => a.length === b.length && a.every((x, i) => f(x, b[i]));
 
 const Trigger = bmap({ swift: 0, popup: 1, disable: 2 });
 const OCRMode = bmap({ word: 0, paragraph: 1, area: 2, line: 3, dialog: 4 });
@@ -105,6 +112,7 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _buildWidgets() {
+        this._cmds = [];
         this._box = new St.BoxLayout({
             visible: false, reactive: true, vertical: false,
             style_class: 'light-dict-iconbox candidate-popup-content',
@@ -112,7 +120,7 @@ class DictBar extends BoxPointer.BoxPointer {
         this.bin.set_child(this._box);
         this._box.connectObject('leave-event', this._onLeave.bind(this),
             'enter-event', this._onEnter.bind(this),
-            'scroll-event', this._onScroll.bind(this), this);
+            'scroll-event', this._onScroll.bind(this), onus(this));
         this._sbt = symbiose(this, () => omit(this, 'tooltip'), {
             hide: [clearTimeout, x => setTimeout(() => this.dispel(), x ? this.autohide / 10 : this.autohide)],
             tip: [clearTimeout, i => setTimeout(() => {
@@ -126,7 +134,7 @@ class DictBar extends BoxPointer.BoxPointer {
 
     _bindSettings(fulu) {
         this._fulu = fulu.attach({
-            ps:        [Field.PGSZ,  'uint'],
+            pgsize:    [Field.PGSZ,  'uint'],
             tooltip:   [Field.TIP,   'boolean'],
             autohide:  [Field.ATHD,  'uint'],
             pcommands: [Field.PCMDS, 'strv'],
@@ -135,12 +143,12 @@ class DictBar extends BoxPointer.BoxPointer {
 
     set pcommands(pcmds) {
         let cmds = pcmds.map(x => JSON.parse(x)).filter(x => x.enable);
-        let pick = x => JSON.stringify(x.map(y => [y.icon, y.name]));
-        if(pick(cmds) !== pick(this._cmds ?? [])) {
+        if(!ahomo(this._cmds, cmds, (a, b) => a.icon === b.icon && a.name === b.name)) {
+            this.dispel();
             let icons = this._box.get_children();
             let diff = cmds.length - icons.length;
-            if(diff > 0) for(let a = 0; a < diff; a++) this._box.add(new DictPop(this.click.bind(this), this.tip.bind(this)));
-            else if(diff < 0) for(let a = 0; a > diff; a--) icons.at(a - 1).destroy();
+            if(diff > 0) while(diff-- > 0) this._box.add(new DictPop(x => this.click(x), x => this.tip(x)));
+            else if(diff < 0) do icons.at(diff).destroy(); while(++diff < 0);
             this._box.get_children().forEach((x, i) => x.setButton(cmds[i], i));
         }
         this._cmds = cmds;
@@ -158,18 +166,26 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _updatePages() {
-        this._box.get_children().forEach(x => (x.visible = x._visible));
-        let icons = this._box.get_children().filter(x => x.visible);
-        this._pages = icons.length && this.ps ? Math.ceil(icons.length / this.ps) : 0;
+        let icons = this._box.get_children();
+        icons.forEach((x, i) => { x.visible = this._cmds[i]._visible; });
+        icons = icons.filter(x => x.visible);
+        this._pages = icons.length && this.pgsize ? Math.ceil(icons.length / this.pgsize) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
-        if(this._idx === this._pages && icons.length % this.ps) icons.forEach((x, i) => (x.visible = i >= icons.length - this.ps && i < icons.length));
-        else icons.forEach((x, i) => (x.visible = i >= (this._idx - 1) * this.ps && i < this._idx * this.ps));
+        if(this._idx === this._pages && icons.length % this.pgsize) {
+            let start = icons.length - this.pgsize;
+            icons.forEach((x, i) => { x.visible = i >= start; });
+        } else {
+            let end = this._idx * this.pgsize;
+            let start = (this._idx - 1) * this.pgsize;
+            icons.forEach((x, i) => { x.visible = i >= start && i < end; });
+        }
     }
 
     _updateViz(app, text) {
-        let icons = this._box.get_children();
-        this._cmds.forEach(({ regexp: r, apps: a }, i) => { icons[i]._visible = (!r || safeRegTest(r, text)) && (!a || a.includes(app)); });
+        let viz = this._cmds.map(({ regexp: r, apps: a }) => (!r || safeRegTest(r, text)) && (!a || a.includes(app)));
+        if(this._cmds.every((x, i) => x._visible === viz[i])) return;
+        this._cmds.forEach((x, i) => { x._visible = viz[i]; });
         this._updatePages();
     }
 
@@ -246,7 +262,7 @@ class DictBox extends BoxPointer.BoxPointer {
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
-            'button-press-event', this._onClick.bind(this), this);
+            'button-press-event', this._onClick.bind(this), onus(this));
         this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
         [this._text, this._info].forEach(x => {
@@ -358,7 +374,7 @@ class DictAct extends Destroyable {
 
     _buildWidgets(fulu) {
         this._fulu = fulu;
-        this._ldocr = `python ${Me.dir.get_child('ldocr.py').get_path()} `;
+        this._ldocr = `python ${getSelf().path}/ldocr.py `;
         this._kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         this._tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE });
         this._sbt = symbiose(this, () => omit(this, '_kbd', '_tty', 'screenshot'), {
@@ -485,6 +501,7 @@ class DictBtn extends PanelMenu.Button {
     }
 
     _buildWidgets() {
+        this._scmds = [];
         this._icon = new TrayIcon();
         this.add_actor(this._icon);
         this.add_style_class_name('light-dict-systray');
@@ -518,7 +535,7 @@ class DictBtn extends PanelMenu.Button {
 
     set scommands(scmds) {
         let cmds = scmds.map(x => JSON.parse(x).name);
-        if(this._scmds?.length === cmds.length && this._scmds?.every((x, i) => x === cmds[i])) return;
+        if(ahomo(this._scmds, cmds)) return;
         this._scmds = cmds;
         this._menus?.scmds.setList(cmds, this.scommand);
     }
@@ -536,7 +553,7 @@ class DictBtn extends PanelMenu.Button {
     }
 
     vfunc_scroll_event(event) {
-        switch(event.direction) {
+        switch(event.get_scroll_direction()) {
         case Clutter.ScrollDirection.UP: this._fulu.set('trigger', (this.trigger + 1) % 2, this); break;
         case Clutter.ScrollDirection.DOWN: this._fulu.set('passive', 1 - this.passive, this); break;
         }
@@ -552,7 +569,7 @@ class DictBtn extends PanelMenu.Button {
             scmds:   new DRadioItem(_('Swift'), this._scmds, this.scommand, x => this._fulu.set('scommand', x, this)),
             ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => isNaN(k) ? [[v, _(scap(k))]] : []), this.ocr_mode, x => this._fulu.set('ocr_mode', x, this)),
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
-            prefs:   new MenuItem(_('Settings'), () => ExtensionUtils.openPrefs()),
+            prefs:   new MenuItem(_('Settings'), () => getSelf().openPreferences()),
         };
         for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
         this.enable_ocr = this._enable_ocr;
@@ -560,9 +577,9 @@ class DictBtn extends PanelMenu.Button {
 }
 
 class LightDict extends Destroyable {
-    constructor() {
+    constructor(gset) {
         super();
-        this._buildWidgets();
+        this._buildWidgets(gset);
         this._bindSettings();
     }
 
@@ -578,23 +595,23 @@ class LightDict extends Destroyable {
         }, this);
     }
 
-    _buildWidgets() {
+    _buildWidgets(gset) {
         this.dbus = true;
         this._lock_d = [];
         this._lock_s = [];
         this._app = this.getAppid();
-        this._fulu = new Fulu({}, ExtensionUtils.getSettings(), this);
+        this._fulu = new Fulu({}, gset, this);
         this._cur = new Clutter.Actor({ opacity: 0 });
         Main.uiGroup.add_actor(this._cur);
         this._act = new DictAct(this._fulu);
         this._box = new DictBox(this._fulu);
         this._bar = new DictBar(this._fulu);
-        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), this);
-        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, this);
-        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), this);
-        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), this);
+        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), onus(this));
+        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, onus(this));
+        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), onus(this));
+        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), onus(this));
         // FIXME: idle eval to avoid clutter-stage.c assertion when search() since 44.beta
-        // related upstream issue: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/6491
+        // related upstream issue: https://gitlab.gnome.org/GNOME/mutter/-/issues/2700
         // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
         this._sbt = symbiose(this, () => omit(this, 'dbus', 'systray', '_bar', '_box', '_act', '_cur'), {
             eval: [clearTimeout, setTimeout],
@@ -620,7 +637,7 @@ class LightDict extends Destroyable {
 
     set systray(systray) {
         if(xnor(systray, this._btn)) return;
-        if(systray) this._btn = Main.panel.addToStatusArea(Me.metadata.uuid, new DictBtn(this._fulu, 0.5, Me.metadata.uuid));
+        if(systray) this._btn = Main.panel.addToStatusArea(getSelf().uuid, new DictBtn(this._fulu, 0.5));
         else omit(this, '_btn');
     }
 
@@ -789,10 +806,8 @@ class LightDict extends Destroyable {
     Toggle() {
         let next = (this.trigger + 1) % 2;
         this._fulu.set('trigger', next, this);
-        Main.notify(Me.metadata.name, _('Switch to %s style').format(_(Trigger[next])));
+        Main.notify(getSelf().metadata.name, _('Switch to %s style').format(_(Trigger[next])));
     }
 }
 
-function init() {
-    return new Extension(LightDict);
-}
+export default class Extension extends BaseExtension {  $klass = LightDict; }

@@ -1,38 +1,22 @@
 // vim:fdm=syntax
 // by tuberry
-/* exported init fillPreferencesWindow */
-'use strict';
 
-const { Adw, Gtk, GObject, Gio, GLib, Gdk, Gsk, Graphene } = imports.gi;
-const ExtensionUtils = imports.misc.extensionUtils;
-const Me = ExtensionUtils.getCurrentExtension();
-const { _, _GTK, grect, noop, gprops, execute } = Me.imports.util;
-const { Field } = Me.imports.const;
-const UI = Me.imports.ui;
+import Adw from 'gi://Adw';
+import Gdk from 'gi://Gdk';
+import Gio from 'gi://Gio';
+import Gsk from 'gi://Gsk';
+import Gtk from 'gi://Gtk';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Graphene from 'gi://Graphene';
+
+import * as UI from './ui.js';
+import { Field } from './const.js';
+import { grect, noop, gprops, execute } from './util.js';
+
+const { _, _GTK, getSelf }  = UI;
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
-
-function init() {
-    ExtensionUtils.initTranslations();
-}
-
-function fillPreferencesWindow(win) {
-    let provider = new Gtk.CssProvider();
-    // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
-    provider.load_from_data(`.ld-drop-up { background: linear-gradient(to bottom, #000a 0%, #0000 35%); }
-                            .ld-drop-down { background: linear-gradient(to bottom, #0000 65%, #000a 100%); }
-                            .ld-drop-up-dark { background: linear-gradient(to bottom, #fffa 0%, #fff0 35%); }
-                            .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`, -1);
-    Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-    Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(Me.dir.get_child('icons').get_path());
-    let gset = ExtensionUtils.getSettings();
-    [
-        new LightDictBasic({ title: _('Basic'), icon_name: 'ld-disable-passive-symbolic' }, gset),
-        new LightDictJSON({ title: _('Swift'),  icon_name: 'ld-swift-passive-symbolic' }, gset, Field.SCMDS),
-        new LightDictJSON({ title: _('Popup'),  icon_name: 'ld-popup-passive-symbolic' }, gset, Field.PCMDS),
-        new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }, gset),
-    ].forEach(x => win.add(x));
-}
 
 class PrefPage extends Adw.PreferencesPage {
     static {
@@ -484,11 +468,12 @@ class LightDictAbout extends PrefPage {
     }
 
     _buildInfo() {
+        let { name, version, url } = getSelf().metadata;
         return this._buildLabel([
-            `<b><big>${Me.metadata.name}</big></b>`,
-            _('Version %d').format(Me.metadata.version),
+            `<b><big>${name}</big></b>`,
+            _('Version %d').format(version),
             _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
-            `<span><a href="${Me.metadata.url}">${_GTK('Website')}\n</a></span>`,
+            `<span><a href="${url}">${_GTK('Website')}\n</a></span>`,
         ].join('\n\n'));
     }
 
@@ -591,7 +576,7 @@ class LightDictBasic extends PrefPage {
 
     async _buildHelpPopover() {
         try {
-            let label = await execute(`python ${Me.dir.get_child('ldocr.py').get_path()} -h`);
+            let label = await execute(`python ${getSelf().path}/ldocr.py -h`);
             return new Gtk.Popover({ child: new Gtk.Label({ label }) });
         } catch(e) {
             return new Gtk.Popover({ child: new Gtk.Label({ label: e.messaage }) });
@@ -720,3 +705,24 @@ class LightDictJSON extends PrefPage {
         this._gset.set_strv(this._key, this._cmds);
     }
 }
+
+export default class PrefsWidget extends UI.Prefs {
+    fillPreferencesWindow(win) {
+        let provider = new Gtk.CssProvider();
+        // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
+        provider.load_from_data(`.ld-drop-up { background: linear-gradient(to bottom, #000a 0%, #0000 35%); }
+                            .ld-drop-down { background: linear-gradient(to bottom, #0000 65%, #000a 100%); }
+                            .ld-drop-up-dark { background: linear-gradient(to bottom, #fffa 0%, #fff0 35%); }
+                            .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`, -1);
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${getSelf().path}/icons`);
+        let gset = this.getSettings();
+        [
+            new LightDictBasic({ title: _('Basic'), icon_name: 'ld-disable-passive-symbolic' }, gset),
+            new LightDictJSON({ title: _('Swift'),  icon_name: 'ld-swift-passive-symbolic' }, gset, Field.SCMDS),
+            new LightDictJSON({ title: _('Popup'),  icon_name: 'ld-popup-passive-symbolic' }, gset, Field.PCMDS),
+            new LightDictAbout({ title: _('About'), icon_name: 'help-about-symbolic' }, gset),
+        ].forEach(x => win.add(x));
+    }
+}
+

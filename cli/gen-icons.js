@@ -1,8 +1,7 @@
 // vim:fdm=syntax
 // by tuberry
-'use strict';
 
-const { Gio } = imports.gi;
+import Gio from 'gi://Gio';
 
 const L = 16;
 const n = 1 / 16;
