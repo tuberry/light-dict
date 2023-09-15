@@ -20,25 +20,25 @@ import * as Keyboard from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 import { DBusSenderChecker } from 'resource:///org/gnome/shell/misc/util.js';
 
 import { Field } from './const.js';
-import { noop, scap, omap, bmap, xnor, raise, gerror, lot } from './util.js';
+import { ROOT, noop, omap, bmap, xnor, raise, fopen, gerror, lot } from './util.js';
 import { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } from './menu.js';
-import { Fulu, BaseExtension, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
+import { Fulu, BaseExtension, Destroyable, manageSource, omit, getSignalHolder, getSelf, _ } from './fubar.js';
 
-const InputSourceManager = Keyboard.getInputSourceManager();
+const getPointer = () => global.get_pointer();
+const getDisplaySize = () => global.display.get_size();
+const getFocusWindow = () => global.display.get_focus_window();
 
-const gs_pointer = () => global.get_pointer();
-const gs_size = () => global.display.get_size();
-const gs_focus = () => global.display.get_focus_window();
 const still = ([x1, y1], [x2, y2]) => x1 === x2 && y1 === y2;
+const capitalize = s => s.charAt(0).toUpperCase() + s.slice(1);
 const outside = ([x, y, w, h], [m, n]) => m < x || n < y || m > x + w || n > y + h;
-const ahomo = (a, b, f = (x, y) => x === y) => a.length === b.length && a.every((x, i) => f(x, b[i]));
+const homolog = (a, b, f = (x, y) => x === y) => a.length === b.length && a.every((x, i) => f(x, b[i]));
 
+const LDOCRPY = `${ROOT}/ldocr.py`;
 const Trigger = bmap({ swift: 0, popup: 1, disable: 2 });
 const OCRMode = bmap({ word: 0, paragraph: 1, area: 2, line: 3, dialog: 4 });
 const Kaomoji = ['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']; // placeholder
 const LD_MDF = Clutter.ModifierType.MOD1_MASK;
-const LD_IFACE =
-`<node>
+const LD_IFACE = `<node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="Toggle"/>
         <method name="OCR">
@@ -120,12 +120,12 @@ class DictBar extends BoxPointer.BoxPointer {
         this.bin.set_child(this._box);
         this._box.connectObject('leave-event', this._onLeave.bind(this),
             'enter-event', this._onEnter.bind(this),
-            'scroll-event', this._onScroll.bind(this), onus(this));
-        this._sbt = symbiose(this, () => omit(this, 'tooltip'), {
+            'scroll-event', this._onScroll.bind(this), getSignalHolder(this));
+        this._src = manageSource(this, () => omit(this, 'tooltip'), {
             hide: [clearTimeout, x => setTimeout(() => this.dispel(), x ? this.autohide / 10 : this.autohide)],
             tip: [clearTimeout, i => setTimeout(() => {
                 if(!this._box.visible) return;
-                this._tooltip.set_position(gs_pointer().at(0) - 10, this.get_position().at(1) + this.get_size().at(1) + 5);
+                this._tooltip.set_position(getPointer().at(0) - 10, this.get_position().at(1) + this.get_size().at(1) + 5);
                 this._tooltip.set_text(this._cmds[i].tooltip || this._cmds[i].name || 'LD');
                 this._tooltip.show();
             }, this.autohide / 5)],
@@ -143,7 +143,7 @@ class DictBar extends BoxPointer.BoxPointer {
 
     set pcommands(pcmds) {
         let cmds = pcmds.map(x => JSON.parse(x)).filter(x => x.enable);
-        if(!ahomo(this._cmds, cmds, (a, b) => a.icon === b.icon && a.name === b.name)) {
+        if(!homolog(this._cmds, cmds, (a, b) => a.icon === b.icon && a.name === b.name)) {
             this.dispel();
             let icons = this._box.get_children();
             let diff = cmds.length - icons.length;
@@ -157,7 +157,7 @@ class DictBar extends BoxPointer.BoxPointer {
     tip(index) {
         if(!this._tooltip) return;
         this._tooltip.hide();
-        this._sbt.tip.revive(index);
+        this._src.tip.refreshSource(index);
     }
 
     click(index) {
@@ -208,13 +208,13 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _onEnter() {
-        this._sbt.hide.dispel();
+        this._src.hide.removeSource();
         this._entered = true;
         this._box.visible = true;
     }
 
     _onLeave(actor) {
-        this._sbt.hide.revive(actor);
+        this._src.hide.refreshSource(actor);
     }
 
     summon(fw, text) {
@@ -231,12 +231,12 @@ class DictBar extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._box.visible) return;
-        this._sbt.hide.dispel();
+        this._src.hide.removeSource();
         this._entered = false;
         this._box.visible = false;
         this.close(BoxPointer.PopupAnimation.FADE);
         if(!this._tooltip) return;
-        this._sbt.tip.dispel();
+        this._src.tip.removeSource();
         this._tooltip.hide();
     }
 }
@@ -257,12 +257,12 @@ class DictBox extends BoxPointer.BoxPointer {
 
     _buildWidgets() {
         this._view = new St.ScrollView({
-            visible: false, overlay_scrollbars: true, clip_to_allocation: true,
+            visible: false, overlay_scrollbars: true,
             style_class: 'light-dict-scroll', hscrollbar_policy: St.PolicyType.NEVER,
         });
         this._box = new St.BoxLayout({ reactive: true, vertical: true, style_class: 'light-dict-content' });
         this._box.connectObject('leave-event', this._onLeave.bind(this), 'enter-event', this._onEnter.bind(this),
-            'button-press-event', this._onClick.bind(this), onus(this));
+            'button-press-event', this._onClick.bind(this), getSignalHolder(this));
         this._text = new St.Label({ style_class: 'light-dict-text', visible: !this._hide_title });
         this._info = new St.Label({ style_class: 'light-dict-info' });
         [this._text, this._info].forEach(x => {
@@ -273,8 +273,8 @@ class DictBox extends BoxPointer.BoxPointer {
         });
         this._view.add_actor(this._box);
         this.bin.set_child(this._view);
-        this._sbt = symbiose(this, null, {
-            hide: [clearTimeout, x => setTimeout(outside(this.getRect(), gs_pointer())
+        this._src = manageSource(this, null, {
+            hide: [clearTimeout, x => setTimeout(outside(this.getRect(), getPointer())
                 ? this.dispel.bind(this) : () => this._onLeave(true), x ? this.autohide / 10 : this.autohide)],
         });
     }
@@ -296,18 +296,18 @@ class DictBox extends BoxPointer.BoxPointer {
     needScroll() {
         let [, height] = this._view.get_preferred_height(-1);
         let limited = this._view.get_theme_node().get_max_height();
-        if(limited < 0) limited = gs_size().at(1) * 15 / 32;
+        if(limited < 0) limited = getDisplaySize().at(1) * 15 / 32;
         return height >= limited;
     }
 
     _onEnter() {
         this._entered = true;
         this._view.visible = true;
-        this._sbt.hide.dispel();
+        this._src.hide.removeSource();
     }
 
     _onLeave(actor) {
-        this._sbt.hide.revive(actor);
+        this._src.hide.refreshSource(actor);
     }
 
     _onClick(_a, event) {
@@ -356,7 +356,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     dispel() {
         if(!this._view.visible) return;
-        this._sbt.hide.dispel();
+        this._src.hide.removeSource();
         this._rect = this.getRect();
         this._view.visible = false;
         this._info.set_text(lot(Kaomoji));
@@ -374,17 +374,16 @@ class DictAct extends Destroyable {
 
     _buildWidgets(fulu) {
         this._fulu = fulu;
-        this._ldocr = `python ${getSelf().path}/ldocr.py `;
         this._kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         this._tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE });
-        this._sbt = symbiose(this, () => omit(this, '_kbd', '_tty', 'screenshot'), {
+        this._src = manageSource(this, () => omit(this, '_kbd', '_tty', 'screenshot'), {
             cancel: [x => x?.cancel(), () => new Gio.Cancellable()],
             stroke: [x => x?.forEach(clearTimeout), x => x.split(/\s+/).map(y => y.split('+')).map((z, i) => setTimeout(() => {
                 z.forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, IBus.keyval_from_name(k), Clutter.KeyState.PRESSED));
                 z.reverse().forEach(k => this._kbd.notify_keyval(Clutter.get_current_event_time() * 1000, IBus.keyval_from_name(k), Clutter.KeyState.RELEASED));
             }, i * 100))],
             dwell: [clearInterval, x => x && setInterval(() => {
-                let pt = gs_pointer();
+                let pt = getPointer();
                 if(still(this._pt, pt) && !still(this._pt, this._ppt)) this.emit('dict-act-dwelled', pt[2], this._ppt);
                 [this._ppt, this._pt] = [this._pt, pt];
             }, 300)],
@@ -410,8 +409,7 @@ class DictAct extends Destroyable {
     }
 
     getCommand(name) {
-        return name ? this._scmds[this._scmds.findIndex(x => x.name === name)] || this._scmds[this.scommand] || this._scmds[0]
-            : this._scmds[this.scommand] || this._scmds[0];
+        return (name && this._scmds.find(x => x.name === name) || this._scmds[this.scommand]) ?? this._scmds[0];
     }
 
     set enable_ocr(enable) {
@@ -421,12 +419,12 @@ class DictAct extends Destroyable {
     }
 
     set dwell_ocr(dwell_ocr) {
-        this._ppt = this._pt = dwell_ocr ? gs_pointer() : null;
-        this._sbt.dwell.revive((this._dwell_ocr = dwell_ocr) && this._enable_ocr);
+        this._ppt = this._pt = dwell_ocr ? getPointer() : null;
+        this._src.dwell.refreshSource((this._dwell_ocr = dwell_ocr) && this._enable_ocr);
     }
 
     set short_ocr(short) {
-        this._sbt.keys.revive((this._short_ocr = short) && this._enable_ocr);
+        this._src.keys.refreshSource((this._short_ocr = short) && this._enable_ocr);
     }
 
     set ocr_mode(mode) {
@@ -452,15 +450,16 @@ class DictAct extends Destroyable {
     invokeOCR(param = '', supply = '') {
         if(!this._enable_ocr) return;
         this.screenshot = true;
-        this.execute(this._ldocr + (param || ['-m', this._ocr_mode, this.ocr_param, supply].join(' ')))
+        this.execute(`python ${LDOCRPY} ${param || ['-m', this._ocr_mode, this.ocr_param, supply].join(' ')}`)
             .catch(noop).finally(() => omit(this, '_pid', 'screenshot'));
     }
 
     stroke(keys) {
-        this._sbt.stroke.revive(keys);
+        this._src.stroke.refreshSource(keys);
     }
 
     commit(string) {
+        let InputSourceManager = Keyboard.getInputSourceManager();
         if(InputSourceManager.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(string); // TODO: not tested
         else InputSourceManager._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(string));
     }
@@ -474,7 +473,7 @@ class DictAct extends Destroyable {
     }
 
     async execute(cmd) {
-        let cancel = this._sbt.cancel.revive(); // FIXME: '|' as an arg like `echo "|" | cat` not covered
+        let cancel = this._src.cancel.refreshSource(); // FIXME: '|' as an arg like `echo "|" | cat` not covered
         let cmdv = GLib.shell_parse_argv(cmd).at(1).reduce((a, x) => (x === '|' ? a.push([]) : a.at(-1).push(x)) && a, [[]]);
         let ret = await cmdv.filter(x => x.length).reduce(async (a, x) => {
             let proc = this._tty.spawnv(x);
@@ -535,7 +534,7 @@ class DictBtn extends PanelMenu.Button {
 
     set scommands(scmds) {
         let cmds = scmds.map(x => JSON.parse(x).name);
-        if(ahomo(this._scmds, cmds)) return;
+        if(homolog(this._scmds, cmds)) return;
         this._scmds = cmds;
         this._menus?.scmds.setList(cmds, this.scommand);
     }
@@ -548,8 +547,8 @@ class DictBtn extends PanelMenu.Button {
     }
 
     set enable_ocr(enable) {
-        this._enable_ocr = enable;
-        ['dwell', 'ocr'].forEach(x => this._menus?.[x][enable ? 'show' : 'hide']());
+        this._enable_ocr = enable && fopen(LDOCRPY).query_exists(null);
+        ['dwell', 'ocr'].forEach(x => this._menus?.[x][this._enable_ocr ? 'show' : 'hide']());
     }
 
     vfunc_scroll_event(event) {
@@ -565,13 +564,13 @@ class DictBtn extends PanelMenu.Button {
             dwell:   new SwitchItem(_('Dwell OCR'), this._dwell_ocr, x => this._fulu.set('dwell_ocr', x, this)),
             passive: new SwitchItem(_('Passive mode'), !!this.passive, x => this._fulu.set('passive', x ? 1 : 0, this)),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
-            trigger: new RadioItem(_('Trigger'), omap(Trigger, ([k, v]) => isNaN(k) ? [[v, _(scap(k))]] : []), this.trigger, x => this._fulu.set('trigger', x, this)),
+            trigger: new RadioItem(_('Trigger'), omap(Trigger, ([k, v]) => isNaN(k) ? [[v, _(capitalize(k))]] : []), this.trigger, x => this._fulu.set('trigger', x, this)),
             scmds:   new DRadioItem(_('Swift'), this._scmds, this.scommand, x => this._fulu.set('scommand', x, this)),
-            ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => isNaN(k) ? [[v, _(scap(k))]] : []), this.ocr_mode, x => this._fulu.set('ocr_mode', x, this)),
+            ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => isNaN(k) ? [[v, _(capitalize(k))]] : []), this.ocr_mode, x => this._fulu.set('ocr_mode', x, this)),
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
             prefs:   new MenuItem(_('Settings'), () => getSelf().openPreferences()),
         };
-        for(let p in this._menus) this.menu.addMenuItem(this._menus[p]);
+        Object.values(this._menus).forEach(x => this.menu.addMenuItem(x));
         this.enable_ocr = this._enable_ocr;
     }
 }
@@ -606,18 +605,18 @@ class LightDict extends Destroyable {
         this._act = new DictAct(this._fulu);
         this._box = new DictBox(this._fulu);
         this._bar = new DictBar(this._fulu);
-        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), onus(this));
-        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, onus(this));
-        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), onus(this));
-        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), onus(this));
+        this._act.connectObject('dict-act-dwelled', this._onActDwelled.bind(this), getSignalHolder(this));
+        this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, getSignalHolder(this));
+        global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), getSignalHolder(this));
+        global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), getSignalHolder(this));
         // FIXME: idle eval to avoid clutter-stage.c assertion when search() since 44.beta
         // related upstream issue: https://gitlab.gnome.org/GNOME/mutter/-/issues/2700
         // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
-        this._sbt = symbiose(this, () => omit(this, 'dbus', 'systray', '_bar', '_box', '_act', '_cur'), {
+        this._src = manageSource(this, () => omit(this, 'dbus', 'systray', '_bar', '_box', '_act', '_cur'), {
             eval: [clearTimeout, setTimeout],
             select: [clearInterval, x => setInterval(() => {
-                if((x ^ gs_pointer().at(2)) !== Clutter.ModifierType.BUTTON1_MASK) return;
-                this._sbt.select.dispel();
+                if((x ^ getPointer().at(2)) !== Clutter.ModifierType.BUTTON1_MASK) return;
+                this._src.select.removeSource();
                 this._run().catch(noop);
             }, 50)],
         });
@@ -642,8 +641,8 @@ class LightDict extends Destroyable {
     }
 
     set cursor(cursor) {
-        let [x, y, w, h] = cursor && cursor[3] < gs_size().at(1) / 2 ? cursor
-            : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b * 1.15, b * 1.15])(gs_pointer(), Meta.prefs_get_cursor_size());
+        let [x, y, w, h] = cursor && cursor[3] < getDisplaySize().at(1) / 2 ? cursor
+            : ((a, b) => [a[0] - b / 2, a[1] - b / 2, b * 1.15, b * 1.15])(getPointer(), Meta.prefs_get_cursor_size());
         this._cursor = !!cursor && w > 250;
         this._cur.set_position(x, y);
         this._cur.set_size(w, h);
@@ -654,7 +653,7 @@ class LightDict extends Destroyable {
     }
 
     getAppid() {
-        return (v => v ? Shell.WindowTracker.get_default().get_window_app(v)?.get_id() ?? '' : '')(gs_focus());
+        return (v => v ? Shell.WindowTracker.get_default().get_window_app(v)?.get_id() ?? '' : '')(getFocusWindow());
     }
 
     _onActDwelled(_a, mdf, ppt) {
@@ -671,10 +670,10 @@ class LightDict extends Destroyable {
 
     _onSelectChanged(_sel, type) {
         if(type !== St.ClipboardType.PRIMARY) return;
-        this._sbt.select.dispel();
-        let mdf = gs_pointer().at(2);
+        this._src.select.removeSource();
+        let mdf = getPointer().at(2);
         if(this._lock_s.pop() || this.isFobidden() || this.passive && !(mdf & LD_MDF) || this.trigger === Trigger.disable) return;
-        if(mdf & Clutter.ModifierType.BUTTON1_MASK) this._sbt.select.summon(mdf);
+        if(mdf & Clutter.ModifierType.BUTTON1_MASK) this._src.select.addSource(mdf);
         else this._run().catch(noop);
     }
 
@@ -718,7 +717,7 @@ class LightDict extends Destroyable {
 
     async _exeCmd(cmd) {
         if(!cmd.type) await this._exeSh(cmd);
-        else this._sbt.eval.revive(() => this._exeJS(cmd));
+        else this._src.eval.refreshSource(() => this._exeJS(cmd));
     }
 
     _select(x) {
@@ -785,9 +784,9 @@ class LightDict extends Destroyable {
             try {
                 ic.return_value(new GLib.Variant('(aai)', [ps.map(x => {
                     switch(x) {
-                    case 'display': return gs_size();
-                    case 'pointer': return gs_pointer().slice(0, 2);
-                    case 'focused': return (r => r ? [r.x, r.y, r.width, r.height] : null)(gs_focus()?.get_frame_rect?.());
+                    case 'display': return getDisplaySize();
+                    case 'pointer': return getPointer().slice(0, 2);
+                    case 'focused': return (r => r ? [r.x, r.y, r.width, r.height] : null)(getFocusWindow()?.get_frame_rect?.());
                     default: return null;
                     }
                 })]));
@@ -810,4 +809,4 @@ class LightDict extends Destroyable {
     }
 }
 
-export default class Extension extends BaseExtension {  $klass = LightDict; }
+export default class Extension extends BaseExtension { $klass = LightDict; }

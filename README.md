@@ -58,6 +58,9 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 ### OCR
 
+* OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
+* Due to this review [guideline], the version on E.G.O no longer contains [ldocr.py](/src/ldocr.py) since GNOME 45, so you have to put it to the extension directory manually if installed that way.
+
 #### Dependencies
 
 * [python-opencv]
@@ -68,8 +71,6 @@ yay -S python-opencv python-pytesseract # use the package manager of your distro
 ```
 
 ![ldpref](https://user-images.githubusercontent.com/17917040/155883276-cd24c42a-b78f-4893-a475-d980adb36f5f.png)
-
-*Note* OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
 
 #### Screencast
 
@@ -100,3 +101,4 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
 [python-pytesseract]:https://github.com/madmaze/pytesseract
 [capture2text]:https://capture2text.sourceforge.net/
+[guideline]:https://gjs.guide/extensions/review-guidelines/review-guidelines.html#scripts-and-binaries

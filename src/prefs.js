@@ -12,9 +12,10 @@ import Graphene from 'gi://Graphene';
 
 import * as UI from './ui.js';
 import { Field } from './const.js';
-import { grect, noop, gprops, execute } from './util.js';
+import { ROOT, grect, fopen, noop, gprops, execute } from './util.js';
 
 const { _, _GTK, getSelf }  = UI;
+const LDOCRPY = `${ROOT}/ldocr.py`;
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
@@ -377,18 +378,16 @@ class SwiftBox extends Adw.PreferencesPage {
 
     set config(config) {
         this._syncing = true;
-        let temp = { ...this._temp, ...config };
-        Object.keys(temp).forEach(x => {
-            let prop = temp[x];
-            let widget = this[`_${x}`];
+        Object.entries({ ...this._temp, ...config }).forEach(([k, v]) => {
+            let widget = this[`_${k}`];
             if(widget === undefined) return;
-            switch(typeof prop) {
-            case 'boolean': widget.set_state(prop); break;
-            case 'number':  widget.set_selected(prop); break;
-            case 'string': switch(x) {
-            case 'apps': widget.value = prop; break;
-            case 'icon': widget.value = prop; break;
-            default: widget.set_text(prop); break;
+            switch(typeof v) {
+            case 'boolean': widget.set_state(v); break;
+            case 'number':  widget.set_selected(v); break;
+            case 'string': switch(k) {
+            case 'apps': widget.value = v; break;
+            case 'icon': widget.value = v; break;
+            default: widget.set_text(v); break;
             } break;
             }
         });
@@ -514,32 +513,46 @@ class LightDictBasic extends PrefPage {
         super(param);
         this._buildWidgets(gset);
         this._buildUI();
+        this._addOCR(gset);
     }
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            OCRP: ['text',     new UI.LazyEntry()],
             PGSZ: ['value',    new UI.Spin(1, 10, 1)],
-            KEY:  ['active',   new Gtk.CheckButton()],
             ATHD: ['value',    new UI.Spin(500, 10000, 250)],
             LCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
             RCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
             TFLT: ['text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
             PSV:  ['selected', new UI.Drop([_('Proactive'), _('Passive')])],
             APP:  ['selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TSTP: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             STRY: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TIP:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             HDTT: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             APPS: ['value',    new AppsBox(_('Click the app icon to remove'))],
             TRG:  ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+        }, gset);
+    }
+
+    _addOCR(gset) {
+        if(!fopen(LDOCRPY).query_exists(null)) return;
+        Object.assign(this._blk, UI.block({
+            OCRP: ['text',     new UI.LazyEntry()],
+            KEY:  ['active',   new Gtk.CheckButton()],
+            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
             OCR:  ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
-        }, gset);
+        }, gset));
         this._blk.KEYS = new UI.Keys(gset, Field.KEYS);
         this._blk.HELP = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
         this._buildHelpPopover().then(scc => this._blk.HELP.set_popover(scc)).catch(noop);
+        [
+            [this._blk.KEY, [_('Shortcut')], this._blk.KEYS],
+            [[_('Dwell OCR')], this._blk.DOCR],
+            [[_('Work mode')], this._blk.OCRS],
+            [this._blk.HELP, [], this._blk.OCRP],
+        ].forEach(xs => this._blk.OCR.add_row(new UI.PrefRow(...xs)));
+        this._add(this._blk.OCR);
     }
 
     _buildUI() {
@@ -548,12 +561,6 @@ class LightDictBasic extends PrefPage {
             [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._blk.PSV, this._blk.TRG],
             [[_('Application list')], this._blk.APPS, this._blk.APP],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
-        [
-            [this._blk.KEY, [_('Shortcut')], this._blk.KEYS],
-            [[_('Dwell OCR')], this._blk.DOCR],
-            [[_('Work mode')], this._blk.OCRS],
-            [this._blk.HELP, [], this._blk.OCRP],
-        ].forEach(xs => this._blk.OCR.add_row(new UI.PrefRow(...xs)));
         [this._buildExpander(_('Other'),
             [[_('Trim blank lines')], this._blk.TSTP],
             [[_('Autohide interval')], this._blk.ATHD],
@@ -565,7 +572,6 @@ class LightDictBasic extends PrefPage {
         this._buildExpander(_('Popup'),
             [[_('Enable tooltip')], this._blk.TIP],
             [[_('Page size')], this._blk.PGSZ])].forEach(x => this._add(x));
-        this._add(this._blk.OCR);
     }
 
     _buildExpander(title, ...list) {
@@ -576,7 +582,7 @@ class LightDictBasic extends PrefPage {
 
     async _buildHelpPopover() {
         try {
-            let label = await execute(`python ${getSelf().path}/ldocr.py -h`);
+            let label = await execute(`python ${LDOCRPY} -h`);
             return new Gtk.Popover({ child: new Gtk.Label({ label }) });
         } catch(e) {
             return new Gtk.Popover({ child: new Gtk.Label({ label: e.messaage }) });
@@ -715,7 +721,7 @@ export default class PrefsWidget extends UI.Prefs {
                             .ld-drop-up-dark { background: linear-gradient(to bottom, #fffa 0%, #fff0 35%); }
                             .ld-drop-down-dark { background: linear-gradient(to bottom, #fff0 65%, #fffa 100%); }`, -1);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${getSelf().path}/icons`);
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT}/icons`);
         let gset = this.getSettings();
         [
             new LightDictBasic({ title: _('Basic'), icon_name: 'ld-disable-passive-symbolic' }, gset),
@@ -725,4 +731,3 @@ export default class PrefsWidget extends UI.Prefs {
         ].forEach(x => win.add(x));
     }
 }
-
