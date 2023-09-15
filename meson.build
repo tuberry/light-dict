@@ -1,7 +1,7 @@
 project(
   'gnome-shell-extension-light-dict',
   license: 'GPL3+',
-  version: '45.beta',
+  version: '45.0',
 )
 
 NAME = 'Light Dict'
@@ -19,7 +19,7 @@ i18n = import('i18n')
 gnome = import('gnome')
 
 TARGET = get_option('target')
-if(TARGET == 'system') 
+if(TARGET == 'system')
   LOCALE_DIR = get_option('localedir')
   SCHEMA_DIR = get_option('datadir') / 'glib-2.0' / 'schemas'
   TARGET_DIR = get_option('datadir') / 'gnome-shell' / 'extensions' / UUID
@@ -31,7 +31,7 @@ else
 endif
 
 if(TARGET == 'zip')
-  ZIP_DIR = get_option('desktop') ? fs.expanduser('~/Desktop') : TARGET_ROOT 
+  ZIP_DIR = get_option('desktop') ? fs.expanduser('~/Desktop') : TARGET_ROOT
   meson.add_install_script(
     find_program('7z'),
     'a',
@@ -42,5 +42,9 @@ endif
 
 subdir('po')
 subdir('res')
-install_subdir('src', install_dir: TARGET_DIR, strip_directory: true)
-
+install_subdir(
+  'src',
+  strip_directory: true,
+  install_dir: TARGET_DIR,
+  exclude_files: TARGET == 'zip' and get_option('version') == 0 ? ['ldocr.py'] : []
+)

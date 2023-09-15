@@ -87,12 +87,12 @@
         <default><![CDATA[['<Super>e']]]></default>
         <summary>shortcut to invoke the ocr script</summary>
     </key>
-    <key type="as" name="swift-commands">
-        <default>['{"enable":true,"name":"Trans","command":"trans -b -- LDWORD # needs translate-shell installed","popup":true}']</default>
+    <key type="av" name="swift-commands">
+        <default><![CDATA[[<{'name': <'Tran'>, 'command': <'trans -b -- LDWORD'>, 'popup': <true>}>]]]></default>
         <summary>alternative swift commands</summary>
     </key>
-    <key type="as" name="popup-commands">
-        <default>['{"enable":true,"name":"Search","icon":"system-search-symbolic","type":1,"command":"search(LDWORD)"}']</default>
+    <key type="av" name="popup-commands">
+        <default><![CDATA[[<{'name': <'Name'>, 'enable': <true>, 'type': <int64 1>, 'command': <'search(LDWORD)'>, 'icon': <'system-search-symbolic'>}>]]]></default>
         <summary>commands of popup style</summary>
     </key>
   </schema>
