@@ -10,11 +10,11 @@ import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
 import { Field } from './const.js';
-import { ROOT_DIR, noop, gprops, execute, pickle } from './util.js';
+import { ROOT_DIR, noop, gprops, execute, pickle, hook } from './util.js';
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
-const { _, _GTK, hook, getSelf }  = UI;
+const { _, _GTK, getSelf }  = UI;
 
 class PrefPage extends Adw.PreferencesPage {
     static {
@@ -23,12 +23,76 @@ class PrefPage extends Adw.PreferencesPage {
 
     constructor(param) {
         super(param);
-        this._prefs = new Adw.PreferencesGroup();
-        this.add(this._prefs);
+        let prefs = new Adw.PreferencesGroup();
+        this._add = widget => prefs.add(widget);
+        this.add(prefs);
+    }
+}
+
+class AppItem extends GObject.Object {
+    static {
+        GObject.registerClass({
+            Properties: gprops({
+                selected: ['boolean', false],
+                app: ['object', Gio.DesktopAppInfo],
+            }),
+        }, this);
     }
 
-    _add(widget) {
-        this._prefs.add(widget);
+    constructor(app) {
+        super();
+        this.app = app;
+        this.toggle = () => { this.selected = !this.selected; };
+    }
+}
+
+class AppLabel extends UI.IconLabel {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(...args) {
+        super(...args);
+        this.append(this._check = new Gtk.Image({ icon_name: 'object-select-symbolic' }));
+    }
+
+    bindItem(item) {
+        this.setupContent(item.app.get_icon(), item.app.get_display_name());
+        this._binding = item.bind_property('selected', this._check, 'visible', GObject.BindingFlags.SYNC_CREATE);
+    }
+
+    unbindItem() {
+        this._binding.unbind();
+    }
+}
+
+class AppsDialog extends UI.AppDialog {
+    static {
+        GObject.registerClass(this);
+    }
+
+    _buildList(param) {
+        let factory = hook({
+                setup: (_f, x) => x.set_child(new AppLabel('application-x-executable-symbolic')),
+                bind: (_f, x) => x.get_child().bindItem(x.get_item()),
+                unbind: (_f, x) => x.get_child().unbindItem(),
+            }, new Gtk.SignalListItemFactory()),
+            filter = Gtk.CustomFilter.new(null),
+            model = new Gio.ListStore({ item_type: AppItem }),
+            select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter }) }),
+            view = hook({ activate: () => select.get_selected_item().toggle() },
+                new Gtk.ListView({ single_click_activate: true, model: select, factory, vexpand: true }));
+        if(param?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(new AppItem(x)));
+        else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(new AppItem(x)));
+        this.getSelected = () => [...model].filter(x => x.selected).map(x => x.app.get_id()).join(',');
+        this.initSelected = s => [...model].forEach(x => { x.selected = s.has(x.app.get_id()); });
+        filter.set_search = s => filter.set_filter_func(s ? (a => x => a.has(x.app.get_id()))(new Set(Gio.DesktopAppInfo.search(s).flat())) : null);
+        return { view, filter };
+    }
+
+    choose_sth(root, selected) {
+        this.initSelected(selected);
+        return super.choose_sth(root);
     }
 }
 
@@ -41,52 +105,33 @@ class Apps extends UI.DialogButtonBase {
         super(null);
         if(tip2) this._btn.set_tooltip_text(tip2);
         this._btn.set_icon_name('list-add-symbolic');
-        this._box = new UI.Box(null, { hexpand: true, tooltip_text: tip1 || ''  });
+        this._box = new UI.Box(null, { hexpand: true, can_focus: false, tooltip_text: tip1 || ''  });
         let scroll = new Gtk.ScrolledWindow({ child: this._box, vexpand: false, css_name: 'entry', vscrollbar_policy: Gtk.PolicyType.NEVER });
         this.prepend(scroll);
+        this.value = '';
     }
 
     _buildDialog() {
-        this._dlg = new UI.AppDialog();
+        this._dlg = new AppsDialog();
     }
 
-    _postClick(id) {
-        if(this.value.includes(id)) return;
-        this._setValue(this._value ? `${this._value},${id}` : id);
-        this._appendApp(id);
-    }
-
-    set value(value) {
-        if(value === this.value) return;
-        this._value = value;
-        for(let x of this._box) this._box.remove(x);
-        this._value.split(',').forEach(a => this._appendApp(a));
-    }
-
-    get value() {
-        return this._value ?? '';
-    }
-
-    _appendApp(id) {
+    _genApp(id) {
         let app = Gio.DesktopAppInfo.new(id);
-        let btn = hook({
-            clicked: w => {
-                this._box.remove(w);
-                this._setValue(this.value.split(',').filter(x => x !== id).join(','));
-            },
-        }, app ? new Gtk.Button({ child: new Gtk.Image({ gicon: app.get_icon() }), tooltip_text: app.get_display_name(), has_frame: false })
+        return hook({ clicked: () => { this._gvalue.delete(id); this.value = [...this._gvalue].join(','); } }, app
+            ? new Gtk.Button({ child: new Gtk.Image({ gicon: app.get_icon() }), tooltip_text: app.get_display_name(), has_frame: false })
             : new Gtk.Button({ icon_name: 'help-browser-symbolic', tooltip_text: id, has_frame: false }));
-        this._box.append(btn);
+    }
+
+    _onClick() {
+        if(!this._dlg) this._buildDialog();
+        return this._dlg.choose_sth(this.get_root(), this._gvalue);
     }
 
     _setValue(v) {
         this._value = v;
-        this.notify('value');
-        this.emit('changed', this.value);
-    }
-
-    vfunc_mnemonic_activate() {
-        this._btn.activate();
+        this._gvalue = new Set(v ? v.split(',') : null);
+        if(this._box) [...this._box].forEach(x => this._box.remove(x));
+        if(this._value) this._gvalue.forEach(x => this._box.append(this._genApp(x)));
     }
 }
 
@@ -266,7 +311,7 @@ class PopupSide extends Gtk.Box {
                 try {
                     this._onAdded(JSON.parse(await this.get_clipboard().read_text_async(null)));
                 } catch(e) {
-                    this.get_root().add_toast(new Adw.Toast({ title: _('Paste content parsing failed'), timeout: 5 }));
+                    this.get_root().add_toast(new Adw.Toast({ title: _('Pasted content parsing failed'), timeout: 5 }));
                 }
             }]].map(([icon_name, tooltip_text, callback]) => hook({ clicked: callback },
                 new Gtk.Button({ icon_name, tooltip_text, has_frame: false }))));
@@ -302,47 +347,44 @@ class SwiftPane extends Adw.PreferencesPage {
 
     constructor() {
         super({ hexpand: true });
-        this._buildWidgets();
         this._buildUI();
     }
 
     _buildWidgets() {
-        this._template = { type: 0, copy: false, commit: false, select: false, popup: false, apps: '', command: '', regexp: '', tooltip: '', icon: '' };
-        this._widgets = [
-            ['command', 'changed',   [_('Run command')],      new UI.LazyEntry('gio open LDWORD')],
-            ['type',    'changed',   [_('Command type')],     new UI.Drop(['sh', 'JS'])],
-            ['popup',   'state-set', [_('Show result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['copy',    'state-set', [_('Copy result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['select',  'state-set', [_('Select result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['commit',  'state-set', [_('Commit result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['apps',    'changed',   [_('Application list')], new Apps(_('Click the app icon to remove'), _('Allowlist'))],
-            ['regexp',  'changed',   [_('RegExp matcher')],   new UI.LazyEntry('(https?|ftp|file)://.*')],
+        return [
+            ['command', '',    'changed',   [_('Run command')],      new UI.LazyEntry('gio open LDWORD')],
+            ['type',    0,     'changed',   [_('Command type')],     new UI.Drop(['sh', 'JS'])],
+            ['popup',   false, 'state-set', [_('Show result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['copy',    false, 'state-set', [_('Copy result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['select',  false, 'state-set', [_('Select result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['commit',  false, 'state-set', [_('Commit result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['apps',    '',    'changed',   [_('Application list')], new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            ['regexp',  '',    'changed',   [_('RegExp matcher')],   new UI.LazyEntry('(https?|ftp|file)://.*')],
         ];
     }
 
     _buildUI() {
+        this._widgets = {};
+        this._defaults = {};
         let prefs = new Adw.PreferencesGroup();
-        this._widgets.forEach(([key, signal, description, widget]) => {
-            widget.connect(signal, (_w, v) => !this._syncing && this.emit('changed', { [key]: v || undefined }));
+        this._buildWidgets().forEach(([key, value, signal, description, widget]) => {
             prefs.add(new UI.PrefRow(description, widget));
+            widget.connect(signal, (_w, v) => !this._syncing && this.emit('changed', { [key]: v || undefined }));
+            this._widgets[key] = widget;
+            this._defaults[key] = value;
         });
-        this._widgets = Object.fromEntries(this._widgets.map(x => [x.at(0), x.at(-1)]));
         this.add(prefs);
     }
 
     set config(config) {
         this._syncing = true;
-        Object.entries({ ...this._template, ...config }).forEach(([k, v]) => {
+        Object.entries({ ...this._defaults, ...config }).forEach(([k, v]) => {
             let widget = this._widgets[k];
             if(!widget) return;
             switch(typeof v) {
             case 'boolean': widget.set_state(v); break;
             case 'number':  widget.set_selected(v); break;
-            case 'string': switch(k) {
-            case 'apps': widget.value = v; break;
-            case 'icon': widget.value = v; break;
-            default: widget.set_text(v); break;
-            } break;
+            case 'string': widget.value = v; break;
             }
         });
         this._syncing = false;
@@ -355,10 +397,10 @@ class PopupPane extends SwiftPane {
     }
 
     _buildWidgets() {
-        super._buildWidgets();
-        Object.assign(this._template, { icon: '', tooltip: '' });
-        this._widgets.splice(2, 0, ['icon', 'changed', [_('Icon name')], new UI.Icon()]);
-        this._widgets.push(['tooltip', 'changed', [_('Icon tooltip')], new UI.LazyEntry('Open URL')]);
+        let widgets = super._buildWidgets();
+        widgets.splice(2, 0, ['icon', '', 'changed', [_('Icon name')], new UI.Icon()]);
+        widgets.push(['tooltip', '', 'changed', [_('Icon tooltip')], new UI.LazyEntry('Open URL')]);
+        return widgets;
     }
 }
 
@@ -378,7 +420,7 @@ class PrefsAbout extends PrefPage {
             .recursiveUnpack()
             .slice(0, gset.get_uint(Field.PGSZ))
             .flatMap(({ icon }) => icon ? [icon] : [])
-            .reduce((p, v, i) => { p[i] = v; return p; }, ['accessories-dictionary-symbolic'])
+            .reduce((p, v, i) => Object.assign(p, { [i]: v }), ['accessories-dictionary-symbolic'])
             .map(icon_name => new Gtk.Image({ icon_name, icon_size: Gtk.IconSize.LARGE })),
         { halign: Gtk.Align.CENTER, margin_bottom: 30 }, false);
     }
@@ -429,32 +471,46 @@ class PrefsBasic extends PrefPage {
         super(param);
         this._buildWidgets(gset);
         this._buildUI();
+        this._buildOCR(gset);
     }
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            OCRP: ['text',     new UI.LazyEntry()],
             PGSZ: ['value',    new UI.Spin(1, 10, 1)],
-            KEY:  ['active',   new Gtk.CheckButton()],
             ATHD: ['value',    new UI.Spin(500, 10000, 250)],
-            LCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
-            RCMD: ['text',     new UI.LazyEntry('notify-send LDWORD')],
-            TFLT: ['text',     new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
+            LCMD: ['value',    new UI.LazyEntry('notify-send LDWORD')],
+            RCMD: ['value',    new UI.LazyEntry('notify-send LDWORD')],
+            TFLT: ['value',    new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
             APPS: ['value',    new Apps(_('Click the app icon to remove'))],
             PSV:  ['selected', new UI.Drop([_('Proactive'), _('Passive')])],
             APP:  ['selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TSTP: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             STRY: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TIP:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             HDTT: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             TRG:  ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+        }, gset);
+    }
+
+    _buildOCR(gset) {
+        // EGO: if(!fopen(`${ROOT_DIR}/ldocr.py`).query_exists(null)) return;
+        Object.assign(this._blk, UI.block({
+            OCRP: ['value',    new UI.LazyEntry()],
+            KEY:  ['active',   new Gtk.CheckButton()],
+            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
             OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
             OCR:  ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
-        }, gset);
+        }, gset));
         this._blk.KEYS = new UI.Keys({ gset, key: Field.KEYS });
         this._blk.HELP = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
         this._buildHelpPopover().then(scc => this._blk.HELP.set_popover(scc)).catch(noop);
+        [
+            [this._blk.KEY, [_('Shortcut')], this._blk.KEYS],
+            [[_('Dwell OCR')], this._blk.DOCR],
+            [[_('Work mode')], this._blk.OCRS],
+            [this._blk.HELP, [], this._blk.OCRP],
+        ].forEach(xs => this._blk.OCR.add_row(new UI.PrefRow(...xs)));
+        this._add(this._blk.OCR);
     }
 
     _buildUI() {
@@ -463,12 +519,6 @@ class PrefsBasic extends PrefPage {
             [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this._blk.PSV, this._blk.TRG],
             [[_('Application list')], this._blk.APPS, this._blk.APP],
         ].forEach(xs => this._add(new UI.PrefRow(...xs)));
-        [
-            [this._blk.KEY, [_('Shortcut')], this._blk.KEYS],
-            [[_('Dwell OCR')], this._blk.DOCR],
-            [[_('Work mode')], this._blk.OCRS],
-            [this._blk.HELP, [], this._blk.OCRP],
-        ].forEach(xs => this._blk.OCR.add_row(new UI.PrefRow(...xs)));
         [this._buildExpander(_('Other'),
             [[_('Trim blank lines')], this._blk.TSTP],
             [[_('Autohide interval')], this._blk.ATHD],
@@ -480,8 +530,8 @@ class PrefsBasic extends PrefPage {
         this._buildExpander(_('Popup'),
             [[_('Enable tooltip')], this._blk.TIP],
             [[_('Page size')], this._blk.PGSZ])].forEach(x => this._add(x));
-        this._add(this._blk.OCR);
     }
+
 
     _buildExpander(title, ...list) {
         let expander = new Adw.ExpanderRow({ title });
@@ -627,9 +677,9 @@ export default class PrefsWidget extends UI.Prefs {
     fillPreferencesWindow(win) {
         let provider = new Gtk.CssProvider();
         // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
-        provider.load_from_data(`ld-dragging { background: alpha(@window_bg_color, .875); color: @accent_color; border: 1px solid @accent_color; border-radius: 4px; }
-                                .ld-drop-top { background: linear-gradient(to bottom, alpha(@accent_bg_color, .875) 0%, alpha(@accent_bg_color, 0) 35%); }
-                                .ld-drop-bottom { background: linear-gradient(to bottom, alpha(@accent_bg_color, 0) 65%, alpha(@accent_bg_color, .875) 100%); }`, -1);
+        provider.load_from_string(`ld-dragging { background: alpha(@window_bg_color, .85); color: @accent_color; border: 1px dashed @accent_color; border-radius: 4px; }
+                                  .ld-drop-top { background: linear-gradient(to bottom, alpha(@accent_bg_color, .85) 0%, alpha(@accent_bg_color, 0) 35%); }
+                                  .ld-drop-bottom { background: linear-gradient(to bottom, alpha(@accent_bg_color, 0) 65%, alpha(@accent_bg_color, .85) 100%); }`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT_DIR}/icons`);
         let gset = this.getSettings();

@@ -20,8 +20,8 @@ import * as Keyboard from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 import { DBusSenderChecker } from 'resource:///org/gnome/shell/misc/util.js';
 
 import { Field } from './const.js';
+import { ROOT_DIR, noop, omap, bmap, xnor, raise, gerror, lot, execute, pickle } from './util.js';
 import { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } from './menu.js';
-import { ROOT_DIR, noop, omap, bmap, xnor, raise, gerror, lot, pickle, execute } from './util.js';
 import { Fulu, ExtensionBase, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
 
 const getPointer = () => global.get_pointer();
@@ -143,12 +143,11 @@ class DictBar extends BoxPointer.BoxPointer {
     set pcommands(pcmds) {
         let cmds = pcmds.recursiveUnpack().filter(x => x.enable);
         if(!homolog(this._cmds, cmds, (a, b) => a.icon === b.icon && a.name === b.name)) {
-            this.dispel();
-            let icons = this._box.get_children();
+            let icons = [...this._box];
             let diff = cmds.length - icons.length;
             if(diff > 0) while(diff-- > 0) this._box.add(new DictPop(x => this.click(x), x => this.tip(x)));
             else if(diff < 0) do icons.at(diff).destroy(); while(++diff < 0);
-            this._box.get_children().forEach((x, i) => x.setButton(cmds[i], i));
+            [...this._box].forEach((x, i) => x.setButton(cmds[i], i));
         }
         this._cmds = cmds;
     }
@@ -165,9 +164,7 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     _updatePages() {
-        let icons = this._box.get_children();
-        icons.forEach((x, i) => { x.visible = this._cmds[i]._visible; });
-        icons = icons.filter(x => x.visible);
+        let icons = [...this._box].filter((x, i) => (x.visible = this._cmds[i]._visible));
         this._pages = icons.length && this.pgsize ? Math.ceil(icons.length / this.pgsize) : 0;
         if(this._pages < 2) return;
         this._idx = this._idx < 1 ? this._pages : this._idx > this._pages ? 1 : this._idx ?? 1;
@@ -292,7 +289,7 @@ class DictBox extends BoxPointer.BoxPointer {
         if(this._text) this._text.visible = !hide;
     }
 
-    needScroll() {
+    _needScroll() {
         let [, height] = this._view.get_preferred_height(-1);
         let limited = this._view.get_theme_node().get_max_height();
         if(limited < 0) limited = getDisplaySize().at(1) * 15 / 32;
@@ -337,7 +334,7 @@ class DictBox extends BoxPointer.BoxPointer {
             this._info.set_text(info || lot(Kaomoji));
         }
         if(this._text.visible) this._text.set_text(text);
-        if(this.needScroll()) {
+        if(this._needScroll()) {
             this._view.add_style_pseudo_class('scrolled');
             this._view.vscrollbar_policy = St.PolicyType.AUTOMATIC;
             this._view.vscroll.get_adjustment().set_value(0);
@@ -412,7 +409,7 @@ class DictAct extends Destroyable {
     }
 
     set enable_ocr(enable) {
-        this._enable_ocr = enable;
+        this._enable_ocr = enable; // EGO:  && fopen(`${ROOT_DIR}/ldocr.py`).query_exists(null);
         this.short_ocr = this._short_ocr;
         this.dwell_ocr = this._dwell_ocr;
     }
@@ -608,11 +605,7 @@ class LightDict extends Destroyable {
         this._bar.connectObject('dict-bar-clicked', (_a, cmd) => { this._lock_d[0] = true; this._exeCmd(cmd); }, onus(this));
         global.display.connectObject('notify::focus-window', () => this._onWindowChanged(), onus(this));
         global.display.get_selection().connectObject('owner-changed', this._onSelectChanged.bind(this), onus(this));
-        // FIXME: idle eval to avoid clutter-stage.c assertion when search() since 44.beta
-        // related upstream issue: https://gitlab.gnome.org/GNOME/mutter/-/issues/2700
-        // related upstream MR: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/2342
         this._sbt = symbiose(this, () => omit(this, 'dbus', 'systray', '_bar', '_box', '_act', '_cur'), {
-            eval: [clearTimeout, setTimeout],
             select: [clearInterval, x => setInterval(() => {
                 if((x ^ getPointer().at(2)) !== Clutter.ModifierType.BUTTON1_MASK) return;
                 this._sbt.select.dispel();
@@ -647,12 +640,12 @@ class LightDict extends Destroyable {
         this._cur.set_size(w, h);
     }
 
-    isFobidden() {
-        return this.app_list && xnor(this.list_type, this.app_list.includes(this._app));
-    }
-
     getAppid() {
         return (v => v ? Shell.WindowTracker.get_default().get_window_app(v)?.get_id() ?? '' : '')(getFocusWindow());
+    }
+
+    _checkApp() {
+        return this.app_list && xnor(this.list_type, this.app_list.includes(this._app));
     }
 
     _onActDwelled(_a, mdf, ppt) {
@@ -671,7 +664,7 @@ class LightDict extends Destroyable {
         if(type !== St.ClipboardType.PRIMARY) return;
         this._sbt.select.dispel();
         let mdf = getPointer().at(2);
-        if(this._lock_s.pop() || this.isFobidden() || this.passive && !(mdf & LD_MDF) || this.trigger === Trigger.disable) return;
+        if(this._lock_s.pop() || this._checkApp() || this.passive && !(mdf & LD_MDF) || this.trigger === Trigger.disable) return;
         if(mdf & Clutter.ModifierType.BUTTON1_MASK) this._sbt.select.summon(mdf);
         else this._run().catch(noop);
     }
@@ -715,8 +708,7 @@ class LightDict extends Destroyable {
     }
 
     async _exeCmd(cmd) {
-        if(!cmd.type) await this._exeSh(cmd);
-        else this._sbt.eval.revive(() => this._exeJS(cmd));
+        cmd.type ? this._exeJS(cmd) : await this._exeSh(cmd);
     }
 
     _select(x) {
@@ -808,6 +800,7 @@ class LightDict extends Destroyable {
     }
 }
 
+// export default class Extension extends ExtensionBase { $klass = LightDict; }
 export default class Extension extends ExtensionBase {
     $klass = LightDict;
     constructor(...args) {
