@@ -352,14 +352,14 @@ class SwiftPane extends Adw.PreferencesPage {
 
     _buildWidgets() {
         return [
-            ['command', '',    'changed',   [_('Run command')],      new UI.LazyEntry('gio open LDWORD')],
-            ['type',    0,     'changed',   [_('Command type')],     new UI.Drop(['sh', 'JS'])],
-            ['popup',   false, 'state-set', [_('Show result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['copy',    false, 'state-set', [_('Copy result')],      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['select',  false, 'state-set', [_('Select result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['commit',  false, 'state-set', [_('Commit result')],    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['apps',    '',    'changed',   [_('Application list')], new Apps(_('Click the app icon to remove'), _('Allowlist'))],
-            ['regexp',  '',    'changed',   [_('RegExp matcher')],   new UI.LazyEntry('(https?|ftp|file)://.*')],
+            ['command', '',    'changed',   _('Run command'),      new UI.LazyEntry('gio open LDWORD')],
+            ['type',    0,     'changed',   _('Command type'),     new UI.Drop(['sh', 'JS'])],
+            ['popup',   false, 'state-set', _('Show result'),      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['copy',    false, 'state-set', _('Copy result'),      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['select',  false, 'state-set', _('Select result'),    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['commit',  false, 'state-set', _('Commit result'),    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            ['apps',    '',    'changed',   _('Application list'), new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            ['regexp',  '',    'changed',   _('RegExp matcher'),   new UI.LazyEntry('(https?|ftp|file)://.*')],
         ];
     }
 
@@ -368,7 +368,7 @@ class SwiftPane extends Adw.PreferencesPage {
         this._defaults = {};
         let prefs = new Adw.PreferencesGroup();
         this._buildWidgets().forEach(([key, value, signal, description, widget]) => {
-            prefs.add(new UI.PrefRow(description, widget));
+            prefs.add(new UI.PrefRow([description], widget));
             widget.connect(signal, (_w, v) => !this._syncing && this.emit('changed', { [key]: v || undefined }));
             this._widgets[key] = widget;
             this._defaults[key] = value;
@@ -382,7 +382,7 @@ class SwiftPane extends Adw.PreferencesPage {
             let widget = this._widgets[k];
             if(!widget) return;
             switch(typeof v) {
-            case 'boolean': widget.set_state(v); break;
+            case 'boolean': widget.set_active(v); break;
             case 'number':  widget.set_selected(v); break;
             case 'string': widget.value = v; break;
             }
@@ -398,8 +398,8 @@ class PopupPane extends SwiftPane {
 
     _buildWidgets() {
         let widgets = super._buildWidgets();
-        widgets.splice(2, 0, ['icon', '', 'changed', [_('Icon name')], new UI.Icon()]);
-        widgets.push(['tooltip', '', 'changed', [_('Icon tooltip')], new UI.LazyEntry('Open URL')]);
+        widgets.splice(2, 0, ['icon', '', 'changed', _('Icon name'), new UI.Icon()]);
+        widgets.push(['tooltip', '', 'changed', _('Icon tooltip'), new UI.LazyEntry('Open URL')]);
         return widgets;
     }
 }

@@ -12,7 +12,6 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as Util from 'resource:///org/gnome/shell/misc/util.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
@@ -20,7 +19,7 @@ import * as Keyboard from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 import { DBusSenderChecker } from 'resource:///org/gnome/shell/misc/util.js';
 
 import { Field } from './const.js';
-import { ROOT_DIR, noop, omap, bmap, xnor, raise, gerror, lot, execute, pickle } from './util.js';
+import { ROOT_DIR, noop, omap, bmap, xnor, raise, lot, execute, pickle } from './util.js';
 import { SwitchItem, MenuItem, RadioItem, DRadioItem, TrayIcon, gicon } from './menu.js';
 import { Fulu, ExtensionBase, Destroyable, symbiose, omit, onus, getSelf, _ } from './fubar.js';
 
@@ -309,8 +308,8 @@ class DictBox extends BoxPointer.BoxPointer {
     _onClick(_a, event) {
         switch(event.get_button()) {
         case Clutter.BUTTON_MIDDLE: St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._info.get_text().trimStart()); break;
-        case Clutter.BUTTON_PRIMARY: if(this.lcommand) Util.spawnCommandLine(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
-        case Clutter.BUTTON_SECONDARY: if(this.rcommand) Util.spawnCommandLine(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
+        case Clutter.BUTTON_PRIMARY: if(this.lcommand) execute(this.lcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); break;
+        case Clutter.BUTTON_SECONDARY: if(this.rcommand) execute(this.rcommand.replace(/LDWORD/g, GLib.shell_quote(this._selection))); this.dispel(); break;
         }
     }
 
@@ -371,7 +370,6 @@ class DictAct extends Destroyable {
     _buildWidgets(fulu) {
         this._fulu = fulu;
         this._kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
-        this._tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE });
         this._sbt = symbiose(this, () => omit(this, '_kbd', '_tty', 'screenshot'), {
             cancel: [x => x?.cancel(), () => new Gio.Cancellable()],
             stroke: [x => x?.forEach(clearTimeout), x => x.split(/\s+/).map(y => y.split('+')).map((z, i) => setTimeout(() => {
@@ -386,6 +384,9 @@ class DictAct extends Destroyable {
             keys: [x => x && Main.wm.removeKeybinding(Field.KEYS),
                 x => x && Main.wm.addKeybinding(Field.KEYS, this._fulu.gset, Meta.KeyBindingFlags.NONE, Shell.ActionMode.ALL, () => this.invokeOCR())],
         });
+        this._tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE });
+        let spawnv = this._tty.spawnv.bind(this._tty);
+        this._tty.spawnv = x => { let proc = spawnv(x); this._pid = parseInt(proc.get_identifier()); return proc; };
     }
 
     _bindSettings() {
@@ -468,18 +469,8 @@ class DictAct extends Destroyable {
         St.Clipboard.get_default().set_text(St.ClipboardType.PRIMARY, string);
     }
 
-    async execute(cmd) {
-        let cancel = this._sbt.cancel.revive(); // FIXME: '|' as an arg like `echo "|" | cat` not covered
-        let cmdv = GLib.shell_parse_argv(cmd).at(1).reduce((a, x) => (x === '|' ? a.push([]) : a.at(-1).push(x)) && a, [[]]);
-        let ret = await cmdv.filter(x => x.length).reduce(async (a, x) => {
-            let proc = this._tty.spawnv(x);
-            this._pid = parseInt(proc.get_identifier());
-            let [stdout, stderr] = await proc.communicate_utf8_async(await a, cancel);
-            let status = proc.get_exit_status();
-            if(status) throw gerror(Gio.io_error_from_errno(status), stderr.trimEnd());
-            return stdout;
-        }, null);
-        return ret?.trimEnd() ?? '';
+    execute(cmd) {
+        return execute(cmd, this._tty, this._sbt.cancel.revive());
     }
 }
 
@@ -682,7 +673,7 @@ class LightDict extends Destroyable {
                 if(!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) this._display(e.message, true);
             }
         } else {
-            Util.spawnCommandLine(cmd);
+            execute(cmd);
         }
     }
 

@@ -62,14 +62,16 @@ export async function access(method, url, param, session = new Soup.Session()) {
     return decode(byt.get_data());
 }
 
-export async function execute(cmd) {
-    let proc = new Gio.Subprocess({
-        argv: GLib.shell_parse_argv(cmd).at(1),
-        flags: Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_PIPE,
-    });
-    proc.init(null);
-    let [stdout, stderr] = await proc.communicate_utf8_async(null, null);
-    let status = proc.get_exit_status();
-    if(status) throw gerror(Gio.io_error_from_errno(status), stderr.trimEnd() || GLib.strerror(status));
-    return stdout.trimEnd();
+export async function execute(cmd, tty = new Gio.SubprocessLauncher({ flags: Gio.SubprocessFlags.STDIN_PIPE | Gio.SubprocessFlags.STDOUT_PIPE }), cancel = null) {
+    let ret = await GLib.shell_parse_argv(cmd).at(1)
+        .reduce((a, x) => (x === '|' ? a.push([]) : a.at(-1).push(x)) && a, [[]])
+        .filter(x => x.length)
+        .reduce(async (a, x) => {
+            let proc = tty.spawnv(x),
+                [stdout, stderr] = await proc.communicate_utf8_async(await a, cancel),
+                status = proc.get_exit_status();
+            if(status) throw gerror(Gio.io_error_from_errno(status), stderr.trimEnd());
+            return stdout;
+        }, null);
+    return ret?.trimEnd() ?? '';
 }
