@@ -23,11 +23,11 @@
     </key>
     <key type="b" name="short-ocr">
         <default>false</default>
-        <summary>short ocr</summary>
+        <summary>enable ocr shortcut</summary>
     </key>
     <key type="b" name="dwell-ocr">
         <default>false</default>
-        <summary>dwell ocr</summary>
+        <summary>enable dwell ocr</summary>
     </key>
     <key type="u" name="passive-mode">
         <range min="0" max="1"/>
@@ -35,7 +35,7 @@
         <summary>need modifier to trigger(1) or not(0)</summary>
     </key>
     <key type="u" name="autohide-timeout">
-        <range min="500" max="10000"/>
+        <range min="1000" max="10000"/>
         <default>2500</default>
         <summary>autohide popup interval</summary>
     </key>
@@ -88,7 +88,7 @@
         <summary>shortcut to invoke the ocr script</summary>
     </key>
     <key type="av" name="swift-commands">
-        <default><![CDATA[[<{'name': <'Trans'>, 'command': <'trans -b -- LDWORD'>, 'popup': <true>}>]]]></default>
+        <default><![CDATA[[<{'name': <'Trans'>, 'command': <'trans -b -- LDWORD'>, 'result': <int64 1>}>]]]></default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="av" name="popup-commands">
