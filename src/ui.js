@@ -11,7 +11,7 @@ import GObject from 'gi://GObject';
 import * as Gettext from 'gettext';
 import { Field } from './const.js';
 
-import { fopen, raise, omap, noop, gprops, fquery, hook, BIND_FULL } from './util.js';
+import { fopen, omap, noop, gprops, fquery, hook, BIND_FULL } from './util.js';
 import { ExtensionPreferences, gettext as _ } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 Gio._promisify(Gtk.FileDialog.prototype, 'open');
@@ -20,20 +20,20 @@ Gio._promisify(Gtk.FileDialog.prototype, 'select_folder');
 export { _ };
 export const _GTK = Gettext.domain('gtk40').gettext;
 export const getSelf = () => ExtensionPreferences.lookupByURL(import.meta.url);
-export const block = (o, s) => omap(o, ([k, [x, y]]) => [[k, (s.bind(Field[k], y, x, Gio.SettingsBindFlags.DEFAULT), y)]]);
+export const block = (o, s) => omap(o, ([k, [x, y = 'value']]) => [[k, (s.bind(Field[k], x, y, Gio.SettingsBindFlags.DEFAULT), x)]]);
 
-export const Hook = new class Hook {
-    #map = new WeakMap();
-    attach(cbs, obj) {
+export class Hook {
+    static #map = new WeakMap();
+    static attach(cbs, obj) {
         this.detach(obj);
         this.#map.set(obj, cbs);
         return hook(cbs, obj);
     }
 
-    detach(obj) {
+    static detach(obj) {
         Object.values(this.#map.get(obj) ?? {}).forEach(x => GObject.signal_handlers_disconnect_by_func(obj, x));
     }
-}();
+}
 
 
 export class Prefs extends ExtensionPreferences {
@@ -65,18 +65,33 @@ export class Spin extends Gtk.SpinButton {
     }
 }
 
-export class Drop extends Gtk.DropDown {
+export class Check extends Gtk.CheckButton {
     static {
         GObject.registerClass({
-            Signals: {
-                changed: { param_types: [GObject.TYPE_UINT] },
-            },
+            Properties: gprops({
+                value: ['boolean', false],
+            }),
         }, this);
     }
 
-    constructor(opts, tooltip_text = '') {
-        super({ model: Gtk.StringList.new(opts), valign: Gtk.Align.CENTER, tooltip_text });
-        this.connect('notify::selected', () => this.emit('changed', this.selected));
+    constructor(param) {
+        super(param);
+        this.bind_property('active', this, 'value', BIND_FULL);
+    }
+}
+
+export class Drop extends Gtk.DropDown {
+    static {
+        GObject.registerClass({
+            Properties: gprops({
+                value: ['uint', 0, Gtk.INVALID_LIST_POSITION, 0],
+            }),
+        }, this);
+    }
+
+    constructor(strv, tooltip_text = '') {
+        super({ model: Gtk.StringList.new(strv), valign: Gtk.Align.CENTER, tooltip_text });
+        this.bind_property('selected', this, 'value', BIND_FULL);
     }
 }
 
@@ -221,10 +236,10 @@ export class KeysDialog extends DialogBase {
 
     _buildContent({ title }) {
         this.set_content(new Adw.StatusPage({ icon_name: 'preferences-desktop-keyboard-symbolic', title }));
-        this.add_controller(hook({ key_pressed: this._onKeyPressed.bind(this) }, new Gtk.EventControllerKey()));
+        this.add_controller(hook({ key_pressed: this._onKeyPress.bind(this) }, new Gtk.EventControllerKey()));
     }
 
-    _onKeyPressed(_w, keyval, keycode, state) {
+    _onKeyPress(_w, keyval, keycode, state) {
         let mask = state & Gtk.accelerator_get_default_mod_mask() & ~Gdk.ModifierType.LOCK_MASK;
         if(!mask && keyval === Gdk.KEY_Escape) return this.close();
         if(!this.isValidBinding(mask, keycode, keyval) || !this.isValidAccel(mask, keyval)) return;
@@ -282,16 +297,16 @@ class IconDialog extends DialogBase {
             model = Gtk.StringList.new(Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).get_icon_names()),
             select = new Gtk.SingleSelection({ model: new Gtk.FilterListModel({ model, filter }) }),
             view = hook({ activate: () => this._onSelect() }, new Gtk.GridView({ model: select, factory, vexpand: true }));
-        filter.append(new Gtk.BoolFilter({ expression: this.icon_expression }));
+        filter.append(new Gtk.BoolFilter({ expression: this._genIconExp() }));
         filter.append(new Gtk.StringFilter({ expression: new Gtk.PropertyExpression(Gtk.StringObject, null, 'string') }));
-        this.connect('notify::icon-type', () => filter.get_item(0).set_expression(this.icon_expression));
+        this.connect('notify::icon-type', () => filter.get_item(0).set_expression(this._genIconExp()));
         this.bind_property('icon-type', title, 'selected', BIND_FULL);
         if(param?.icon_type) this.icon_type = param.icon_type;
         this.getSelected = () => select.get_selected_item().get_string();
         return { view, title, filter: filter.get_item(1) };
     }
 
-    get icon_expression() {
+    _genIconExp() {
         switch(this.icon_type) {
         case 1: return new Gtk.ClosureExpression(GObject.TYPE_BOOLEAN, x => !x.string.endsWith('-symbolic'), null);
         case 2: return new Gtk.ClosureExpression(GObject.TYPE_BOOLEAN, x => x.string.endsWith('-symbolic'), null);
@@ -306,9 +321,6 @@ export class DialogButtonBase extends Box {
             Properties: gprops({
                 value: ['string', ''],
             }),
-            Signals: {
-                changed: { param_types: [GObject.TYPE_STRING] },
-            },
         }, this);
     }
 
@@ -332,7 +344,7 @@ export class DialogButtonBase extends Box {
     }
 
     _onDrag(src) {
-        let icon = this.genPaintable();
+        let icon = this._genDragSwatch();
         if(icon) src.set_icon(icon, 0, 0);
         return Gdk.ContentProvider.new_for_value(this._gvalue);
     }
@@ -358,7 +370,6 @@ export class DialogButtonBase extends Box {
         if(typeof v === 'string' ? this._value === v : this._checkGvalue(v)) return;
         this._setValue(v);
         this.notify('value');
-        this.emit('changed', this.value);
     }
 
     get value() {
@@ -387,7 +398,7 @@ export class App extends DialogButtonBase {
         else this._btn.child.setupContent();
     }
 
-    genPaintable() {
+    _genDragSwatch() {
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
             .lookup_by_gicon(this._gvalue.get_icon(), 32, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
     }
@@ -420,7 +431,7 @@ export class File extends DialogButtonBase {
             this.value = value;
         } else {
             fquery(value, Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE).then(y => {
-                if(this._filter.match(y)) this.value = value; else raise();
+                if(this._filter.match(y)) this.value = value; else throw Error();
             }).catch(() => {
                 this.get_root().add_toast(new Adw.Toast({ title: _('Mismatched filetype'), timeout: 5 }));
             });
@@ -456,7 +467,7 @@ export class Icon extends DialogButtonBase {
         super(new IconLabel('image-missing'), Gio.ThemedIcon.$gtype, true);
     }
 
-    genPaintable() {
+    _genDragSwatch() {
         return Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
             .lookup_by_gicon(this._gvalue, 32, 1, Gtk.TextDirection.NONE, Gtk.IconLookupFlags.FORCE_SVG);
     }
@@ -543,9 +554,6 @@ export class LazyEntry extends Gtk.Stack {
             Properties: gprops({
                 value: ['string', ''],
             }),
-            Signals: {
-                changed: { param_types: [GObject.TYPE_STRING] },
-            },
         }, this);
     }
 
@@ -571,7 +579,6 @@ export class LazyEntry extends Gtk.Stack {
     set value(value) {
         if(this.value !== value) {
             this._label.set_text(this._value = value);
-            this.emit('changed', value);
             this.notify('value');
         }
         this.set_visible_child_name('label');

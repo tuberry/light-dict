@@ -9,8 +9,8 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
-import { Field } from './const.js';
-import { ROOT_DIR, noop, gprops, execute, pickle, hook } from './util.js';
+import { Field, Result } from './const.js';
+import { ROOT_DIR, BIND_FULL, noop, gprops, execute, pickle, hook } from './util.js';
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
@@ -165,7 +165,7 @@ class SideRow extends Gtk.Box {
 
     constructor(group, uuid, param) {
         super({ spacing: 5, margin_end: 5, hexpand: false, ...param });
-        this._btn = hook({ toggled: () => this._emit('toggled', this._btn.active) }, new Gtk.CheckButton({ group }));
+        this._btn = hook({ toggled: () => this._emit('toggled', this._btn.active) }, new UI.Check({ group }));
         this._txt = hook({ changed: () => !this._txt.editing && this._txt.text && this._emit('changed', this._txt.text) },
             new Gtk.EditableLabel({ max_width_chars: 9 }));
         this._txt.get_delegate().connect('activate', () => this._emit('changed', this._txt.text));
@@ -183,7 +183,7 @@ class SideRow extends Gtk.Box {
             drag_begin: (_src, drag) => {
                 let width = this.get_width(),
                     height = this.get_height(),
-                    widget = new SideRow(this._group ? new Gtk.CheckButton() : null, '',
+                    widget = new SideRow(this._group ? new UI.Check() : null, '',
                         { width_request: width, height_request: height, css_name: 'ld-dragging' });
                 widget.syncValue({ enable: this._btn.active, name: this._txt.text }, this._position);
                 Gtk.DragIcon.get_for_drag(drag).set_child(widget);
@@ -254,9 +254,9 @@ class PopupSide extends Gtk.Box {
         let factory = hook({
             setup: (_f, x) => x.set_child(new SideRow(this._group, uuid)),
             bind: (_f, x) => UI.Hook.attach({
-                dropped: (_w, f, t) => this._onDropped(f, t),
-                changed: (_w, p, v) => this._onChanged(p, 'name', v),
-                toggled: (_w, p, v) => this._onChanged(p, 'enable', v),
+                dropped: (_w, f, t) => this._onDrop(f, t),
+                changed: (_w, p, v) => this._onChange(p, 'name', v),
+                toggled: (_w, p, v) => this._onChange(p, 'enable', v),
             }, x.get_child()).syncValue(x.get_item(), x.get_position()),
             unbind: (_f, x) => UI.Hook.detach(x.get_child()),
         }, new Gtk.SignalListItemFactory());
@@ -271,12 +271,12 @@ class PopupSide extends Gtk.Box {
         return this._select.get_selected();
     }
 
-    _onChanged(position, key, value) {
+    _onChange(position, key, value) {
         let item = this._model.get_item(position);
         if(value !== item[key]) this.emit('changed', position, { [key]: (item[key] = value) || undefined });
     }
 
-    _onDropped(drag, drop) {
+    _onDrop(drag, drop) {
         let target = drop > drag ? drop - 1 : drop;
         if(drag === target) return;
         let item = new SideItem(this._model.get_item(drag));
@@ -285,7 +285,7 @@ class PopupSide extends Gtk.Box {
         this.emit('moved', drag, target);
     }
 
-    _onAdded(cmd) {
+    _onAdd(cmd) {
         let potition = this.selected;
         if(potition === Gtk.INVALID_LIST_POSITION) potition = -1;
         this._model.insert(potition + 1, new SideItem(cmd));
@@ -299,7 +299,7 @@ class PopupSide extends Gtk.Box {
     _buildTool() {
         return new UI.Box(
             [['list-add-symbolic', _('Add'), () => {
-                this._onAdded({ name: 'Name' });
+                this._onAdd({ name: 'Name' });
             }], ['list-remove-symbolic', _('Remove'), () => {
                 let position = this.selected;
                 if(position === Gtk.INVALID_LIST_POSITION) return;
@@ -309,7 +309,7 @@ class PopupSide extends Gtk.Box {
                 this.emit('copied', this.selected);
             }], ['edit-paste-symbolic', _('Paste'), async () => {
                 try {
-                    this._onAdded(JSON.parse(await this.get_clipboard().read_text_async(null)));
+                    this._onAdd(JSON.parse(await this.get_clipboard().read_text_async(null)));
                 } catch(e) {
                     this.get_root().add_toast(new Adw.Toast({ title: _('Pasted content parsing failed'), timeout: 5 }));
                 }
@@ -323,9 +323,9 @@ class SwiftSide extends PopupSide {
         GObject.registerClass(this);
     }
 
-    _onAdded(cmd) {
+    _onAdd(cmd) {
         cmd.enable = undefined;
-        super._onAdded(cmd);
+        super._onAdd(cmd);
     }
 
     setEnabled(position) {
@@ -333,6 +333,31 @@ class SwiftSide extends PopupSide {
             let { name, enable } = this._model.get_item(position);
             if(!enable) this._model.splice(position, 1, [new SideItem({ enable: true, name })]);
         } else { this._swift.active = true; }
+    }
+}
+
+class ResultRows extends GObject.Object {
+    static {
+        GObject.registerClass({
+            Properties: gprops({
+                value: ['uint', 0, GLib.MAXINT32, 0],
+            }),
+        }, this);
+    }
+
+    _addToGroup(group) {
+        this._addToGroup = noop;
+        [
+            [Result.SHOW,   _('Show result'),   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            [Result.COPY,   _('Copy result'),   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            [Result.WAIT,   _('Await result'),  new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            [Result.SELECT, _('Select result'), new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+            [Result.COMMIT, _('Commit result'), new Gtk.Switch({ valign: Gtk.Align.CENTER })],
+        ].forEach(([mask, description, widget]) => {
+            group.add(new UI.PrefRow([description], widget));
+            this.bind_property_full('value', widget, 'active', BIND_FULL, (_b, data) => (x => [x ^ widget.state, x])(!!(data & mask)),
+                (_b, data) => [!!(this.value & mask) ^ data, this.value ^ mask]);
+        });
     }
 }
 
@@ -352,40 +377,32 @@ class SwiftPane extends Adw.PreferencesPage {
 
     _buildWidgets() {
         return [
-            ['command', '',    'changed',   _('Run command'),      new UI.LazyEntry('gio open LDWORD')],
-            ['type',    0,     'changed',   _('Command type'),     new UI.Drop(['sh', 'JS'])],
-            ['popup',   false, 'state-set', _('Show result'),      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['copy',    false, 'state-set', _('Copy result'),      new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['select',  false, 'state-set', _('Select result'),    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['commit',  false, 'state-set', _('Commit result'),    new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            ['apps',    '',    'changed',   _('Application list'), new Apps(_('Click the app icon to remove'), _('Allowlist'))],
-            ['regexp',  '',    'changed',   _('RegExp matcher'),   new UI.LazyEntry('(https?|ftp|file)://.*')],
+            ['command', '',  _('Run command'),      new UI.LazyEntry('gio open LDWORD')],
+            ['type',    0,   _('Command type'),     new UI.Drop(['sh', 'JS'])],
+            ['result',  0,   '',                    new ResultRows()],
+            ['apps',    '',  _('Application list'), new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            ['regexp',  '',  _('RegExp matcher'),   new UI.LazyEntry('(https?|ftp|file)://.*')],
         ];
     }
 
     _buildUI() {
-        this._widgets = {};
-        this._defaults = {};
+        this._widget = {};
+        this._default = {};
         let prefs = new Adw.PreferencesGroup();
-        this._buildWidgets().forEach(([key, value, signal, description, widget]) => {
-            prefs.add(new UI.PrefRow([description], widget));
-            widget.connect(signal, (_w, v) => !this._syncing && this.emit('changed', { [key]: v || undefined }));
-            this._widgets[key] = widget;
-            this._defaults[key] = value;
+        this._buildWidgets().forEach(([key, value, description, widget, property = 'value']) => {
+            if(widget instanceof ResultRows) widget._addToGroup(prefs);
+            else prefs.add(new UI.PrefRow([description], widget));
+            widget.connect(`notify::${property}`, w => !this._syncing && this.emit('changed', { [key]: w[property] || undefined }));
+            this._widget[key] = widget;
+            this._default[key] = value;
         });
         this.add(prefs);
     }
 
     set config(config) {
         this._syncing = true;
-        Object.entries({ ...this._defaults, ...config }).forEach(([k, v]) => {
-            let widget = this._widgets[k];
-            if(!widget) return;
-            switch(typeof v) {
-            case 'boolean': widget.set_active(v); break;
-            case 'number':  widget.set_selected(v); break;
-            case 'string': widget.value = v; break;
-            }
+        Object.entries({ ...this._default, ...config }).forEach(([k, v]) => {
+            if(k in this._widget) this._widget[k].value = v;
         });
         this._syncing = false;
     }
@@ -398,8 +415,8 @@ class PopupPane extends SwiftPane {
 
     _buildWidgets() {
         let widgets = super._buildWidgets();
-        widgets.splice(2, 0, ['icon', '', 'changed', _('Icon name'), new UI.Icon()]);
-        widgets.push(['tooltip', '', 'changed', _('Icon tooltip'), new UI.LazyEntry('Open URL')]);
+        widgets.splice(2, 0, ['icon', '', _('Icon name'), new UI.Icon()]);
+        widgets.splice(-1, 0, ['tooltip', '', _('Icon tooltip'), new UI.LazyEntry('Open URL')]);
         return widgets;
     }
 }
@@ -420,7 +437,7 @@ class PrefsAbout extends PrefPage {
             .recursiveUnpack()
             .slice(0, gset.get_uint(Field.PGSZ))
             .flatMap(({ icon }) => icon ? [icon] : [])
-            .reduce((p, v, i) => Object.assign(p, { [i]: v }), ['accessories-dictionary-symbolic'])
+            .reduce((p, x, i) => Object.assign(p, { [i]: x }), ['accessories-dictionary-symbolic'])
             .map(icon_name => new Gtk.Image({ icon_name, icon_size: Gtk.IconSize.LARGE })),
         { halign: Gtk.Align.CENTER, margin_bottom: 30 }, false);
     }
@@ -476,30 +493,30 @@ class PrefsBasic extends PrefPage {
 
     _buildWidgets(gset) {
         this._blk = UI.block({
-            PGSZ: ['value',    new UI.Spin(1, 10, 1)],
-            ATHD: ['value',    new UI.Spin(500, 10000, 250)],
-            LCMD: ['value',    new UI.LazyEntry('notify-send LDWORD')],
-            RCMD: ['value',    new UI.LazyEntry('notify-send LDWORD')],
-            TFLT: ['value',    new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
-            APPS: ['value',    new Apps(_('Click the app icon to remove'))],
-            PSV:  ['selected', new UI.Drop([_('Proactive'), _('Passive')])],
-            APP:  ['selected', new UI.Drop([_('Allowlist'), _('Blocklist')])],
-            TSTP: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            STRY: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            TIP:  ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            HDTT: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            TRG:  ['selected', new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
+            PGSZ: [new UI.Spin(1, 10, 1)],
+            ATHD: [new UI.Spin(1000, 10000, 250)],
+            LCMD: [new UI.LazyEntry('notify-send LDWORD')],
+            RCMD: [new UI.LazyEntry('notify-send LDWORD')],
+            TFLT: [new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$')],
+            APPS: [new Apps(_('Click the app icon to remove'))],
+            PSV:  [new UI.Drop([_('Proactive'), _('Passive')])],
+            APP:  [new UI.Drop([_('Allowlist'), _('Blocklist')])],
+            TSTP: [new Gtk.Switch({ valign: Gtk.Align.CENTER }), 'active'],
+            STRY: [new Gtk.Switch({ valign: Gtk.Align.CENTER }), 'active'],
+            TIP:  [new Gtk.Switch({ valign: Gtk.Align.CENTER }), 'active'],
+            HDTT: [new Gtk.Switch({ valign: Gtk.Align.CENTER }), 'active'],
+            TRG:  [new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
         }, gset);
     }
 
     _buildOCR(gset) {
         // EGO: if(!fopen(`${ROOT_DIR}/ldocr.py`).query_exists(null)) return;
         Object.assign(this._blk, UI.block({
-            OCRP: ['value',    new UI.LazyEntry()],
-            KEY:  ['active',   new Gtk.CheckButton()],
-            DOCR: ['active',   new Gtk.Switch({ valign: Gtk.Align.CENTER })],
-            OCRS: ['selected', new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
-            OCR:  ['enable-expansion', new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true })],
+            OCRP: [new UI.LazyEntry()],
+            KEY:  [new UI.Check()],
+            DOCR: [new Gtk.Switch({ valign: Gtk.Align.CENTER }), 'active'],
+            OCRS: [new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
+            OCR:  [new Adw.ExpanderRow({ title: _('OCR'), subtitle: _('Depends on python-opencv and python-pytesseract'), show_enable_switch: true }), 'enable-expansion'],
         }, gset));
         this._blk.KEYS = new UI.Keys({ gset, key: Field.KEYS });
         this._blk.HELP = new Gtk.MenuButton({ label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER });
@@ -569,28 +586,28 @@ class PrefsPopup extends PrefPage {
 
     _buildUI() {
         hook({
-            added: this._onAdded.bind(this), moved: this._onMoved.bind(this),
-            copied: this._onCopied.bind(this), selected: this._onSelected.bind(this),
-            removed: this._onRemoved.bind(this), changed: this._onChanged.bind(this),
+            added: this._onAdd.bind(this), moved: this._onMove.bind(this),
+            copied: this._onCopy.bind(this), selected: this._onSelect.bind(this),
+            removed: this._onRemove.bind(this), changed: this._onChange.bind(this),
         }, this._side);
-        hook({ changed: (_w, prop) => this._onChanged(null, this._side.selected, prop) }, this._pane);
+        hook({ changed: (_w, prop) => this._onChange(null, this._side.selected, prop) }, this._pane);
         this._add(new Gtk.Frame({ child: new UI.Box([this._side, new Gtk.Separator(), this._pane], { hexpand: true }, false) }));
         this._pane.set_sensitive(!!this._cmds.length);
         this._side.grabFocus(0);
     }
 
-    _onSelected(_w, index) {
+    _onSelect(_w, index) {
         this._pane.config = this._cmds[index] ?? {};
     }
 
-    _onChanged(_w, index, prop) {
+    _onChange(_w, index, prop) {
         if(!this._cmds[index]) return;
         Object.assign(this._cmds[index], prop);
         if('enable' in prop) this._side.grabFocus(index);
         this._saveCommands();
     }
 
-    _onAdded(_w, index, cmd) {
+    _onAdd(_w, index, cmd) {
         if(index < 0) {
             this._cmds.push(cmd);
             this._pane.set_sensitive(true);
@@ -601,7 +618,7 @@ class PrefsPopup extends PrefPage {
         this._saveCommands();
     }
 
-    _onRemoved(_w, index) {
+    _onRemove(_w, index) {
         this._cmds.splice(index, 1);
         this._pane.config = this._cmds[index] || this._cmds[index - 1] || {};
         if(this._cmds.length > 0 ^ this._pane.sensitive) this._pane.set_sensitive(this._cmds.length > 0);
@@ -609,13 +626,13 @@ class PrefsPopup extends PrefPage {
         this._saveCommands();
     }
 
-    _onMoved(_w, source, target) {
+    _onMove(_w, source, target) {
         this._cmds.splice(target, 0, this._cmds.splice(source, 1).at(0));
         this._side.grabFocus(target);
         this._saveCommands();
     }
 
-    _onCopied(_w, index) {
+    _onCopy(_w, index) {
         let cmd = this._cmds[index];
         if(!cmd) return;
         this.get_clipboard().set(JSON.stringify(cmd));
@@ -640,36 +657,36 @@ class PrefsSwift extends PrefsPopup {
 
     _buildWidgets() {
         this._pane = new SwiftPane();
-        this._side = new SwiftSide(this._cmds, new Gtk.CheckButton());
+        this._side = new SwiftSide(this._cmds, new UI.Check());
     }
 
-    _onChanged(_w, index, prop) {
+    _onChange(_w, index, prop) {
         if('enable' in prop) {
             if(!prop.enable) return;
             this.enabled = index;
             this._side.grabFocus(index);
         } else {
-            super._onChanged(_w, index, prop);
+            super._onChange(_w, index, prop);
         }
     }
 
-    _onAdded(_w, index, cmd) {
-        super._onAdded(_w, index, cmd);
+    _onAdd(_w, index, cmd) {
+        super._onAdd(_w, index, cmd);
         if(index >= 0 && this.enabled > index) this.enabled += 1;
     }
 
-    _onRemoved(_w, index) {
+    _onRemove(_w, index) {
         if(this._enabled >= index) this.enabled = this.enabled === index ? -1 : this.enabled - 1;
-        super._onRemoved(_w, index);
+        super._onRemove(_w, index);
     }
 
-    _onMoved(_w, source, target) {
+    _onMove(_w, source, target) {
         if(this.enabled <= Math.max(source, target) && this.enabled >= Math.min(source, target)) {
             if(this.enabled > source) this.enabled -= 1;
             else if(this.enabled === source) this.enabled = target;
             else this.enabled += 1;
         }
-        super._onMoved(_w, source, target);
+        super._onMove(_w, source, target);
     }
 }
 

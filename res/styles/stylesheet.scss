@@ -4,6 +4,8 @@ $variant: 'dark';
 
 $pfx: 'light-dict';
 
+$radius: 0.4em;
+
 // .#{$pfx}-box-boxpointer {
 //     -arrow-rize: 30px;
 //     box-shadow: 0 0 3px rgba(233, 233, 233, 0.5);
@@ -13,18 +15,19 @@ $pfx: 'light-dict';
     color: lighten($selected_bg_color, 10%);
 }
 
-.#{$pfx}-scroll:scrolled {
-    max-height: 30em !important; /* min height to scroll */
-}
-
-.#{$pfx}-content {
-    padding: 0.4em;
+.#{$pfx}-scroll {
     color: $light_1;
     font-size: 1.25em;
-    border-radius: 0.4em;
+    border-radius: $radius;
     max-width: 40em !important; /* for text line wrap */
     background-color: darken($dark_2, 10);
     &:error { border: 0.1em solid $red_3; }
+    &:scrolled { max-height: 30em !important; } /* min height to scroll */
+}
+
+.#{$pfx}-content {
+    padding: $radius;
+    border-radius: $radius;
 }
 
 .#{$pfx}-text {

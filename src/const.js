@@ -1,6 +1,8 @@
 // vim:fdm=syntax
 // by tuberry
 
+export const Result = { SHOW: 1 << 0, COPY: 1 << 1, WAIT: 1 << 2, SELECT: 1 << 3, COMMIT: 1 << 4 };
+
 export const Field = {
     APPS:  'app-list',
     DOCR:  'dwell-ocr',
