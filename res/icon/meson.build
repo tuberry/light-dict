@@ -6,16 +6,19 @@ foreach p: ['passive', 'proactive']
 endforeach
 
 custom_target(
-  'icons',
+  output: icons,
   build_by_default: true,
   build_always_stale: true,
-  output: icons,
   command: [
     find_program('gjs'),
     '-m',
     meson.source_root() / 'cli/gen-icons.js',
     '@OUTDIR@',
-    ],
+  ],
   install: true,
-  install_dir: TARGET_DIR / 'icons/hicolor/scalable/status'
-  )
+  install_dir: (target == 'system' ? datadir : target_dir)  / 'icons/hicolor/scalable/status'
+)
+
+if(target == 'system')
+  gnome.post_install(gtk_update_icon_cache: true)
+endif

@@ -1,28 +1,29 @@
-$variant: 'dark';
-
 @import 'gnome-shell-sass/_colors';
 
 $pfx: 'light-dict';
-
 $radius: 0.4em;
 
-// .#{$pfx}-box-boxpointer {
-//     -arrow-rize: 30px;
-//     box-shadow: 0 0 3px rgba(233, 233, 233, 0.5);
-// }
-
-.#{$pfx}-systray:busy {
-    color: lighten($selected_bg_color, 10%);
+@function tone($color, $percent: 10%, $reverse: true){
+    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
 }
 
-.#{$pfx}-scroll {
-    color: $light_1;
+.#{$pfx}-box-boxpointer {
+    // -arrow-rize: 1em;
+    box-shadow: 0 0.1em 0.15em 0 $shadow_color; // ?: not working with St.ScrollView
+}
+
+.#{$pfx}-systray:state-busy {
+    color: tone($selected_bg_color, 10%);
+}
+
+.#{$pfx}-view {
+    color: $fg_color;
     font-size: 1.25em;
     border-radius: $radius;
     max-width: 40em !important; /* for text line wrap */
-    background-color: darken($dark_2, 10);
-    &:error { border: 0.1em solid $red_3; }
-    &:scrolled { max-height: 30em !important; } /* min height to scroll */
+    max-height: 30em !important; /* min height for scroll */
+    background-color: tone($bg_color, 10%);
+    &:state-error { border: 0.1em solid $error_color; }
 }
 
 .#{$pfx}-content {
@@ -34,7 +35,7 @@ $radius: 0.4em;
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
-    border-color: transparentize($dark_1, 0.5);
+    border-color: transparentize($bg_color, 0.5);
 }
 
 .#{$pfx}-iconbox {

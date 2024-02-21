@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# by tuberry
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: GPL-3.0-or-later
 # type: ignore
 
-import re
 import cv2
 import string
 import gettext
@@ -14,6 +14,8 @@ from gi.repository import Gio, GLib
 from tempfile import NamedTemporaryFile
 
 DEBUG = False
+CONFIG = r'-c preserve_interword_spaces=1' # HACK: workaround for https://github.com/tesseract-ocr/tesseract/issues/991
+
 _ = gettext.gettext
 
 class Result:
@@ -33,7 +35,7 @@ class Result:
     @property
     def param(self):
         style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.is_error else [self.style, self.text, '']
-        return ('RunAt', ('(sssiiii)', (style, text, info, *self.area))) if self.area else ('Run', ('(sss)', (style, text, info)))
+        return ('Run', ('(sssai)', (style, text.strip(), info, self.area or [])))
 
 def main():
     locale()
@@ -68,11 +70,6 @@ def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Scre
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
     return px.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
 
-# ISSUE: https://github.com/tesseract-ocr/tesseract/issues/991
-def typeset_str(para): return ' '.join(re.sub(r'([^\n\.\?!; ] *)\n', r'\g<1> ', para).splitlines()).replace('|', 'I').strip(string.whitespace + '“”‘’')
-
-def detect_cjk(lang): return 2 if any([x in lang for x in ['chi', 'jpn', 'kor']]) else 1
-
 def pt_in_rect(p, r): return p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
 
 def pt_rect_dis(p, r): return sum([max(a - b, 0, b - a - c) ** 2 for (a, b, c) in zip(r[0:2], p, r[2:4])])
@@ -82,14 +79,13 @@ def find_rect(rs, p): return min(filter(lambda x: pt_in_rect(p, x), rs), key=lam
 
 def bincount_img(img, point):
     if point is not None: return np.amax(img[*reversed(point)]) < 128
-    # Ref: https://stackoverflow.com/a/50900143 ;; detect if image bgcolor is dark or not
+    # Ref: https://stackoverflow.com/a/50900143 ; detect if image bgcolor is dark or not
     cs = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
     return np.amax(np.unravel_index(np.bincount(cs).argmax(), (256, 256, 256))) < 128 # v in hsv
 
 def read_img(filename, trim=False, point=None):
     im = cv2.imread(filename)
-    if trim:
-        # ISSUE: https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
+    if trim: # HACK: workaround for https://gitlab.gnome.org/GNOME/gnome-shell/-/issues/3143
         mk = cv2.imread(filename, cv2.IMREAD_UNCHANGED)
         eg = next((x for x in range(min(*mk.shape[:2])) if mk[x][x][3] == 255), 0)
         if eg > 0: im = im[eg:-eg, eg:-eg]
@@ -107,15 +103,12 @@ def dialog_img(filename, point):
     m2 = cv2.floodFill(np.zeros((h, w), np.uint8), m1, (0, 0), 255)[1]
     return cv2.bitwise_or(img, cv2.bitwise_or(m2, m1[1:-1, 1:-1]))
 
-def show_img(image, title='img'):
-    cv2.imshow(title, image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
 def debug_img(image, rects, point):
     for x in rects: cv2.rectangle(image, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
     cv2.circle(image, point, 20, (240, 80, 40))
-    show_img(image, 'debug')
+    cv2.imshow('img', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def crop_img(image, point, kernel):
     # Ref: https://stackoverflow.com/a/57262099
@@ -141,7 +134,7 @@ def ocr_auto(lang, mode='paragraph'):
         kn = (6, 3) if mode == 'line' else (9, 7) if mode == 'paragraph' else (9, 9)
         im = dialog_img(fn, pt) if mode == 'dialog' else read_img(fn, True)
         rc = crop_img(im, pt, kn)
-        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(im, rc, detect_cjk(lang)), lang=lang)) or None,
+        return Result(text=pytesseract.image_to_string(scale_img(im, rc), lang=lang, config=CONFIG).strip() or None,
                       area=(rc[0] + fw[0], rc[1] + fw[1], rc[2], rc[3])) if rc else Result(error=_('OCR preprocess failed. (~_~)'))
 
 def ocr_word(lang, size=(250, 50)):
@@ -152,7 +145,7 @@ def ocr_word(lang, size=(250, 50)):
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
         if not ok: return Result(error=fn)
-        dt = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang)
+        dt = pytesseract.image_to_data(read_img(fn), output_type=pytesseract.Output.DICT, lang=lang, config=CONFIG)
         bx = [[dt[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(dt['text']) if x]
         rc = find_rect(bx, (w, h))
         return Result(text=rc[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
@@ -162,11 +155,11 @@ def ocr_area(lang):
     ar = gs_dbus_call('SelectArea', None)
     with NamedTemporaryFile(suffix='.png') as f:
         ok, fn = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*ar, False, f.name)))
-        return Result(text=typeset_str(pytesseract.image_to_string(scale_img(read_img(fn), factor=detect_cjk(lang)), lang=lang)) or None,
+        return Result(text=pytesseract.image_to_string(scale_img(read_img(fn)), lang=lang, config=CONFIG).strip() or None,
                       area=ar) if ok else Result(error=fn)
 
 def exe_mode(args):
-    try: 
+    try:
         rt = (lambda m: m[0](*m[1]))({
             'word': (ocr_word, (args.lang,)),
             'area': (ocr_area, (args.lang,)),
@@ -176,9 +169,12 @@ def exe_mode(args):
             }[args.mode])
         rt.set_style(args.style, args.name)
         rt.set_quiet(args.quiet)
-        return rt if not DEBUG else Result(cancel=True)
+        return rt
+    except GLib.Error as e:
+        if e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.CANCELLED): return Result(cancel=True)
+        else: raise
     except Exception as e:
-        return Result(error=str(e))# if DEBUG else Result(cancel=True)
+        return Result(error=str(e))
 
 if __name__ == '__main__':
     main()

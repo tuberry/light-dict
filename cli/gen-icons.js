@@ -1,26 +1,31 @@
-// vim:fdm=syntax
-// by tuberry
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import Gio from 'gi://Gio';
 
-const L = 16;
-const n = 1 / 16;
-const m = n * L;
-const W = L - 2 * m;
-const fill = 'fill="#444"';
+const L = 16; // length (side)
+const M = 1 / 16; // margin
+const W = 1 - 2 * M; // width (content)
+const C = 'dimgrey'; // color
+const XFM = `fill="${C}" transform="translate(${M} ${M}) scale(${W} ${W})"`;
+const SVG = `viewBox="0 0 1 1" width="${L}" height="${L}" xmlns="http://www.w3.org/2000/svg"`;
+const save = (text, name) => Gio.File.new_for_path(ARGV.concat(name).join('/'))
+    .replace_contents(text, null, false, Gio.FileCreateFlags.NONE, null);
 
-let g = W / 8,
-    w = (W - g) / 2,
-    r = w / 4,
-    p = m + g + w;
+let a = 1 / 8,
+    b = (1 - a) / 2,
+    c = a + b,
+    d = b / 4;
 
 for(let x of ['swift', 'popup', 'disable']) {
     for(let y of ['passive', 'proactive']) {
-        Gio.File.new_for_path(ARGV.concat(`ld-${x}-${y}-symbolic.svg`).join('/')).replace_contents(`<svg xmlns="http://www.w3.org/2000/svg" width="${L}" height="${L}" version="1.1">
- <rect width="${w}" height="${w}" rx="${r}" x="${m}" y="${m}" ${fill} fill-opacity="${x === 'swift' ? 0 : 1}"/>
- <rect width="${w}" height="${w}" rx="${r}" x="${p}" y="${m}" ${fill} fill-opacity="${x === 'disable' ? 0 : 1}"/>
- <rect width="${w}" height="${w}" rx="${r}" x="${m}" y="${p}" ${fill} fill-opacity="${x === 'disable' ? 0 : 1}"/>
- <rect width="${w}" height="${w}" rx="${r}" x="${p}" y="${p}" ${fill} fill-opacity="${y === 'passive' ? 0.5 : 1}"/>
-</svg>`, null, false, Gio.FileCreateFlags.NONE, null);
+        save(`<svg ${SVG}>
+  <g ${XFM}>
+    <rect width="${b}" height="${b}" rx="${d}" x="0" y="0" opacity="${x === 'swift' ? 0 : 1}"/>
+    <rect width="${b}" height="${b}" rx="${d}" x="${c}" y="0" opacity="${x === 'disable' ? 0 : 1}"/>
+    <rect width="${b}" height="${b}" rx="${d}" x="0" y="${c}" opacity="${x === 'disable' ? 0 : 1}"/>
+    <rect width="${b}" height="${b}" rx="${d}" x="${c}" y="${c}" opacity="${y === 'passive' ? 0.5 : 1}"/>
+  </g>
+</svg>`, `ld-${x}-${y}-symbolic.svg`);
     }
 }
