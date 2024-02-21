@@ -3,7 +3,7 @@
 Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.
 
 >L, you know what? The Shinigami only eats apples. —— *Light Yagami*<br>
-[![license]](/LICENSE)
+[![license]](/LICENSE.md)
 <br>
 
 ![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
@@ -39,6 +39,29 @@ For older versions (< 44), it's recommended to install via:
 * Scroll on the iconbar to flip pages;
 * Scroll on the systray to toggle triggers;
 
+### Command
+
+#### Bash
+
+Scripts run within `bash -c`:
+
+* use envar `$LDWORD` to get the captured text (by primary selection or OCR);
+* use envar `$LDAPPID` to get the focused app (most likely where the text from);
+* enable `Await result` to show a spinner when running (eye candy for time-consuming commands);
+
+#### JS
+
+Scripts run within scoped JS `eval()` to provide DE related functions:
+
+* `LDWORD`: the captured text;
+* `LDAPPID`: the focused app;
+* `open('uri')`: open uri with default app;
+* `copy(LDWORD)`: copy `LDWORD` to clipboard;
+* `search(LDWORD)`: search `LDWORD`in Overview;
+* `key('super+a')`: simulate keyboard input;
+
+And some native JS functions like `LDWORD.toUpperCase()`.
+
 ### DBus
 
 For the [DBus] usage, see [_ldocr.fish](/cli/_ldocr.fish) as a sample reference.
@@ -51,10 +74,16 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 #### Arguments
 
-* temp: `a string` (temporary parameters for OCR)
+##### OCR
+
+* args: `a string` (temporary arguments for OCR)
+
+##### Run
+
 * type: `'^swift(:.+)?$'` | `'popup'` | `'display'` (fallback) | `'auto'` (follow the trigger)
 * text: `a string` | `''` (for primary selection)
 * info: `a string` (for the `'display'` type) | `''` (for the other types)
+* area: `[x, y, width, height]` (the source area) | `[]` (default to the cursor)
 
 ### OCR
 
@@ -76,16 +105,15 @@ yay -S python-opencv python-pytesseract # use the package manager of your distro
 
 https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4
 
-## Note
+## Notes
 
 * This extension doesn't offer any additional icons or dictionaries.
 * If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
-* If you need to customize the appearance of some widgets, try [user-theme-x].
+* If you need to customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
 
 ## Acknowledgements
 
 * [youdaodict]: the idea of popup
-* [gsconnect]: fake keyboard input
 * [swift-selection-search]: the stylesheet of iconbar
 * [capture2text]: the idea of bubble OCR (dialog OCR here)
 
@@ -96,8 +124,7 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 [user-theme-x]:https://github.com/tuberry/user-theme-x
 [youdaodict]:https://github.com/HalfdogStudio/youdaodict
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
-[license]:https://img.shields.io/badge/license-GPLv3-green.svg
-[gsconnect]:https://github.com/andyholmes/gnome-shell-extension-gsconnect
+[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
 [python-pytesseract]:https://github.com/madmaze/pytesseract
 [capture2text]:https://capture2text.sourceforge.net/

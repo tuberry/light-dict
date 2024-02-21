@@ -88,7 +88,7 @@
         <summary>shortcut to invoke the ocr script</summary>
     </key>
     <key type="av" name="swift-commands">
-        <default><![CDATA[[<{'name': <'Trans'>, 'command': <'trans -b -- LDWORD'>, 'result': <int64 1>}>]]]></default>
+        <default><![CDATA[[<{'name': <'Trans'>, 'command': <'trans -b -- "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="av" name="popup-commands">
