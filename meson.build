@@ -51,5 +51,4 @@ install_subdir(
   'src',
   strip_directory: true,
   install_dir: target_dir,
-  exclude_files: target == 'zip' and _version == 0 ? ['ldocr.py'] : []
 )

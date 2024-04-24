@@ -20,12 +20,6 @@ meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For contributing translations:
-
-```bash
-bash ./cli/update-po.sh your_lang_code # default to $LANG
-```
-
 For older versions (< 44), it's recommended to install via:
 
 ### E.G.O
@@ -88,7 +82,6 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 ### OCR
 
 * OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
-* Due to this review [guideline], the version on E.G.O no longer contains [ldocr.py](/src/ldocr.py) since GNOME 45, so you have to put it to the extension directory manually if installed that way.
 
 #### Dependencies
 
@@ -111,6 +104,30 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 * If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
 * If you need to customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
 
+## Contributions
+
+Any contribution is welcome.
+
+### Ideas
+
+For any question or idea, feel free to open an issue or PR in the repo.
+
+### Translations
+
+To update the po file from sources:
+
+```bash
+bash ./cli/update-po.sh [your_lang_code] # like zh_CN, default to $LANG
+```
+
+### Developments
+
+To install GJS TypeScript type [definitions](https://www.npmjs.com/package/@girs/gnome-shell):
+
+```bash
+npm install @girs/gnome-shell --save-dev
+```
+
 ## Acknowledgements
 
 * [youdaodict]: the idea of popup
@@ -128,4 +145,3 @@ https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
 [python-pytesseract]:https://github.com/madmaze/pytesseract
 [capture2text]:https://capture2text.sourceforge.net/
-[guideline]:https://gjs.guide/extensions/review-guidelines/review-guidelines.html#scripts-and-binaries
