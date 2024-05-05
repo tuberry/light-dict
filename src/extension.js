@@ -20,8 +20,8 @@ import {Spinner} from 'resource:///org/gnome/shell/ui/animation.js';
 
 import {Field, Result} from './const.js';
 import {SwitchItem, MenuItem, RadioItem, Systray, IconButton, offstage} from './menu.js';
-import {ROOT, PIPE, noop, omap, xnor, lot, execute, homolog, hook, capitalize, pickle} from './util.js';
-import {Setting, Extension, Mortal, Source, Cancel, Keys, DBus, view, degrade, connect, myself, _, copy, paste, open} from './fubar.js';
+import {Setting, Extension, Mortal, Source, view, connect, myself, _, copy, paste, open} from './fubar.js';
+import {ROOT, PIPE, noop, omap, xnor, lot, execute, homolog, hook, capitalize, pickle, seq} from './util.js';
 
 const DBusChecker = Main.shellDBusService._screenshotService._senderChecker;
 
@@ -109,15 +109,14 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     $buildWidgets() {
-        this.$src = degrade({
-            hide: new Source(x => setTimeout(() => this.dispel(), x), clearTimeout),
+        this.$src = Source.fuse({
+            hide: Source.newTimer(x => [() => this.dispel(), x]),
         }, this);
         this.box = hook({
             'scroll-event': this.$onScroll.bind(this),
             'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autohide / 10),
         }, new St.BoxLayout({
-            reactive: true, vertical: false, track_hover: true,
-            style_class: 'light-dict-iconbox candidate-popup-content',
+            reactive: true, vertical: false, track_hover: true, style_class: 'light-dict-iconbox candidate-popup-content',
         }));
         this.bin.set_child(this.box);
     }
@@ -191,7 +190,7 @@ class DictBar extends BoxPointer.BoxPointer {
         if(offstage(this)) return;
         this.$src.hide.dispel();
         this.close(BoxPointer.PopupAnimation.FADE);
-        Main.layoutManager.removeChrome(this);
+        Main.layoutManager.removeChrome(this); // HACK: workaround for unexpected leave event on reappearing in entered prect
     }
 }
 
@@ -208,8 +207,8 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     $buildWidgets() {
-        this.$src = degrade({
-            hide: new Source(x => setTimeout(() => this.dispel(), x), clearTimeout),
+        this.$src = Source.fuse({
+            hide: Source.newTimer(x => [() => this.dispel(), x]),
         }, this);
         this.view = hook({
             'button-press-event': this.$onClick.bind(this),
@@ -225,11 +224,8 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     $genLabel(style_class) {
-        let label = new St.Label({style_class});
-        label.clutter_text.line_wrap = true;
-        label.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
-        label.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
-        return label;
+        return seq(x => x.clutter_text.set({line_wrap: true, ellipsize: Pango.EllipsizeMode.NONE, line_wrap_mode: Pango.WrapMode.WORD_CHAR}),
+            new St.Label({style_class}));
     }
 
     $bindSettings(set) {
@@ -263,7 +259,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     setError(error) {
-        if(xnor(error, this.$error)) return;
+        if(xnor(this.$error, error)) return;
         if((this.$error = error)) this.view.add_style_pseudo_class('state-error');
         else this.view.remove_style_pseudo_class('state-error');
     }
@@ -304,25 +300,30 @@ class DictAct extends Mortal {
 
     $buildWidgets(set) {
         this.$set = set;
-        this.$src = degrade({
-            cancel: new Cancel(),
+        this.$src = Source.fuse({
+            cancel: Source.newCancel(),
             tray: new Source(() => this.$genSystray()),
-            keys: new Keys(this.$set.gset, Field.KEYS, () => this.invokeOCR()),
+            keys: Source.newKeys(this.$set.gset, Field.KEYS, () => this.invokeOCR()),
+            dwell: Source.newTimer(() => [() => this.$dwell(getPointer()), 300], false),
             invoke: new Source(() => { DBusChecker._isSenderAllowed = this.$checkInvoker.bind(this); },
                 () => { DBusChecker._isSenderAllowed = DBusSenderChecker.prototype._isSenderAllowed.bind(DBusChecker); }),
-            stroke: new Source(x => x.split(/\s+/).map((y, i) => (z => setTimeout(() => {
-                z.forEach(k => this.$kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
-                z.reverse().forEach(k => this.$kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
-            }, i * 100))(y.split('+'))), x => x?.forEach(clearTimeout)),
-            dwell: new Source(() => setInterval(() => (pos => {
-                if(still(this.pos, pos) && !still(this.pos, this.ppos)) this.emit('dict-act-dwelled', pos[2], this.ppos);
-                [this.ppos, this.pos] = [this.pos, pos];
-            })(getPointer()), 300), clearInterval),
+            stroke: new Source(x => x.split(/\s+/).map((y, i) => setTimeout(() => this.$stroke(y.split('+')), i * 100)),
+                x => x?.splice(0).forEach(clearTimeout)),
+            kbd: new Source(() => Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE),
+                x => x?.run_dispose(), true), // run_dispose to release keys immediately
         }, this);
         this.$tty = new Gio.SubprocessLauncher({flags: PIPE});
-        let spawnv = this.$tty.spawnv.bind(this.$tty);
-        this.$tty.spawnv = x => (p => (this.$pid = parseInt(p.get_identifier()), p))(spawnv(x));
-        this.$kbd = Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
+        this.$tty.spawnv = x => seq(p => { this.$pid = parseInt(p.get_identifier()); }, Gio.SubprocessLauncher.prototype.spawnv.call(this.$tty, x));
+    }
+
+    $stroke(keys) {
+        keys.forEach(k => this.$src.kbd.hub.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
+        keys.reverse().forEach(k => this.$src.kbd.hub.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
+    }
+
+    $dwell(pos) {
+        if(still(this.pos, pos) && !still(this.pos, this.ppos)) this.emit('dict-act-dwelled', pos[2], this.ppos);
+        [this.ppos, this.pos] = [this.pos, pos];
     }
 
     $bindSettings() {
@@ -363,6 +364,7 @@ class DictAct extends Mortal {
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
             prefs:   new MenuItem(_('Settings'), () => myself().openPreferences()),
         }, this.$icon);
+        this.$setBusyState(btn, this.ocr_dwell);
         btn.add_style_class_name('light-dict-systray');
         btn.connect('scroll-event', (_a, event) => {
             switch(event.get_scroll_direction()) {
@@ -373,17 +375,20 @@ class DictAct extends Mortal {
         return btn;
     }
 
+    $setBusyState(actor, busy) {
+        if(busy) actor.add_style_pseudo_class('state-busy');
+        else actor.remove_style_pseudo_class('state-busy');
+    }
+
     $onOcrDwellSet(ocr_dwell) {
         if(!this.$src.tray.active) return;
         this.$menu.dwell.setToggleState(ocr_dwell);
-        if(ocr_dwell) this.$src.tray.hub.add_style_pseudo_class('state-busy');
-        else this.$src.tray.hub.remove_style_pseudo_class('state-busy');
+        this.$setBusyState(this.$src.tray.hub, ocr_dwell);
     }
 
     $onCommandsSet(commands) {
-        let cmds = commands.recursiveUnpack();
-        if(!homolog(this.cmds, cmds, ['name'])) this.$menu?.cmds.setOptions(cmds.map(x => x.name));
-        return cmds;
+        return seq(x => homolog(this.cmds, x, ['name']) || this.$menu?.cmds.setOptions(x.map(c => c.name)),
+            commands.recursiveUnpack());
     }
 
     $onOcrEnablePut() {
@@ -447,18 +452,18 @@ class LightDict extends Mortal {
     $buildWidgets(gset) {
         this.$lck = {dwell: [], select: []};
         this.$set = new Setting(null, gset, this);
-        this.$src = degrade({
+        this.$src = Source.fuse({
             box: new DictBox(this.$set),
-            csr: new Clutter.Actor({opacity: 0, x: 1, y: 1}), // HACK: init pos to avoid misplacing at the first occurrence
+            ptr: new Clutter.Actor({opacity: 0, x: 1, y: 1}), // HACK: init pos to avoid misplacing at the first occurrence
             act: hook({'dict-act-dwelled': this.$onDwell.bind(this)}, new DictAct(this.$set)),
             bar: hook({'dict-bar-clicked': (_a, x) => { this.$lck.dwell[0] = true; this.runCmd(x); }}, new DictBar(this.$set)),
+            dbus: Source.newDBus(LD_IFACE, '/org/gnome/Shell/Extensions/LightDict', this, true),
+            hold: Source.newTimer(x => [() => this.$onButtonHold(x), 50], false),
             wait: new Source(() => this.$genSpinner()),
-            dbus: new DBus(LD_IFACE, '/org/gnome/Shell/Extensions/LightDict', this, true),
-            hold: new Source(x => setInterval(() => this.$onButtonHold(x), 50), clearInterval),
         }, this);
         connect(this, global.display.get_selection(), 'owner-changed', this.$onSelect.bind(this),
             global.display, 'notify::focus-window', () => { this.dispelAll(); this.$syncApp(); });
-        Main.uiGroup.add_child(this.$src.csr);
+        Main.uiGroup.add_child(this.$src.ptr);
         this.$syncApp();
     }
 
@@ -484,8 +489,8 @@ class LightDict extends Mortal {
         let [x, y, w, h] = area && area[3] < getDisplay().at(1) / 2 ? area
             : (s => (([a, b], c, d) => [a - c, b - c, d, d])(getPointer(), s / 2, s * 1.15))(Meta.prefs_get_cursor_size());
         this.center = area && w > 250;
-        this.$src.csr.set_position(x, y);
-        this.$src.csr.set_size(w, h);
+        this.$src.ptr.set_position(x, y);
+        this.$src.ptr.set_size(w, h);
     }
 
     $syncApp() {
@@ -504,7 +509,7 @@ class LightDict extends Mortal {
         let {box, bar, act} = this.$src;
         if(this.$lck.dwell.pop() || box.prect && !outside(box.prect, ppos) || act.ocr_mode === OCRMode.AREA ||
            box.visible && box.view.hover || bar.visible && bar.box.hover || this.$denyMdf(mdf)) return;
-        act.invokeOCR(`${act.ocr_cmd} --quiet`);
+        act.invokeOCR('--quiet');
     }
 
     dispelAll() {
@@ -543,7 +548,7 @@ class LightDict extends Mortal {
                 }
             } catch(e) {
                 this.$src.wait.toggle(false);
-                if(!Cancel.cancelled(e)) this.display(e.message, true);
+                if(!Source.cancelled(e)) this.display(e.message, true);
             }
         } else {
             execute(command, env).catch(logError);
@@ -580,12 +585,12 @@ class LightDict extends Mortal {
     }
 
     popup() {
-        this.$src.bar.setPosition(this.$src.csr, 1 / 2);
+        this.$src.bar.setPosition(this.$src.ptr, 1 / 2);
         this.$src.bar.summon(this.app, this.txt);
     }
 
     display(info, error) {
-        this.$src.box.setPosition(this.$src.csr, this.center ? 1 / 2 : 1 / 10);
+        this.$src.box.setPosition(this.$src.ptr, this.center ? 1 / 2 : 1 / 10);
         this.$src.box.summon(info, this.txt, error);
     }
 

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gnome-shell-extension-light-dict 55\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-04-24 18:17+0800\n"
+"POT-Creation-Date: 2024-05-02 14:18+0800\n"
 "PO-Revision-Date: 2021-08-18 13:20+0800\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,286 +17,286 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:322
+#: src/ui.js:342
 msgid "All"
 msgstr "全部"
 
-#: src/ui.js:322
+#: src/ui.js:342
 msgid "Normal"
 msgstr "常规"
 
-#: src/ui.js:322
+#: src/ui.js:342
 msgid "Symbolic"
 msgstr "符号"
 
-#: src/ui.js:360
+#: src/ui.js:380
 msgid "Clear"
 msgstr "清除"
 
-#: src/ui.js:462
+#: src/ui.js:482
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:606
+#: src/ui.js:626
 msgid "Click or press ENTER to commit changes"
 msgstr "单击或按回车提交更改"
 
-#: src/prefs.js:213
+#: src/prefs.js:217
 msgid "Show result"
 msgstr "显示结果"
 
-#: src/prefs.js:214
+#: src/prefs.js:218
 msgid "Copy result"
 msgstr "复制结果"
 
-#: src/prefs.js:215
+#: src/prefs.js:219
 msgid "Await result"
 msgstr "等待结果"
 
-#: src/prefs.js:216
+#: src/prefs.js:220
 msgid "Select result"
 msgstr "选取结果"
 
-#: src/prefs.js:217
+#: src/prefs.js:221
 msgid "Commit result"
 msgstr "提交结果"
 
-#: src/prefs.js:255
+#: src/prefs.js:259
 #, javascript-format
 msgid "Version %d"
 msgstr "版本 %d"
 
-#: src/prefs.js:256
+#: src/prefs.js:260
 msgid ""
 "Lightweight extension for on-the-fly manipulation to primary selections, "
 "especially optimized for Dictionary lookups."
 msgstr "即时操作所选文本的轻量扩展，为查词而生。"
 
-#: src/prefs.js:265
+#: src/prefs.js:269
 msgid "Get the selected text via the <b>LDWORD</b> (environment) variable"
 msgstr "通过(环境)变量<b>LDWORD</b>获取所选文本"
 
-#: src/prefs.js:266
+#: src/prefs.js:270
 msgid "Leave RegExp/App list blank for no such restriction"
 msgstr "正则表达式或应用列表留空则无此限制"
 
-#: src/prefs.js:267
+#: src/prefs.js:271
 msgid "Middle click the panel to copy the result to clipboard"
 msgstr "中键点击气泡复制其结果到系统剪贴板"
 
-#: src/prefs.js:268
+#: src/prefs.js:272
 msgid "Simulate keyboard input in JS statement: <tt>key(\"ctrl+c\")</tt>"
 msgstr "JS语句模拟键盘输入: <tt>key(\"ctrl+c\")</tt>"
 
-#: src/prefs.js:269
+#: src/prefs.js:273
 msgid "Visit the <u>website</u> above for more information and support"
 msgstr "访问上面的<u>网站</u>以获取更多信息与支持"
 
-#: src/prefs.js:273
+#: src/prefs.js:277
 msgid "Tips"
 msgstr "提示"
 
-#: src/prefs.js:308 src/prefs.js:423
+#: src/prefs.js:314 src/prefs.js:421
 msgid "Click the app icon to remove"
 msgstr "点击应用图标移除"
 
-#: src/prefs.js:309
+#: src/prefs.js:315
 msgid "Proactive"
 msgstr "主动"
 
-#: src/prefs.js:309
+#: src/prefs.js:315
 msgid "Passive"
 msgstr "被动"
 
-#: src/prefs.js:310 src/prefs.js:423
+#: src/prefs.js:316 src/prefs.js:421
 msgid "Allowlist"
 msgstr "白名单"
 
-#: src/prefs.js:310
+#: src/prefs.js:316
 msgid "Blocklist"
 msgstr "黑名单"
 
-#: src/prefs.js:311 src/prefs.js:576 src/extension.js:361
+#: src/prefs.js:317 src/prefs.js:570 src/extension.js:362
 msgid "Swift"
 msgstr "即时"
 
-#: src/prefs.js:311 src/prefs.js:349 src/prefs.js:577
+#: src/prefs.js:317 src/prefs.js:347 src/prefs.js:571
 msgid "Popup"
 msgstr "弹出"
 
-#: src/prefs.js:311
+#: src/prefs.js:317
 msgid "Disable"
 msgstr "禁用"
 
-#: src/prefs.js:320
+#: src/prefs.js:318
 msgid "Word"
 msgstr "单词"
 
-#: src/prefs.js:320
+#: src/prefs.js:318
 msgid "Paragraph"
 msgstr "段落"
 
-#: src/prefs.js:320
+#: src/prefs.js:318
 msgid "Area"
 msgstr "区域"
 
-#: src/prefs.js:320
+#: src/prefs.js:318
 msgid "Line"
 msgstr "单行"
 
-#: src/prefs.js:320
+#: src/prefs.js:318
 msgid "Dialog"
 msgstr "对话"
 
-#: src/prefs.js:321 src/extension.js:362
+#: src/prefs.js:319 src/extension.js:363
 msgid "OCR"
 msgstr "取词"
 
-#: src/prefs.js:321
+#: src/prefs.js:319
 msgid "Depends on python-opencv and python-pytesseract"
 msgstr "依赖于 python-opencv 和 python-pytesseract"
 
-#: src/prefs.js:324
+#: src/prefs.js:322
 msgid "Parameters"
 msgstr "参数"
 
-#: src/prefs.js:327
+#: src/prefs.js:328
 msgid "Shortcut"
 msgstr "快捷键"
 
-#: src/prefs.js:328 src/extension.js:357
+#: src/prefs.js:329 src/extension.js:358
 msgid "Dwell OCR"
 msgstr "悬停取词"
 
-#: src/prefs.js:329
+#: src/prefs.js:330
 msgid "Work mode"
 msgstr "工作模式"
 
-#: src/prefs.js:337
+#: src/prefs.js:334
 msgid "Enable systray"
-msgstr "托盘图标"
+msgstr "系统托盘"
 
-#: src/prefs.js:338
+#: src/prefs.js:335
 msgid "Trigger style"
 msgstr "触发风格"
 
-#: src/prefs.js:338
+#: src/prefs.js:335
 msgid "Passive means that pressing Alt to trigger"
 msgstr "被动意为按住Alt触发"
 
-#: src/prefs.js:339 src/prefs.js:423
+#: src/prefs.js:336 src/prefs.js:421
 msgid "App list"
 msgstr "应用名单"
 
-#: src/prefs.js:341
+#: src/prefs.js:339
 msgid "Other"
 msgstr "其它"
 
-#: src/prefs.js:342
+#: src/prefs.js:340
 msgid "Trim blank lines"
 msgstr "去除空行"
 
-#: src/prefs.js:343
+#: src/prefs.js:341
 msgid "Autohide interval"
 msgstr "隐藏延迟"
 
-#: src/prefs.js:344
+#: src/prefs.js:342
 msgid "RegExp filter"
 msgstr "正则过滤"
 
-#: src/prefs.js:345
+#: src/prefs.js:343
 msgid "Panel"
 msgstr "气泡"
 
-#: src/prefs.js:346
+#: src/prefs.js:344
 msgid "Hide title"
 msgstr "隐藏标题"
 
-#: src/prefs.js:347
+#: src/prefs.js:345
 msgid "Right command"
 msgstr "右键命令"
 
-#: src/prefs.js:347
+#: src/prefs.js:345
 msgid "Right click to run and hide panel"
 msgstr "右键运行并关闭气泡"
 
-#: src/prefs.js:348
+#: src/prefs.js:346
 msgid "Left command"
 msgstr "左键命令"
 
-#: src/prefs.js:348
+#: src/prefs.js:346
 msgid "Left click to run"
 msgstr "左键运行"
 
-#: src/prefs.js:350
+#: src/prefs.js:348
 msgid "Enable tooltip"
 msgstr "启用提示"
 
-#: src/prefs.js:351
+#: src/prefs.js:349
 msgid "Page size"
 msgstr "页面容量"
 
-#: src/prefs.js:419
+#: src/prefs.js:417
 msgid "Run command"
 msgstr "运行命令"
 
-#: src/prefs.js:420
-msgid "Command type"
-msgstr "命令类型"
-
-#: src/prefs.js:421
+#: src/prefs.js:418
 msgid "Icon name"
 msgstr "图标名称"
 
-#: src/prefs.js:424
+#: src/prefs.js:419
+msgid "Command type"
+msgstr "命令类型"
+
+#: src/prefs.js:422
 msgid "RegExp matcher"
 msgstr "正则匹配"
 
-#: src/prefs.js:425
+#: src/prefs.js:423
 msgid "Icon tooltip"
 msgstr "图标提示"
 
-#: src/prefs.js:444
+#: src/prefs.js:442
 msgid "Add"
 msgstr "添加"
 
-#: src/prefs.js:445
+#: src/prefs.js:443
 msgid "Remove"
 msgstr "移除"
 
-#: src/prefs.js:446
+#: src/prefs.js:444
 msgid "Copy"
 msgstr "复制"
 
-#: src/prefs.js:447
+#: src/prefs.js:445
 msgid "Paste"
 msgstr "粘贴"
 
-#: src/prefs.js:499
+#: src/prefs.js:482
 msgid "Content copied"
 msgstr "内容已复制"
 
-#: src/prefs.js:507
+#: src/prefs.js:490
 msgid "Pasted content parsing failed"
 msgstr "粘贴内容解析失败"
 
-#: src/prefs.js:575
+#: src/prefs.js:569
 msgid "Basic"
 msgstr "基本"
 
-#: src/prefs.js:578
+#: src/prefs.js:572
 msgid "About"
 msgstr "关于"
 
-#: src/extension.js:358
+#: src/extension.js:359
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: src/extension.js:360
+#: src/extension.js:361
 msgid "Trigger"
 msgstr "触发"
 
-#: src/extension.js:364
+#: src/extension.js:365
 msgid "Settings"
 msgstr "设置"
 
