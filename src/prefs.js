@@ -16,7 +16,7 @@ Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
 const {_, _GTK, vprop, gprop, myself}  = UI;
 
-class AppItem extends GObject.Object {
+class AppItem extends Gio.DesktopAppInfo {
     static {
         GObject.registerClass({
             Properties: gprop({
@@ -40,7 +40,7 @@ class AppLabel extends UI.IconLabel {
 
     constructor(...args) {
         super(...args);
-        this.append(this.$check = new Gtk.Image({icon_name: 'object-select-symbolic'}));
+        this.append(this.$check = new Gtk.Image({iconName: 'object-select-symbolic'}));
     }
 }
 
@@ -59,12 +59,12 @@ class AppsDialog extends UI.AppDialog {
                 unbind: (_f, {child, item}) => UI.Broker.unbind(item, child.$check),
             }, new Gtk.SignalListItemFactory()),
             filter = Gtk.CustomFilter.new(null),
-            model = new Gio.ListStore({item_type: AppItem}),
+            model = new Gio.ListStore({itemType: AppItem}),
             select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
             content = hook({activate: () => select.get_selected_item().toggle()},
-                new Gtk.ListView({single_click_activate: true, model: select, factory, vexpand: true}));
-        if(opts?.no_display) Gio.AppInfo.get_all().forEach(x => model.append(new AppItem(x)));
-        else Gio.AppInfo.get_all().filter(x => x.should_show()).forEach(x => model.append(new AppItem(x)));
+                new Gtk.ListView({singleClickActivate: true, model: select, factory, vexpand: true}));
+        if(opts?.noDisplay) model.splice(0, 0, Gio.AppInfo.get_all().map(x => new AppItem(x)));
+        else model.splice(0, 0, Gio.AppInfo.get_all().filter(x => x.should_show()).map(x => new AppItem(x)));
         this.getSelected = () => [...model].filter(x => x.selected).map(x => x.app.get_id()).join(',');
         this.initSelected = s => [...model].forEach(x => { x.selected = s.has(x.app.get_id()); });
         filter.set_search = s => filter.set_filter_func(s ? (a => x => a.has(x.app.get_id()))(new Set(Gio.DesktopAppInfo.search(s).flat())) : null);
@@ -81,8 +81,8 @@ class Apps extends UI.DialogButtonBase {
         super(param, null);
         if(tip2) this.$btn.set_tooltip_text(tip2);
         this.$btn.set_icon_name('list-add-symbolic');
-        this.$box = new UI.Box(null, {hexpand: true, can_focus: false, tooltip_text: tip1 || ''});
-        this.prepend(new Gtk.ScrolledWindow({child: this.$box, vexpand: false, css_name: 'entry', vscrollbar_policy: Gtk.PolicyType.NEVER}));
+        this.$box = new UI.Box(null, {hexpand: true, canFocus: false, tooltipText: tip1 || ''});
+        this.prepend(new Gtk.ScrolledWindow({child: this.$box, vexpand: false, cssName: 'entry', vscrollbarPolicy: Gtk.PolicyType.NEVER}));
         this.value = '';
     }
 
@@ -93,8 +93,8 @@ class Apps extends UI.DialogButtonBase {
     $genApp(id) {
         let app = Gio.DesktopAppInfo.new(id);
         return hook({clicked: () => { this.$gvalue.delete(id); this.value = [...this.$gvalue].join(','); }}, app
-            ? new Gtk.Button({child: new Gtk.Image({gicon: app.get_icon()}), tooltip_text: app.get_display_name(), has_frame: false})
-            : new Gtk.Button({icon_name: 'help-browser-symbolic', tooltip_text: id, has_frame: false}));
+            ? new Gtk.Button({child: new Gtk.Image({gicon: app.get_icon()}), tooltipText: app.get_display_name(), hasFrame: false})
+            : new Gtk.Button({iconName: 'help-browser-symbolic', tooltipText: id, hasFrame: false}));
     }
 
     $onClick() {
@@ -149,9 +149,9 @@ class SideRow extends Gtk.ListBoxRow {
         this.$btn = hook({toggled: () => this.emit('toggled', this.get_index(), this.$btn.active)},
             new UI.Check({group: group ? new UI.Check() : null}));
         this.$txt = hook({changed: () => !this.$txt.editing && this.emit('changed', this.get_index(), this.$txt.text)},
-            new Gtk.EditableLabel({max_width_chars: 9}));
-        this.$img = new Gtk.Image({icon_name: 'open-menu-symbolic'});
-        this.set_child(new UI.Box([this.$btn, this.$txt, this.$img], {spacing: 5, margin_end: 5}));
+            new Gtk.EditableLabel({maxWidthChars: 9}));
+        this.$img = new Gtk.Image({iconName: 'list-drag-handle-symbolic'});
+        this.set_child(new UI.Box([this.$btn, this.$txt, this.$img], {spacing: 5, marginEnd: 5}));
         this.$txt.get_delegate().connect('activate', () => this.emit('changed', this.get_index(), this.$txt.text));
         item.bind_property_full('cmd', this.$txt, 'text', GObject.BindingFlags.SYNC_CREATE, (_b, v) => [true, v.name], null);
         if(group) item.bind_property('enable', this.$btn, 'active', GObject.BindingFlags.SYNC_CREATE);
@@ -164,10 +164,10 @@ class SideRow extends Gtk.ListBoxRow {
         handle.add_controller(hook({
             prepare: () => Gdk.ContentProvider.new_for_value(this),
             drag_begin: (_s, drag) => {
-                let {width: width_request, height: height_request} = this.get_allocation();
-                let row = new SideRow(item, this.$grp ? new UI.Check() : null, {width_request, height_request, css_name: 'ld-dragging'});
+                let {width: widthRequest, height: heightRequest} = this.get_allocation();
+                let row = new SideRow(item, this.$grp ? new UI.Check() : null, {widthRequest, heightRequest, cssName: 'ld-dragging'});
                 Gtk.DragIcon.get_for_drag(drag).set_child(row);
-                drag.set_hotspot(width_request - this.$img.get_width() / 2, height_request - this.$img.get_height() / 2);
+                drag.set_hotspot(widthRequest - this.$img.get_width() / 2, heightRequest - this.$img.get_height() / 2);
             },
         }, new Gtk.DragSource({actions: Gdk.DragAction.MOVE})));
         this.add_controller(hook({
@@ -231,7 +231,7 @@ class PrefsAbout extends UI.PrefPage {
     constructor(param, gset) {
         super(param);
         this.addToGroup(new UI.Box([this.$genIcons(gset), this.$genInfo(), this.$genTips(), new Gtk.Box({vexpand: true}),
-            this.$genLicense()], {orientation: Gtk.Orientation.VERTICAL, margin_top: 30, margin_bottom: 30, valign: Gtk.Align.FILL}, false));
+            this.$genLicense()], {orientation: Gtk.Orientation.VERTICAL, marginTop: 30, marginBottom: 30, valign: Gtk.Align.FILL}, false));
     }
 
     $genIcons(gset) {
@@ -240,12 +240,12 @@ class PrefsAbout extends UI.PrefPage {
             .slice(0, gset.get_uint(Field.PGSZ))
             .flatMap(({icon}) => icon ? [icon] : [])
             .reduce((p, x, i) => Object.assign(p, {[i]: x}), ['accessories-dictionary-symbolic'])
-            .map(icon_name => new Gtk.Image({icon_name, icon_size: Gtk.IconSize.LARGE})),
-        {halign: Gtk.Align.CENTER, margin_bottom: 30}, false);
+            .map(iconName => new Gtk.Image({iconName, iconSize: Gtk.IconSize.LARGE})),
+        {halign: Gtk.Align.CENTER, marginBottom: 30}, false);
     }
 
     $genLabel(label) {
-        return new Gtk.Label({label, wrap: true, use_markup: true, justify: Gtk.Justification.CENTER});
+        return new Gtk.Label({label, wrap: true, useMarkup: true, justify: Gtk.Justification.CENTER});
     }
 
     $genInfo() {
@@ -267,7 +267,7 @@ class PrefsAbout extends UI.PrefPage {
                     _('Middle click the panel to copy the result to clipboard'),
                     _('Simulate keyboard input in JS statement: <tt>key("ctrl+c")</tt>'),
                     _('Visit the <u>website</u> above for more information and support'),
-                ].map((x, i) => new Gtk.Label({halign: Gtk.Align.START, use_markup: true, label: `${i}. ${x}`})),
+                ].map((x, i) => new Gtk.Label({halign: Gtk.Align.START, useMarkup: true, label: `${i}. ${x}`})),
                 {spacing: 2, orientation: Gtk.Orientation.VERTICAL}, false),
             }),
             label: _('Tips'), halign: Gtk.Align.CENTER, direction: Gtk.ArrowType.NONE,
@@ -373,7 +373,7 @@ class PrefsPopup extends UI.PrefPage {
             func(this.$cmds);
             gset.set_value(key, pickle([...this.$cmds].map(x => x.cmd), false));
             if(grab >= 0) this.grabFocus(grab, name);
-            if(pane) this.$updatePaneSensitive(this.$cmds.n_items > 0);
+            if(pane) this.$updatePaneSensitive(this.$cmds.nItems > 0);
         };
         this.$buildUI(gset, key);
     }
@@ -381,7 +381,7 @@ class PrefsPopup extends UI.PrefPage {
     $buildUI(gset, key) {
         let pane = this.$genPane();
         let side = this.$genSide(gset.get_value(key).recursiveUnpack(), key === Field.SCMDS);
-        this.addToGroup(new Gtk.Frame({child: new UI.Box([side, pane], {vexpand: false, css_name: 'list'})}));
+        this.addToGroup(new Gtk.Frame({child: new UI.Box([side, pane], {vexpand: false, cssName: 'list'})}));
         this.grabFocus(0);
     }
 
@@ -389,14 +389,14 @@ class PrefsPopup extends UI.PrefPage {
         this.$cmds = new Gio.ListStore({item_type: SideItem});
         this.$cmds.splice(0, 0, cmds.map(x => new SideItem(x)));
         this.$list = hook({'row-selected': (_w, row) => row && this.$onSelect(row.get_index())},
-            new Gtk.ListBox({selection_mode: Gtk.SelectionMode.SINGLE, vexpand: true}));
+            new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true}));
         this.$list.add_css_class('data-table');
         this.$list.bind_model(this.$cmds, item => hook({
             dropped: (_w, f, t) => this.$onDrop(f, t),
             changed: (_w, p, v) => this.$onChange(p, 'name',  v),
             toggled: (_w, p, v) => this.$onChange(p, 'enable', v),
         }, new SideRow(item, group)));
-        return new UI.Box([this.$genTools(), new Gtk.Separator(), new Gtk.ScrolledWindow({overlay_scrolling: false, child: this.$list})],
+        return new UI.Box([this.$genTools(), new Gtk.Separator(), new Gtk.ScrolledWindow({overlayScrolling: false, child: this.$list})],
             {valign: Gtk.Align.FILL, orientation: Gtk.Orientation.VERTICAL});
     }
 
@@ -437,8 +437,7 @@ class PrefsPopup extends UI.PrefPage {
             ['list-remove-symbolic', _('Remove'), () => this.$onRemove()],
             ['edit-copy-symbolic',   _('Copy'),   () => this.$onCopy()],
             ['edit-paste-symbolic',  _('Paste'),  () => this.$onPaste()],
-        ].map(([icon_name, tooltip_text, clicked]) => hook({clicked},
-            new Gtk.Button({icon_name, tooltip_text, has_frame: false}))));
+        ].map(([x, y, z]) => hook({clicked: z}, new Gtk.Button({iconName: x, tooltipText: y, hasFrame: false}))));
     }
 
     get selected() {
@@ -562,10 +561,10 @@ export default class PrefsWidget extends UI.Prefs {
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT}/icons`);
         let gset = this.getSettings();
         [
-            new PrefsBasic({title: _('Basic'), icon_name: 'ld-disable-passive-symbolic'}, gset),
-            new PrefsSwift({title: _('Swift'), icon_name: 'ld-swift-passive-symbolic'}, gset, Field.SCMDS),
-            new PrefsPopup({title: _('Popup'), icon_name: 'ld-popup-passive-symbolic'}, gset, Field.PCMDS),
-            new PrefsAbout({title: _('About'), icon_name: 'help-about-symbolic'}, gset),
+            new PrefsBasic({title: _('Basic'), iconName: 'ld-disable-passive-symbolic'}, gset),
+            new PrefsSwift({title: _('Swift'), iconName: 'ld-swift-passive-symbolic'}, gset, Field.SCMDS),
+            new PrefsPopup({title: _('Popup'), iconName: 'ld-popup-passive-symbolic'}, gset, Field.PCMDS),
+            new PrefsAbout({title: _('About'), iconName: 'help-about-symbolic'}, gset),
         ].forEach(x => win.add(x));
     }
 }

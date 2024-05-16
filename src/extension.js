@@ -76,11 +76,11 @@ class DictPop extends IconButton {
     }
 
     constructor(click) {
-        super({style_class: 'light-dict-button candidate-box'}, () => click(this.$index), null);
+        super({styleClass: 'light-dict-button candidate-box'}, () => click(this.$index), null);
     }
 
-    setCommand({icon, name, tooltip}, index, show_tip) {
-        this.$src.tip.revive(show_tip ? tooltip : '');
+    setCommand({icon, name, tooltip}, index, showTip) {
+        this.$src.tip.revive(showTip ? tooltip : '');
         if(icon) {
             this.set_label('');
             this.set_icon_name(icon);
@@ -103,7 +103,7 @@ class DictBar extends BoxPointer.BoxPointer {
 
     constructor(set) {
         super(St.Side.BOTTOM);
-        this.set({visible: false, style_class: 'light-dict-bar-boxpointer'});
+        this.set({visible: false, styleClass: 'light-dict-bar-boxpointer'});
         this.$buildWidgets();
         this.$bindSettings(set);
     }
@@ -114,19 +114,19 @@ class DictBar extends BoxPointer.BoxPointer {
         }, this);
         this.box = hook({
             'scroll-event': this.$onScroll.bind(this),
-            'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autohide / 10),
+            'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autoHide / 10),
         }, new St.BoxLayout({
-            reactive: true, vertical: false, track_hover: true, style_class: 'light-dict-iconbox candidate-popup-content',
+            reactive: true, vertical: false, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content',
         }));
         this.bin.set_child(this.box);
     }
 
     $bindSettings(set) {
         this.$set = set.attach({
-            page_size: [Field.PGSZ,  'uint'],
-            autohide:  [Field.ATHD,  'uint'],
-            tooltip:   [Field.TIP,   'boolean', x => this.$onTooltipSet(x)],
-            cmds:      [Field.PCMDS, 'value',   x => this.$onCommandsSet(x)],
+            pageSize: [Field.PGSZ,  'uint'],
+            autoHide: [Field.ATHD,  'uint'],
+            tooltip:  [Field.TIP,   'boolean', x => this.$onTooltipSet(x)],
+            cmds:     [Field.PCMDS, 'value',   x => this.$onCommandsSet(x)],
         }, this);
     }
 
@@ -150,19 +150,19 @@ class DictBar extends BoxPointer.BoxPointer {
 
     $getPages() {
         let length = this.cmds.reduce((p, x) => p + (x.$visible ? 1 : 0), 0);
-        return length && this.page_size ? Math.ceil(length / this.page_size) : 0;
+        return length && this.pageSize ? Math.ceil(length / this.pageSize) : 0;
     }
 
     $updatePages(pages) {
         let icons = [...this.box].filter((x, i) => (x.visible = this.cmds[i].$visible));
         if(pages < 2) return;
         this.$index = this.$index < 1 ? pages : this.$index > pages ? 1 : this.$index ?? 1;
-        if(this.$index === pages && icons.length % this.page_size) {
-            let start = icons.length - this.page_size;
+        if(this.$index === pages && icons.length % this.pageSize) {
+            let start = icons.length - this.pageSize;
             icons.forEach((x, i) => view(i >= start, x));
         } else {
-            let end = this.$index * this.page_size;
-            let start = (this.$index - 1) * this.page_size;
+            let end = this.$index * this.pageSize;
+            let start = (this.$index - 1) * this.pageSize;
             icons.forEach((x, i) => view(i >= start && i < end, x));
         }
     }
@@ -183,7 +183,7 @@ class DictBar extends BoxPointer.BoxPointer {
         if(offstage(this)) Main.layoutManager.addTopChrome(this);
         this.$updatePages(pages);
         this.open(BoxPointer.PopupAnimation.NONE);
-        this.$src.hide.revive(this.autohide);
+        this.$src.hide.revive(this.autoHide);
     }
 
     dispel() {
@@ -201,7 +201,7 @@ class DictBox extends BoxPointer.BoxPointer {
 
     constructor(set) {
         super(St.Side.TOP);
-        this.set({visible: false, style_class: 'light-dict-box-boxpointer'});
+        this.set({visible: false, styleClass: 'light-dict-box-boxpointer'});
         this.$buildWidgets();
         this.$bindSettings(set);
     }
@@ -212,10 +212,10 @@ class DictBox extends BoxPointer.BoxPointer {
         }, this);
         this.view = hook({
             'button-press-event': this.$onClick.bind(this),
-            'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autohide / 10),
+            'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autoHide / 10),
         }, new St.ScrollView({
-            child: new St.BoxLayout({vertical: true, style_class: 'light-dict-content'}),
-            style_class: 'light-dict-view', overlay_scrollbars: true, reactive: true, track_hover: true,
+            child: new St.BoxLayout({vertical: true, styleClass: 'light-dict-content'}),
+            styleClass: 'light-dict-view', overlayScrollbars: true, reactive: true, trackHover: true,
         }));
         this.$text = this.$genLabel('light-dict-text');
         this.$info = this.$genLabel('light-dict-info');
@@ -223,17 +223,17 @@ class DictBox extends BoxPointer.BoxPointer {
         this.bin.set_child(this.view);
     }
 
-    $genLabel(style_class) {
-        return seq(x => x.clutter_text.set({line_wrap: true, ellipsize: Pango.EllipsizeMode.NONE, line_wrap_mode: Pango.WrapMode.WORD_CHAR}),
-            new St.Label({style_class}));
+    $genLabel(styleClass) {
+        return seq(x => x.clutterText.set({lineWrap: true, ellipsize: Pango.EllipsizeMode.NONE, lineWrapMode: Pango.WrapMode.WORD_CHAR}),
+            new St.Label({styleClass}));
     }
 
     $bindSettings(set) {
         this.$set = set.attach({
-            autohide:   [Field.ATHD, 'uint'],
-            lcommand:   [Field.LCMD, 'string'],
-            rcommand:   [Field.RCMD, 'string'],
-            hide_title: [Field.HDTT, 'boolean', x => view(!x, this.$text)],
+            autoHide:  [Field.ATHD, 'uint'],
+            leftCmd:   [Field.LCMD, 'string'],
+            rightCmd:  [Field.RCMD, 'string'],
+            hideTitle: [Field.HDTT, 'boolean', x => view(!x, this.$text)],
         }, this);
     }
 
@@ -243,18 +243,18 @@ class DictBox extends BoxPointer.BoxPointer {
             limit = theme.get_max_height();
         if(limit <= 0) limit = getDisplay().at(1) * 15 / 32;
         let scroll = h >= limit;
-        let count = scroll ? w * limit / (Clutter.Settings.get_default().font_dpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
+        let count = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
             : [...this.$info.get_text()].reduce((p, x) => p + (GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1), 0);
-        this.$delay = Math.clamp(this.autohide * count / 36, 1000, 20000);
-        this.view.vscrollbar_policy = scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER; // HACK: workaround for trailing lines with default policy (AUTOMATIC)
-        this.view.get_vadjustment().set_value(0);
+        this.$delay = Math.clamp(this.autoHide * count / 36, 1000, 20000);
+        this.view.vscrollbarPolicy = scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER; // HACK: workaround for trailing lines with default policy (AUTOMATIC)
+        this.view.vadjustment.set_value(0);
     }
 
     $onClick(_a, event) {
         switch(event.get_button()) {
         case Clutter.BUTTON_MIDDLE: copy(this.$info.get_text().trimStart()); break;
-        case Clutter.BUTTON_PRIMARY: if(this.lcommand) execute(this.lcommand, {LDWORD: this.$txt}).catch(noop); break;
-        case Clutter.BUTTON_SECONDARY: if(this.rcommand) execute(this.rcommand, {LDWORD: this.$txt}).catch(noop); this.dispel(); break;
+        case Clutter.BUTTON_PRIMARY: if(this.leftCmd) execute(this.leftCmd, {LDWORD: this.$txt}).catch(noop); break;
+        case Clutter.BUTTON_SECONDARY: if(this.rightCmd) execute(this.rightCmd, {LDWORD: this.$txt}).catch(noop); this.dispel(); break;
         }
     }
 
@@ -272,14 +272,14 @@ class DictBox extends BoxPointer.BoxPointer {
         try {
             Pango.parse_markup(info, -1, '');
             // HACK: workaround for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/1125
-            this.$info.clutter_text.set_markup(info.startsWith('<') ? ` ${info}` : info);
+            this.$info.clutterText.set_markup(info.startsWith('<') ? ` ${info}` : info);
         } catch(e) {
             this.$info.set_text(info);
         }
         if(this.$text.visible) this.$text.set_text(text);
         this.$updateScrollAndDelay();
         this.open(BoxPointer.PopupAnimation.NONE);
-        this.$src.hide.revive(this.autohide);
+        this.$src.hide.revive(this.autoHide);
     }
 
     dispel() {
@@ -310,15 +310,16 @@ class DictAct extends Mortal {
             stroke: new Source(x => x.split(/\s+/).map((y, i) => setTimeout(() => this.$stroke(y.split('+')), i * 100)),
                 x => x?.splice(0).forEach(clearTimeout)),
             kbd: new Source(() => Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE),
-                x => x?.run_dispose(), true), // run_dispose to release keys immediately
+                x => x?.run_dispose(), true), // NOTE: run_dispose to release keys immediately
         }, this);
         this.$tty = new Gio.SubprocessLauncher({flags: PIPE});
         this.$tty.spawnv = x => seq(p => { this.$pid = parseInt(p.get_identifier()); }, Gio.SubprocessLauncher.prototype.spawnv.call(this.$tty, x));
     }
 
     $stroke(keys) {
-        keys.forEach(k => this.$src.kbd.hub.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
-        keys.reverse().forEach(k => this.$src.kbd.hub.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
+        let kbd = this.$src.kbd.hub;
+        keys.forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
+        keys.reverse().forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
     }
 
     $dwell(pos) {
@@ -328,12 +329,12 @@ class DictAct extends Mortal {
 
     $bindSettings() {
         this.$set.attach({
-            ocr_param: [Field.OCRP, 'string'],
-            ocr_mode:  [Field.OCRS, 'uint', x => this.$menu?.ocr.setChosen(x)],
+            ocrParam: [Field.OCRP, 'string'],
+            ocrMode:  [Field.OCRS, 'uint', x => this.$menu?.ocr.setChosen(x)],
         }, this, () => this.$onOcrArgsPut()).attach({
-            ocr_keys:   [Field.KEY,  'boolean'],
-            ocr_dwell:  [Field.DOCR, 'boolean', x => this.$onOcrDwellSet(x)],
-            ocr_enable: [Field.OCR,  'boolean', x => view(x, this.$menu?.ocr, this.$menu?.dwell)],
+            ocrKeys:   [Field.KEY,  'boolean'],
+            ocrDwell:  [Field.DOCR, 'boolean', x => this.$onOcrDwellSet(x)],
+            enableOcr: [Field.OCR,  'boolean', x => view(x, this.$menu?.ocr, this.$menu?.dwell)],
         }, this, () => this.$onOcrEnablePut()).attach({
             trigger: [Field.TRG, 'uint', x => this.$menu?.trigger.setChosen(x)],
             passive: [Field.PSV, 'uint', x => !!x, x => this.$menu?.passive.setToggleState(x)],
@@ -353,18 +354,18 @@ class DictAct extends Mortal {
     }
 
     $genSystray() {
-        let ocr = {visible: this.ocr_enable};
+        let ocr = {visible: this.enableOcr};
         let btn = new Systray({
-            dwell:   new SwitchItem(_('Dwell OCR'), this.ocr_dwell, x => this.$set.set('ocr_dwell', x, this), null, ocr),
+            dwell:   new SwitchItem(_('Dwell OCR'), this.ocrDwell, x => this.$set.set('ocrDwell', x, this), null, ocr),
             passive: new SwitchItem(_('Passive mode'), this.passive, x => this.$set.set('passive', x ? 1 : 0, this)),
             sep1:    new PopupMenu.PopupSeparatorMenuItem(),
             trigger: new RadioItem(_('Trigger'), omap(Trigger, ([k, v]) => [[v, _(capitalize(k))]]), this.trigger, x => this.$set.set('trigger', x, this)),
             cmds:    new RadioItem(_('Swift'), this.cmds.map(x => x.name), this.cmd, x => this.$set.set('cmd', x, this)),
-            ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => [[v, _(capitalize(k))]]), this.ocr_mode, x => this.$set.set('ocr_mode', x, this), ocr),
+            ocr:     new RadioItem(_('OCR'), omap(OCRMode, ([k, v]) => [[v, _(capitalize(k))]]), this.ocrMode, x => this.$set.set('ocrMode', x, this), ocr),
             sep2:    new PopupMenu.PopupSeparatorMenuItem(),
             prefs:   new MenuItem(_('Settings'), () => myself().openPreferences()),
         }, this.$icon);
-        this.$setBusyState(btn, this.ocr_dwell);
+        this.$setBusyState(btn, this.ocrDwell);
         btn.add_style_class_name('light-dict-systray');
         btn.connect('scroll-event', (_a, event) => {
             switch(event.get_scroll_direction()) {
@@ -380,10 +381,10 @@ class DictAct extends Mortal {
         else actor.remove_style_pseudo_class('state-busy');
     }
 
-    $onOcrDwellSet(ocr_dwell) {
+    $onOcrDwellSet(ocrDwell) {
         if(!this.$src.tray.active) return;
-        this.$menu.dwell.setToggleState(ocr_dwell);
-        this.$setBusyState(this.$src.tray.hub, ocr_dwell);
+        this.$menu.dwell.setToggleState(ocrDwell);
+        this.$setBusyState(this.$src.tray.hub, ocrDwell);
     }
 
     $onCommandsSet(commands) {
@@ -392,13 +393,13 @@ class DictAct extends Mortal {
     }
 
     $onOcrEnablePut() {
-        this.ppos = this.pos = this.ocr_dwell ? getPointer() : null;
-        this.$src.dwell.toggle(this.ocr_dwell && this.ocr_enable);
-        this.$src.keys.toggle(this.ocr_keys && this.ocr_enable);
+        this.ppos = this.pos = this.ocrDwell ? getPointer() : null;
+        this.$src.dwell.toggle(this.ocrDwell && this.enableOcr);
+        this.$src.keys.toggle(this.ocrKeys && this.enableOcr);
     }
 
     $onOcrArgsPut() {
-        this.ocr_cmd = `python ${ROOT}/ldocr.py -m ${OCRModes[this.ocr_mode]} ${this.ocr_param}`;
+        this.$ocrCmd = `python ${ROOT}/ldocr.py -m ${OCRModes[this.ocrMode]} ${this.ocrParam}`;
     }
 
     async $checkInvoker(sender) {
@@ -412,9 +413,9 @@ class DictAct extends Mortal {
     }
 
     invokeOCR(override) {
-        if(!this.ocr_enable || this.$src.invoke.active) return;
+        if(!this.enableOcr || this.$src.invoke.active) return;
         this.$src.invoke.summon();
-        this.execute(override ? `${this.ocr_cmd} ${override}` : this.ocr_cmd).catch(noop)
+        this.execute(override ? `${this.$ocrCmd} ${override}` : this.$ocrCmd).catch(noop)
             .finally(() => { delete this.$pid; this.$src.invoke.dispel(); });
     }
 
@@ -442,10 +443,10 @@ class LightDict extends Mortal {
 
     $bindSettings() {
         this.$set.attach({
-            filter:     [Field.TFLT, 'string'],
-            app_list:   [Field.APPS, 'string'],
-            list_type:  [Field.APP,  'uint'],
-            text_strip: [Field.TSTP, 'boolean'],
+            filter:    [Field.TFLT, 'string'],
+            appList:   [Field.APPS, 'string'],
+            listType:  [Field.APP,  'uint'],
+            textStrip: [Field.TSTP, 'boolean'],
         }, this);
     }
 
@@ -472,8 +473,8 @@ class LightDict extends Mortal {
         spinner.add_style_class_name('light-dict-view');
         Main.layoutManager.addTopChrome(spinner);
         let [x, y] = getPointer();
-        let l = Meta.prefs_get_cursor_size() >>> 1;
-        spinner.set_position(x + l, y + l);
+        let s = Meta.prefs_get_cursor_size() >>> 1;
+        spinner.set_position(x + s, y + s);
         spinner.play();
         return spinner;
     }
@@ -498,7 +499,7 @@ class LightDict extends Mortal {
     }
 
     $denyApp() {
-        return this.app_list && xnor(this.list_type, this.app_list.includes(this.app));
+        return this.appList && xnor(this.listType, this.appList.includes(this.app));
     }
 
     $denyMdf(mdf) {
@@ -507,7 +508,7 @@ class LightDict extends Mortal {
 
     $onDwell(_a, mdf, ppos) {
         let {box, bar, act} = this.$src;
-        if(this.$lck.dwell.pop() || box.prect && !outside(box.prect, ppos) || act.ocr_mode === OCRMode.AREA ||
+        if(this.$lck.dwell.pop() || box.prect && !outside(box.prect, ppos) || act.ocrMode === OCRMode.AREA ||
            box.visible && box.view.hover || bar.visible && bar.box.hover || this.$denyMdf(mdf)) return;
         act.invokeOCR('--quiet');
     }
@@ -538,7 +539,6 @@ class LightDict extends Mortal {
         if(result) {
             try {
                 if(result & Result.AWAIT) {
-                    this.waiting = true;
                     this.$src.wait.toggle(true);
                     let stdout = await this.$src.act.execute(command, env);
                     this.$src.wait.toggle(false);
@@ -595,7 +595,7 @@ class LightDict extends Mortal {
     }
 
     store(text) {
-        if(this.text_strip) text = text?.replace(/((?<=^)|(?<=\n))\s*(\n|$(?![\r\n]))/gm, '');
+        if(this.textStrip) text = text?.replace(/((?<=^)|(?<=\n))\s*(\n|$(?![\r\n]))/gm, '');
         if(!text) throw Error('empty');
         this.txt = text;
     }

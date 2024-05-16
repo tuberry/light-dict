@@ -7,6 +7,7 @@ import cv2
 import string
 import gettext
 import argparse
+import colorsys
 import numpy as np
 import pytesseract
 from pathlib import Path
@@ -78,10 +79,13 @@ def find_rect(rects, point): return min(filter(lambda x: point_in_rect(point, x)
     or min(rects, key=lambda x: point_to_rect(point, x), default=None)
 
 def bincount_img(img, point):
-    if point is not None: return np.amax(img[*reversed(point)]) < 128
-    # Ref: https://stackoverflow.com/a/50900143 ; detect if image bgcolor is dark or not
-    colors = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
-    return np.amax(np.unravel_index(np.bincount(colors).argmax(), (256, 256, 256))) < 128 # v in hsv
+    bgcolor = None # Ref: https://stackoverflow.com/a/50900143 ; detect if image bgcolor is dark or not
+    if point is not None:
+        bgcolor = img[*reversed(point)] # for dialog
+    else:
+        colors = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
+        bgcolor = np.unravel_index(np.bincount(colors).argmax(), (256, 256, 256))
+    return colorsys.rgb_to_hls(*[x / 255 for x in bgcolor])[1] < 0.5
 
 def read_img(filename, point=None, trim=False):
     img = cv2.imread(filename)
