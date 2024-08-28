@@ -60,7 +60,7 @@
         <summary>the work mode as a script parameter: 0-word 1-paragraph 2-area 3-selection 4-line 5-button</summary>
     </key>
     <key type="s" name="text-filter">
-        <default>'^[^\\n\\.\\t\\/:]{3,50}$'</default>
+        <default>''</default>
         <summary>text filter in proactive mode</summary>
     </key>
     <key type="s" name="right-command">
