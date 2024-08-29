@@ -250,13 +250,13 @@ class PrefsBasic extends UI.PrefPage {
     $buildWidgets(gset) {
         this.$blk = UI.block({
             KEY:  new UI.Check(),
-            OCRP: new UI.Entry(),
-            TFLT: new UI.Entry(),
             DOCR: new UI.Switch(),
             HDTT: new UI.Switch(),
             STRY: new UI.Switch(),
             TIP:  new UI.Switch(),
             TSTP: new UI.Switch(),
+            OCRP: new UI.Entry('-h'),
+            TFLT: new UI.Entry('\\W'),
             PGSZ: new UI.Spin(1, 10, 1),
             ATHD: new UI.Spin(1000, 10000, 250),
             APPS: new Apps(_('Click the app icon to remove')),

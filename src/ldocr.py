@@ -154,7 +154,7 @@ def ocr_word(lang, size=(250, 50)):
         rect = find_rect(bins, (w * SCALE, h * SCALE))
         if DEBUG: debug_img(scale_img(read_img(path)), bins, (w * SCALE, h * SCALE))
         return Result(text=rect[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                      area=(rect[0] // SCALE + area[0], rect[1] // SCALE + area[1], rect[2] // SCALE, rect[3] // SCALE + 5)) \
+                      area=(rect[0] / SCALE + area[0], rect[1] / SCALE + area[1], rect[2] / SCALE, rect[3] / SCALE + 5)) \
                               if rect else Result(error=_('OCR process failed. (-_-;)'))
 
 def ocr_area(lang):
