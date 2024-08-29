@@ -10,13 +10,13 @@ import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
 import {Field, Result} from './const.js';
-import {ROOT, BIND, omap, noop, execute, pickle, hook, has, seq} from './util.js';
+import {ROOT, BIND, omap, execute, pickle, hook, has, seq} from './util.js';
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
-const {_, _GTK, vprop, gprop, myself}  = UI;
+const {_, _GTK, vprop, gprop}  = UI;
 
-class AppItem extends Gio.DesktopAppInfo {
+class AppItem extends GObject.Object {
     static {
         GObject.registerClass({
             Properties: gprop({
@@ -30,6 +30,20 @@ class AppItem extends Gio.DesktopAppInfo {
         super();
         this.app = app;
         this.toggle = () => { this.selected = !this.selected; };
+    }
+}
+
+class Help extends Gtk.MenuButton {
+    static {
+        GObject.registerClass(this);
+    }
+
+    constructor(info, param) {
+        super({iconName: 'help-about-symbolic', hasFrame: false, valign: Gtk.Align.CENTER, ...param});
+        this.set_popover(hook({'notify::visible': w => w.child.select_region(-1, -1)}, // HACK: workaround to grab focus without selecting
+            new Gtk.Popover({child: new Gtk.Label({selectable: true, cssClasses: ['ld-popover']})})));
+        this.setInfo = x => this.get_popover().child.set_markup(x);
+        if(info) this.setInfo(info);
     }
 }
 
@@ -53,10 +67,10 @@ class AppsDialog extends UI.AppDialog {
         let factory = hook({
                 setup: (_f, x) => x.set_child(new AppLabel('application-x-executable-symbolic')),
                 bind: (_f, {child, item}) => {
-                    UI.Broker.bind(item, 'selected', child.$check, 'visible');
+                    UI.Broker.tie(item, 'selected', child.$check, 'visible');
                     child.setContent(item.app.get_icon(), item.app.get_display_name());
                 },
-                unbind: (_f, {child, item}) => UI.Broker.unbind(item, child.$check),
+                unbind: (_f, {child, item}) => UI.Broker.untie(item, child.$check),
             }, new Gtk.SignalListItemFactory()),
             filter = Gtk.CustomFilter.new(null),
             model = new Gio.ListStore({itemType: AppItem}),
@@ -78,7 +92,7 @@ class Apps extends UI.DialogButtonBase {
     }
 
     constructor(tip1, tip2, param) {
-        super(param, null);
+        super(null, param, null);
         if(tip2) this.$btn.set_tooltip_text(tip2);
         this.$btn.set_icon_name('list-add-symbolic');
         this.$box = new UI.Box(null, {hexpand: true, canFocus: false, tooltipText: tip1 || ''});
@@ -94,16 +108,16 @@ class Apps extends UI.DialogButtonBase {
         let app = Gio.DesktopAppInfo.new(id);
         return hook({clicked: () => { this.$gvalue.delete(id); this.value = [...this.$gvalue].join(','); }}, app
             ? new Gtk.Button({child: new Gtk.Image({gicon: app.get_icon()}), tooltipText: app.get_display_name(), hasFrame: false})
-            : new Gtk.Button({iconName: 'help-browser-symbolic', tooltipText: id, hasFrame: false}));
+            : new Gtk.Button({iconName: 'system-help-symbolic', tooltipText: id, hasFrame: false}));
     }
 
     $onClick() {
         return this.dlg.choose_sth(this.get_root(), this.$gvalue);
     }
 
-    $setValue(v) {
-        this.$value = v;
-        this.$gvalue = new Set(v ? v.split(',') : null);
+    $setValue(value) {
+        this.$value = value;
+        this.$gvalue = new Set(value ? value.split(',') : null);
         if(this.$box) [...this.$box].forEach(x => this.$box.remove(x));
         if(this.$value) this.$gvalue.forEach(x => this.$box.append(this.$genApp(x)));
     }
@@ -123,7 +137,6 @@ class SideItem extends GObject.Object {
         super();
         this.cmd = cmd;
         this.enable = enable;
-        this.copy = () => new SideItem({...this.cmd}, this.enable);
     }
 
     change(key, value) {
@@ -165,9 +178,9 @@ class SideRow extends Gtk.ListBoxRow {
             prepare: () => Gdk.ContentProvider.new_for_value(this),
             drag_begin: (_s, drag) => {
                 let {width: widthRequest, height: heightRequest} = this.get_allocation();
-                let row = new SideRow(item, this.$grp ? new UI.Check() : null, {widthRequest, heightRequest, cssName: 'ld-dragging'});
+                let row = new SideRow(item, this.$grp ? new UI.Check() : null, {widthRequest, heightRequest, cssClasses: ['ld-dragging']});
                 Gtk.DragIcon.get_for_drag(drag).set_child(row);
-                drag.set_hotspot(widthRequest - this.$img.get_width() / 2, heightRequest - this.$img.get_height() / 2);
+                drag.set_hotspot(widthRequest - this.$img.get_width() / 2, heightRequest - this.$img.get_height() / 2); // FIXME: not working since GNOME 47
             },
         }, new Gtk.DragSource({actions: Gdk.DragAction.MOVE})));
         this.add_controller(hook({
@@ -210,75 +223,16 @@ class ResultRows extends GObject.Object {
     addToPane(group) {
         this.addToPane = null;
         [
-            [Result.SHOW,   _('Show result'),   new UI.Switch()],
-            [Result.COPY,   _('Copy result'),   new UI.Switch()],
-            [Result.AWAIT,  _('Await result'),  new UI.Switch()],
-            [Result.SELECT, _('Select result'), new UI.Switch()],
-            [Result.COMMIT, _('Commit result'), new UI.Switch()],
-        ].forEach(([mask, description, widget]) => {
-            group.add(new UI.PrefRow([description], widget));
+            [Result.SHOW,  [_('Show result')],   new UI.Switch()],
+            [Result.COPY,  [_('Copy result')],   new UI.Switch()],
+            [Result.AWAIT, [_('Await result'), _('Show a spinner when running')],  new UI.Switch()],
+            [Result.SELECT, [_('Select result')], new UI.Switch()],
+            [Result.COMMIT, [_('Commit result')], new UI.Switch()],
+        ].forEach(([mask, titles, widget]) => {
+            group.add(new UI.PrefRow(titles, widget));
             this.bind_property_full('value', widget, 'active', BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
                 (_b, v) => [!!(this.value & mask) ^ v, this.value ^ mask]);
         });
-    }
-}
-
-class PrefsAbout extends UI.PrefPage {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(param, gset) {
-        super(param);
-        this.addToGroup(new UI.Box([this.$genIcons(gset), this.$genInfo(), this.$genTips(), new Gtk.Box({vexpand: true}),
-            this.$genLicense()], {orientation: Gtk.Orientation.VERTICAL, marginTop: 30, marginBottom: 30, valign: Gtk.Align.FILL}, false));
-    }
-
-    $genIcons(gset) {
-        return new UI.Box(gset.get_value(Field.PCMDS)
-            .recursiveUnpack()
-            .slice(0, gset.get_uint(Field.PGSZ))
-            .flatMap(({icon}) => icon ? [icon] : [])
-            .reduce((p, x, i) => Object.assign(p, {[i]: x}), ['accessories-dictionary-symbolic'])
-            .map(iconName => new Gtk.Image({iconName, iconSize: Gtk.IconSize.LARGE})),
-        {halign: Gtk.Align.CENTER, marginBottom: 30}, false);
-    }
-
-    $genLabel(label) {
-        return new Gtk.Label({label, wrap: true, useMarkup: true, justify: Gtk.Justification.CENTER});
-    }
-
-    $genInfo() {
-        let {name, version, url} = myself().metadata;
-        return this.$genLabel([
-            `<b><big>${name}</big></b>`,
-            _('Version %d').format(version),
-            _('Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.'),
-            `<span><a href="${url}">${_GTK('Website')}\n</a></span>`,
-        ].join('\n\n'));
-    }
-
-    $genTips() {
-        return new Gtk.MenuButton({
-            popover: new Gtk.Popover({
-                child: new UI.Box([
-                    _('Get the selected text via the <b>LDWORD</b> (environment) variable'),
-                    _('Leave RegExp/App list blank for no such restriction'),
-                    _('Middle click the panel to copy the result to clipboard'),
-                    _('Simulate keyboard input in JS statement: <tt>key("ctrl+c")</tt>'),
-                    _('Visit the <u>website</u> above for more information and support'),
-                ].map((x, i) => new Gtk.Label({halign: Gtk.Align.START, useMarkup: true, label: `${i}. ${x}`})),
-                {spacing: 2, orientation: Gtk.Orientation.VERTICAL}, false),
-            }),
-            label: _('Tips'), halign: Gtk.Align.CENTER, direction: Gtk.ArrowType.NONE,
-        });
-    }
-
-    $genLicense() {
-        let url = 'https://www.gnu.org/licenses/gpl-3.0.html',
-            gpl = 'GNU General Public License, version 3 or later',
-            info = 'This program comes with absolutely no warranty.\nSee the <a href="%s">%s</a> for details.';
-        return this.$genLabel(`<small>\n\n${_GTK(info).format(url, _GTK(gpl))}</small>`);
     }
 }
 
@@ -296,69 +250,56 @@ class PrefsBasic extends UI.PrefPage {
     $buildWidgets(gset) {
         this.$blk = UI.block({
             KEY:  new UI.Check(),
+            OCRP: new UI.Entry(),
+            TFLT: new UI.Entry(),
             DOCR: new UI.Switch(),
             HDTT: new UI.Switch(),
             STRY: new UI.Switch(),
             TIP:  new UI.Switch(),
             TSTP: new UI.Switch(),
-            OCRP: new UI.LazyEntry(),
             PGSZ: new UI.Spin(1, 10, 1),
             ATHD: new UI.Spin(1000, 10000, 250),
-            LCMD: new UI.LazyEntry('notify-send "$LDWORD"'),
-            RCMD: new UI.LazyEntry('notify-send "$LDWORD"'),
-            TFLT: new UI.LazyEntry('^[^\\n\\.\\t/,{3,50}$'),
             APPS: new Apps(_('Click the app icon to remove')),
             PSV:  new UI.Drop([_('Proactive'), _('Passive')]),
             APP:  new UI.Drop([_('Allowlist'), _('Blocklist')]),
             TRG:  new UI.Drop([_('Swift'), _('Popup'), _('Disable')]),
             OCRS: new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')]),
             OCR:  new UI.FoldRow(_('OCR'), _('Depends on python-opencv and python-pytesseract')),
+            LCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
+            RCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
         }, gset);
+        this.$blk.HELP = new Help();
         this.$blk.KEYS = new UI.Keys({gset, key: Field.KEYS});
-        this.$blk.HELP = new Gtk.MenuButton({label: _('Parameters'), direction: Gtk.ArrowType.NONE, valign: Gtk.Align.CENTER});
-        this.$genHelpPopover().then(scc => this.$blk.HELP.set_popover(scc)).catch(noop);
+        execute(`python ${ROOT}/ldocr.py -h`).then(x => this.$blk.HELP.setInfo(x)).catch(e => this.$blk.HELP.setInfo(e.message));
     }
 
     $buildUI() {
         [
-            [this.$blk.KEY, [_('Shortcut')], this.$blk.KEYS],
-            [[_('Dwell OCR')], this.$blk.DOCR],
-            [[_('Work mode')], this.$blk.OCRS],
-            [this.$blk.HELP, [], this.$blk.OCRP],
-        ].forEach(xs => this.$blk.OCR.add_row(new UI.PrefRow(...xs)));
-        [
-            [[_('Enable systray')], this.$blk.STRY],
-            [[_('Trigger style'), _('Passive means that pressing Alt to trigger')], this.$blk.PSV, this.$blk.TRG],
+            [[_('Enable systray'), _('Scroll to toggle the trigger style')], this.$blk.STRY],
+            [[_('Trigger style'), _('Passive means pressing Alt to trigger')], this.$blk.PSV, this.$blk.TRG],
             [[_('App list')], this.$blk.APPS, this.$blk.APP],
         ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
         [
-            this.$genExpander(_('Other'),
+            [this.$blk.KEY, [_('Shortcut')], this.$blk.KEYS],
+            [[_('Dwell OCR')], this.$blk.DOCR],
+            [[_('Work mode')], this.$blk.OCRS],
+            [[_('Other parameters')], this.$blk.HELP, this.$blk.OCRP],
+        ].forEach(xs => this.$blk.OCR.add_row(new UI.PrefRow(...xs)));
+        let genExpander = (param, ...xs) => seq(x => xs.forEach(args => x.add_row(new UI.PrefRow(...args))), new Adw.ExpanderRow(param));
+        [
+            genExpander({title: _('Other')},
                 [[_('Trim blank lines')], this.$blk.TSTP],
                 [[_('Autohide interval')], this.$blk.ATHD],
                 [[_('RegExp filter')], this.$blk.TFLT]),
-            this.$genExpander(_('Panel'),
+            genExpander({title: _('Panel'), subtitle: _('Middle click to copy the result')},
                 [[_('Hide title')], this.$blk.HDTT],
                 [[_('Right command'), _('Right click to run and hide panel')], this.$blk.RCMD],
                 [[_('Left command'), _('Left click to run')], this.$blk.LCMD]),
-            this.$genExpander(_('Popup'),
+            genExpander({title: _('Popup'), subtitle: _('Scroll to flip pages')},
                 [[_('Enable tooltip')], this.$blk.TIP],
                 [[_('Page size')], this.$blk.PGSZ]),
             this.$blk.OCR,
         ].forEach(x => this.addToGroup(x));
-    }
-
-
-    $genExpander(title, ...list) {
-        return seq(x => list.forEach(args => x.add_row(new UI.PrefRow(...args))), new Adw.ExpanderRow({title}));
-    }
-
-    async $genHelpPopover() {
-        try {
-            let label = await execute(`python ${ROOT}/ldocr.py -h`);
-            return new Gtk.Popover({child: new Gtk.Label({label})});
-        } catch(e) {
-            return new Gtk.Popover({child: new Gtk.Label({label: e.message})});
-        }
     }
 }
 
@@ -407,24 +348,33 @@ class PrefsPopup extends UI.PrefPage {
     }
 
     $genPaneWidgets() {
+        let help = new Help(_(`<b>Bash</b>:
+please scrutinize the code as in a termibal;
+<b>JS</b>:
+<tt>open('URI')</tt>: open URI with default app;
+<tt>key('super+a')</tt>: simulate keyboard input;
+<tt>copy(LDWORD)</tt>: copy <tt>LDWORD</tt> to clipboard;
+<tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview;
+other: some native functions like <tt>LDWORD.trim()</tt>;`));
         return {
-            command: ['', _('Run command'),    new UI.LazyEntry('gio open "$LDWORD"')],
-            icon:    ['', _('Icon name'),      new UI.Icon()],
-            type:    [0,  _('Command type'),   new UI.Drop(['Bash', 'JS'])],
-            result:  [0,  '',                  new ResultRows()],
-            apps:    ['', _('App list'),       new Apps(_('Click the app icon to remove'), _('Allowlist'))],
-            regexp:  ['', _('RegExp matcher'), new UI.LazyEntry('(https?|ftp|file)://.*')],
-            tooltip: ['', _('Icon tooltip'),   new UI.LazyEntry('Open URL')],
+            command: ['', [_('Run command')],    new UI.Entry('gio open "$LDWORD"', true, _('Use (env) var LDWORD for the selected text'))],
+            type:    [0,  [_('Command type')],   new UI.Drop(['Bash', 'JS']), help],
+            icon:    ['', [_('Icon name')],      new UI.Icon()],
+            result:  [0,  [],                    new ResultRows()],
+            apps:    ['', [_('App list')],       new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            regexp:  ['', [_('RegExp matcher')], new UI.Entry('(https?|ftp|file)://.*')],
+            tooltip: ['', [_('Icon tooltip')],   new UI.Entry('Open URL')],
         };
     }
 
     $genPane() {
         let pane = new Adw.PreferencesGroup({hexpand: true});
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); pane.set_sensitive(x); };
-        this.$pane = omap(this.$genPaneWidgets(), ([key, [fallback, description, widget]]) => {
+        this.$pane = omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             if(widget instanceof ResultRows) widget.addToPane(pane);
-            else pane.add(new UI.PrefRow([description], widget));
-            widget.connect('notify::value', ({value}) => !this.$syncing && this.$onChange(this.selected, key, value));
+            else if(help) pane.add(new UI.PrefRow(titles, help, widget));
+            else pane.add(new UI.PrefRow(titles, widget));
+            widget.connect('notify::value', ({value}) => !this.$syncing && this.$select(p => this.$onChange(p, key, value)));
             widget.fallback = fallback;
             return [[key, widget]];
         });
@@ -434,14 +384,19 @@ class PrefsPopup extends UI.PrefPage {
     $genTools() {
         return new UI.Box([
             ['list-add-symbolic',    _('Add'),    () => this.$onAdd()],
-            ['list-remove-symbolic', _('Remove'), () => this.$onRemove()],
-            ['edit-copy-symbolic',   _('Copy'),   () => this.$onCopy()],
+            ['list-remove-symbolic', _('Remove'), () => this.$select(p => this.$onRemove(p))],
+            ['edit-copy-symbolic',   _('Copy'),   () => this.$select(p => this.$onCopy(p))],
             ['edit-paste-symbolic',  _('Paste'),  () => this.$onPaste()],
         ].map(([x, y, z]) => hook({clicked: z}, new Gtk.Button({iconName: x, tooltipText: y, hasFrame: false}))));
     }
 
     get selected() {
         return this.$list.get_selected_row()?.get_index() ?? -1;
+    }
+
+    $select(callback) {
+        let pos = this.selected;
+        if(pos >= 0) callback(pos);
     }
 
     $onSelect(pos = this.selected) {
@@ -452,25 +407,29 @@ class PrefsPopup extends UI.PrefPage {
     }
 
     $onChange(pos, key, value) {
-        if(pos >= 0) this.$save(x => x.get_item(pos).change(key, value), key === 'enable' ? pos : -1);
+        this.$save(x => x.get_item(pos).change(key, value), key === 'enable' ? pos : -1);
     }
 
     $onAdd(cmd = {name: 'Name'}, pos = this.selected + 1) {
         this.$save(x => x.insert(pos, new SideItem(cmd)), pos, true, true);
     }
 
-    $onRemove(pos = this.selected) {
-        if(pos >= 0) this.$save(x => x.remove(pos), Math.min(pos, this.$cmds.n_items - 2), false, true);
-    }
-
     $onDrop(drag, drop) {
-        this.$save(x => { let item = x.get_item(drag).copy(); x.remove(drag); x.insert(drop, item); }, drop);
+        this.$save(x => { let item = x.get_item(drag); x.remove(drag); x.insert(drop, item); }, drop);
     }
 
-    $onCopy(pos = this.selected) {
-        if(pos < 0) return;
+    $onRemove(pos) {
+        this.$save(x => { let item = x.get_item(pos); x.remove(pos); this.$toastRemove(item); }, Math.min(pos, this.$cmds.nItems - 2), false, true);
+    }
+
+    $toastRemove(item) {
+        this.get_root().add_toast(hook({'button-clicked': () => this.$save(x => x.append(item), this.$cmds.nItems, true, true)},
+            new Adw.Toast({title: _('Command %s has been removed').format(item.cmd.name ?? ''), buttonLabel: _GTK('_Undo')})));
+    }
+
+    $onCopy(pos) {
         this.get_clipboard().set(JSON.stringify(this.$cmds.get_item(pos).cmd));
-        this.$addToast(_('Content copied'));
+        this.$toastInfo(_('Command copied'));
     }
 
     async $onPaste() {
@@ -478,11 +437,11 @@ class PrefsPopup extends UI.PrefPage {
             let cmd = JSON.parse(await this.get_clipboard().read_text_async(null));
             this.$onAdd(omap(cmd, ([k, v]) => has(this.$pane, k) || k === 'name' || k === 'enable' ? [[k, v]] : []));
         } catch(e) {
-            this.$addToast(_('Pasted content parsing failed'));
+            this.$toastInfo(_('Pasted command parsing failed'));
         }
     }
 
-    $addToast(title) {
+    $toastInfo(title) {
         this.get_root().add_toast(new Adw.Toast({title, timeout: 5}));
     }
 }
@@ -518,7 +477,6 @@ class PrefsSwift extends PrefsPopup {
     }
 
     $onChange(pos, key, value) {
-        if(pos < 0) return;
         if(key === 'enable') {
             if(!value) return;
             this.enabled = pos;
@@ -535,7 +493,6 @@ class PrefsSwift extends PrefsPopup {
     }
 
     $onRemove(pos = this.selected) {
-        if(pos < 0) return;
         super.$onRemove(pos);
         if(this.enabled > pos) this.enabled -= 1;
         else if(this.enabled === pos) this.enabled = -1;
@@ -554,9 +511,11 @@ export default class PrefsWidget extends UI.Prefs {
     fillPreferencesWindow(win) {
         let provider = new Gtk.CssProvider();
         // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
-        provider.load_from_string(`ld-dragging { background: alpha(@window_bg_color, .85); color: @accent_color; border: 1px dashed @accent_color; border-radius: 4px; }
-                                  .ld-drop-top { background: linear-gradient(to bottom, alpha(@accent_bg_color, .85) 0%, alpha(@accent_bg_color, 0) 35%); }
-                                  .ld-drop-bottom { background: linear-gradient(to bottom, alpha(@accent_bg_color, 0) 65%, alpha(@accent_bg_color, .85) 100%); }`);
+        provider.load_from_string(`:root { --abc: var(--accent-bg-color); --ac: var(--accent-color); }
+                                  .ld-popover { caret-color: var(--ac); }
+                                  .ld-dragging { background: color-mix(in srgb, var(--window-bg-color) 65%, transparent); color: var(--ac); border: 1px dashed var(--ac); border-radius: 4px; }
+                                  .ld-drop-top { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 85%, transparent) 0%, color-mix(in srgb, var(--abc) 0, transparent) 35%); }
+                                  .ld-drop-bottom { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 0, transparent) 65%, color-mix(in srgb, var(--abc) 85%, transparent) 100%); }`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT}/icons`);
         let gset = this.getSettings();
@@ -564,7 +523,6 @@ export default class PrefsWidget extends UI.Prefs {
             new PrefsBasic({title: _('Basic'), iconName: 'ld-disable-passive-symbolic'}, gset),
             new PrefsSwift({title: _('Swift'), iconName: 'ld-swift-passive-symbolic'}, gset, Field.SCMDS),
             new PrefsPopup({title: _('Popup'), iconName: 'ld-popup-passive-symbolic'}, gset, Field.PCMDS),
-            new PrefsAbout({title: _('About'), iconName: 'help-about-symbolic'}, gset),
         ].forEach(x => win.add(x));
     }
 }

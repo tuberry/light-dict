@@ -4,7 +4,7 @@ $pfx: 'light-dict';
 $radius: 0.4em;
 
 @function tone($color, $percent: 10%, $reverse: true){
-    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
+    @return if($variant==if($reverse, 'light', 'dark'), st-darken($color, $percent), st-lighten($color, $percent))
 }
 
 .#{$pfx}-box-boxpointer {
@@ -13,7 +13,7 @@ $radius: 0.4em;
 }
 
 .#{$pfx}-systray:state-busy {
-    color: tone($selected_bg_color, 10%);
+    color: tone(-st-accent-color, 10%);
 }
 
 .#{$pfx}-view {
@@ -24,6 +24,7 @@ $radius: 0.4em;
     max-height: 30em !important; /* min height for scroll */
     background-color: tone($bg_color, 10%);
     &:state-error { border: 0.1em solid $error_color; }
+    &:state-empty { border: 0.1em solid $warning_color; }
 }
 
 .#{$pfx}-content {
@@ -35,7 +36,7 @@ $radius: 0.4em;
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
-    border-color: transparentize($bg_color, 0.5);
+    border-color: st-transparentize($bg_color, 0.5);
 }
 
 .#{$pfx}-iconbox {
@@ -53,7 +54,7 @@ $radius: 0.4em;
         border-width: 0;
         border-style: double;
         border-bottom-width: 0.2em;
-        border-color: $selected_bg_color;
+        border-color: -st-accent-color;
         padding: 0.3em 0.3em 0.5em 0.3em;
     }
 }

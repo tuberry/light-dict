@@ -20,8 +20,8 @@ import {Spinner} from 'resource:///org/gnome/shell/ui/animation.js';
 
 import {Field, Result} from './const.js';
 import {SwitchItem, MenuItem, RadioItem, Systray, IconButton, offstage} from './menu.js';
-import {Setting, Extension, Mortal, Source, view, connect, myself, _, copy, paste, open} from './fubar.js';
 import {ROOT, PIPE, noop, omap, xnor, lot, execute, homolog, hook, capitalize, pickle, seq} from './util.js';
+import {Setting, Extension, Mortal, Source, view, connect, myself, _, extent, copy, paste, open} from './fubar.js';
 
 const DBusChecker = Main.shellDBusService._screenshotService._senderChecker;
 
@@ -35,7 +35,7 @@ const Modifier = {ctrl: Clutter.KEY_Control_L, shift: Clutter.KEY_Shift_L, alt: 
 const LD_IFACE = `<node>
     <interface name="org.gnome.Shell.Extensions.LightDict">
         <method name="OCR">
-            <arg type="s" direction="in" name="args"/>
+            <arg type="s" direction="in" name="params"/>
         </method>
         <method name="Run">
             <arg type="s" direction="in" name="type"/>
@@ -113,7 +113,7 @@ class DictBar extends BoxPointer.BoxPointer {
             hide: Source.newTimer(x => [() => this.dispel(), x]),
         }, this);
         this.box = hook({
-            'scroll-event': this.$onScroll.bind(this),
+            'scroll-event': (...xs) => this.$onScroll(...xs),
             'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autoHide / 10),
         }, new St.BoxLayout({
             reactive: true, vertical: false, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content',
@@ -211,21 +211,18 @@ class DictBox extends BoxPointer.BoxPointer {
             hide: Source.newTimer(x => [() => this.dispel(), x]),
         }, this);
         this.view = hook({
-            'button-press-event': this.$onClick.bind(this),
+            'button-press-event': (...xs) => this.$onClick(...xs),
             'notify::hover': ({hover}) => hover ? this.$src.hide.dispel() : this.$src.hide.revive(this.autoHide / 10),
         }, new St.ScrollView({
             child: new St.BoxLayout({vertical: true, styleClass: 'light-dict-content'}),
             styleClass: 'light-dict-view', overlayScrollbars: true, reactive: true, trackHover: true,
         }));
-        this.$text = this.$genLabel('light-dict-text');
-        this.$info = this.$genLabel('light-dict-info');
+        let genLabel = s => seq(x => x.clutterText.set({lineWrap: true, ellipsize: Pango.EllipsizeMode.NONE, lineWrapMode: Pango.WrapMode.WORD_CHAR}),
+            new St.Label({styleClass: s}));
+        this.$text = genLabel('light-dict-text');
+        this.$info = genLabel('light-dict-info');
         [this.$text, this.$info].forEach(x => this.view.child.add_child(x));
         this.bin.set_child(this.view);
-    }
-
-    $genLabel(styleClass) {
-        return seq(x => x.clutterText.set({lineWrap: true, ellipsize: Pango.EllipsizeMode.NONE, lineWrapMode: Pango.WrapMode.WORD_CHAR}),
-            new St.Label({styleClass}));
     }
 
     $bindSettings(set) {
@@ -258,17 +255,18 @@ class DictBox extends BoxPointer.BoxPointer {
         }
     }
 
-    setError(error) {
-        if(xnor(this.$error, error)) return;
-        if((this.$error = error)) this.view.add_style_pseudo_class('state-error');
-        else this.view.remove_style_pseudo_class('state-error');
+    $setState(error, info) {
+        let state = error ? 'state-error' : info ? '' : 'state-empty';
+        if(this.$state === state) return;
+        if(this.$state) this.view.remove_style_pseudo_class(this.$state);
+        if((this.$state = state)) this.view.add_style_pseudo_class(this.$state);
     }
 
     summon(info, text, error) {
         this.$txt = text;
-        this.setError(error);
-        info ||= lot(Kaomojis);
+        this.$setState(error, info);
         if(offstage(this)) Main.layoutManager.addTopChrome(this);
+        info ||= lot(Kaomojis);
         try {
             Pango.parse_markup(info, -1, '');
             // HACK: workaround for https://gitlab.gnome.org/GNOME/gnome-shell/-/merge_requests/1125
@@ -285,7 +283,7 @@ class DictBox extends BoxPointer.BoxPointer {
     dispel() {
         if(offstage(this)) return;
         this.$src.hide.dispel();
-        this.prect = [...this.get_transformed_position(), ...this.get_transformed_size()];
+        this.prect = extent(this);
         this.close(BoxPointer.PopupAnimation.FADE);
         Main.layoutManager.removeChrome(this);
     }
@@ -304,13 +302,13 @@ class DictAct extends Mortal {
             cancel: Source.newCancel(),
             tray: new Source(() => this.$genSystray()),
             keys: Source.newKeys(this.$set.gset, Field.KEYS, () => this.invokeOCR()),
-            dwell: Source.newTimer(() => [() => this.$dwell(getPointer()), 300], false),
-            invoke: new Source(() => { DBusChecker._isSenderAllowed = this.$checkInvoker.bind(this); },
+            dwell: Source.newTimer(() => [() => this.$dwell(getPointer()), 200], false),
+            invoke: new Source(() => { DBusChecker._isSenderAllowed = (...xs) => this.$checkInvoker(...xs); },
                 () => { DBusChecker._isSenderAllowed = DBusSenderChecker.prototype._isSenderAllowed.bind(DBusChecker); }),
-            stroke: new Source(x => x.split(/\s+/).map((y, i) => setTimeout(() => this.$stroke(y.split('+')), i * 100)),
+            stroke: new Source(x => x.split(/\s+/).map((y, i) => setTimeout(() => this.$stroke(y.split('+')), i * 50)),
                 x => x?.splice(0).forEach(clearTimeout)),
             kbd: new Source(() => Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE),
-                x => x?.run_dispose(), true), // NOTE: run_dispose to release keys immediately
+                x => x?.run_dispose(), true), // run_dispose to release keys immediately
         }, this);
         this.$tty = new Gio.SubprocessLauncher({flags: PIPE});
         this.$tty.spawnv = x => seq(p => { this.$pid = parseInt(p.get_identifier()); }, Gio.SubprocessLauncher.prototype.spawnv.call(this.$tty, x));
@@ -388,8 +386,7 @@ class DictAct extends Mortal {
     }
 
     $onCommandsSet(commands) {
-        return seq(x => homolog(this.cmds, x, ['name']) || this.$menu?.cmds.setOptions(x.map(c => c.name)),
-            commands.recursiveUnpack());
+        return seq(x => homolog(this.cmds, x, ['name']) || this.$menu?.cmds.setOptions(x.map(c => c.name)), commands.recursiveUnpack());
     }
 
     $onOcrEnablePut() {
@@ -456,13 +453,13 @@ class LightDict extends Mortal {
         this.$src = Source.fuse({
             box: new DictBox(this.$set),
             ptr: new Clutter.Actor({opacity: 0, x: 1, y: 1}), // HACK: init pos to avoid misplacing at the first occurrence
-            act: hook({'dict-act-dwelled': this.$onDwell.bind(this)}, new DictAct(this.$set)),
+            act: hook({'dict-act-dwelled': (...xs) => this.$onDwell(...xs)}, new DictAct(this.$set)),
             bar: hook({'dict-bar-clicked': (_a, x) => { this.$lck.dwell[0] = true; this.runCmd(x); }}, new DictBar(this.$set)),
             dbus: Source.newDBus(LD_IFACE, '/org/gnome/Shell/Extensions/LightDict', this, true),
             hold: Source.newTimer(x => [() => this.$onButtonHold(x), 50], false),
             wait: new Source(() => this.$genSpinner()),
         }, this);
-        connect(this, global.display.get_selection(), 'owner-changed', this.$onSelect.bind(this),
+        connect(this, global.display.get_selection(), 'owner-changed', (...xs) => this.$onSelect(...xs),
             global.display, 'notify::focus-window', () => { this.dispelAll(); this.$syncApp(); });
         Main.uiGroup.add_child(this.$src.ptr);
         this.$syncApp();
@@ -639,6 +636,7 @@ class LightDict extends Mortal {
     }
 
     OCR(args) {
+        this.dispelAll();
         this.$src.act.invokeOCR(args);
     }
 }

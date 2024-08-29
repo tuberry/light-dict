@@ -2,9 +2,8 @@
 
 Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.
 
->L, you know what? The Shinigami only eats apples. —— *Light Yagami*<br>
+>L, you know what? The Shinigami only eats apples. —— *Light Yagami*\
 [![license]](/LICENSE.md)
-<br>
 
 ![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
 
@@ -20,18 +19,13 @@ meson setup build && meson install -C build
 # meson setup build -Dtarget=system && meson install -C build # system-wide, default --prefix=/usr/local
 ```
 
-For older versions (< 44), it's recommended to install via:
+For older versions, it's recommended to install via:
 
 ### E.G.O
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
 
 ## Features
-
-### Basic
-
-* Scroll on the iconbar to flip pages;
-* Scroll on the systray to toggle triggers;
 
 ### Command
 
@@ -92,7 +86,7 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 yay -S python-opencv python-pytesseract # use the package manager of your distro
 ```
 
-![ldpref](https://user-images.githubusercontent.com/17917040/155883276-cd24c42a-b78f-4893-a475-d980adb36f5f.png)
+![ldpref](https://github.com/user-attachments/assets/c2edd859-75a1-4f94-b15e-94c26f6c6bd5)
 
 #### Screencast
 

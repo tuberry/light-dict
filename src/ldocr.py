@@ -14,6 +14,7 @@ from pathlib import Path
 from gi.repository import Gio, GLib
 from tempfile import NamedTemporaryFile
 
+SCALE = 2
 DEBUG = False
 CONFIG = r'-c preserve_interword_spaces=1' # HACK: workaround for https://github.com/tesseract-ocr/tesseract/issues/991
 
@@ -27,15 +28,15 @@ class Result:
         self.style = style + ':' + name if name else style
 
     def set_quiet(self, quiet):
-        if quiet and self.is_error: self.cancel = True
+        if quiet and self.erroneous: self.cancel = True
 
     @property
-    def is_error(self):
+    def erroneous(self):
         return self.error or self.text is None
 
     @property
     def param(self):
-        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.is_error else [self.style, self.text, '']
+        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.erroneous else [self.style, self.text, '']
         return ('Run', ('(sssai)', (style, text.strip(), info, self.area or [])))
 
 def main():
@@ -124,9 +125,9 @@ def crop_img(image, point, kernel):
     if DEBUG: debug_img(image, rects, point) # cv2.drawContours(img, cs, -1, (40, 240, 80), 2)
     return find_rect(rects, point)
 
-def scale_img(image, rect=None, factor=2):
+def scale_img(image, rect=None):
     img = image if rect is None else image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
-    return img if factor == 1 else cv2.resize(img, None, fx=factor, fy=factor, interpolation=cv2.INTER_LINEAR)
+    return cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR)
 
 def ocr_auto(lang, mode='paragraph'):
     ptr, = gs_dbus_call('Get', ('(as)', (['pointer'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
@@ -148,11 +149,13 @@ def ocr_word(lang, size=(250, 50)):
     with NamedTemporaryFile(suffix='.png') as f:
         ok, path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
         if not ok: return Result(error=path)
-        data = pytesseract.image_to_data(read_img(path), output_type=pytesseract.Output.DICT, lang=lang, config=CONFIG)
+        data = pytesseract.image_to_data(scale_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=lang, config=CONFIG)
         bins = [[data[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(data['text']) if x]
-        rect = find_rect(bins, (w, h))
+        rect = find_rect(bins, (w * SCALE, h * SCALE))
+        if DEBUG: debug_img(scale_img(read_img(path)), bins, (w * SCALE, h * SCALE))
         return Result(text=rect[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                      area=(rect[0] + area[0], rect[1] + area[1], rect[2], rect[3] + 5)) if rect else Result(error=_('OCR process failed. (-_-;)'))
+                      area=(rect[0] // SCALE + area[0], rect[1] // SCALE + area[1], rect[2] // SCALE, rect[3] // SCALE + 5)) \
+                              if rect else Result(error=_('OCR process failed. (-_-;)'))
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None)
@@ -163,12 +166,12 @@ def ocr_area(lang):
 
 def exe_mode(args):
     try:
-        ret = (lambda m: m[0](*m[1]))({
-            'word': (ocr_word, (args.lang,)),
-            'area': (ocr_area, (args.lang,)),
-            'paragraph': (ocr_auto, (args.lang,)),
-            'line': (ocr_auto, (args.lang, 'line')),
-            'dialog': (ocr_auto, (args.lang, 'dialog')),
+        ret = (lambda m: m[0](args.lang, *m[1]))({
+            'word': (ocr_word, ()),
+            'area': (ocr_area, ()),
+            'paragraph': (ocr_auto, ()),
+            'line': (ocr_auto, ('line',)),
+            'dialog': (ocr_auto, ('dialog',)),
             }[args.mode])
         ret.set_style(args.style, args.name)
         ret.set_quiet(args.quiet)
