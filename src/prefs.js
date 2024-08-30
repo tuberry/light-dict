@@ -223,11 +223,11 @@ class ResultRows extends GObject.Object {
     addToPane(group) {
         this.addToPane = null;
         [
-            [Result.SHOW,  [_('Show result')],   new UI.Switch()],
-            [Result.COPY,  [_('Copy result')],   new UI.Switch()],
-            [Result.AWAIT, [_('Await result'), _('Show a spinner when running')],  new UI.Switch()],
-            [Result.SELECT, [_('Select result')], new UI.Switch()],
-            [Result.COMMIT, [_('Commit result')], new UI.Switch()],
+            [Result.SHOW,  [_('S_how result')],   new UI.Switch()],
+            [Result.COPY,  [_('Cop_y result')],   new UI.Switch()],
+            [Result.AWAIT, [_('A_wait result'), _('Show a spinner when running')],  new UI.Switch()],
+            [Result.SELECT, [_('Se_lect result')], new UI.Switch()],
+            [Result.COMMIT, [_('Co_mmit result')], new UI.Switch()],
         ].forEach(([mask, titles, widget]) => {
             group.add(new UI.PrefRow(titles, widget));
             this.bind_property_full('value', widget, 'active', BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
@@ -264,7 +264,7 @@ class PrefsBasic extends UI.PrefPage {
             APP:  new UI.Drop([_('Allowlist'), _('Blocklist')]),
             TRG:  new UI.Drop([_('Swift'), _('Popup'), _('Disable')]),
             OCRS: new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')]),
-            OCR:  new UI.FoldRow(_('OCR'), _('Depends on python-opencv and python-pytesseract')),
+            OCR:  new UI.FoldRow(_('O_CR'), _('Depends on python-opencv and python-pytesseract')),
             LCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
             RCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
         }, gset);
@@ -275,29 +275,30 @@ class PrefsBasic extends UI.PrefPage {
 
     $buildUI() {
         [
-            [[_('Enable systray'), _('Scroll to toggle the trigger style')], this.$blk.STRY],
-            [[_('Trigger style'), _('Passive means pressing Alt to trigger')], this.$blk.PSV, this.$blk.TRG],
-            [[_('App list')], this.$blk.APPS, this.$blk.APP],
+            [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], this.$blk.STRY],
+            [[_('_Trigger style'), _('Passive means pressing Alt to trigger')], this.$blk.PSV, this.$blk.TRG],
+            [[_('_App list')], this.$blk.APPS, this.$blk.APP],
         ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
         [
-            [this.$blk.KEY, [_('Shortcut')], this.$blk.KEYS],
-            [[_('Dwell OCR')], this.$blk.DOCR],
-            [[_('Work mode')], this.$blk.OCRS],
-            [[_('Other parameters')], this.$blk.HELP, this.$blk.OCRP],
+            [this.$blk.KEY, [_('Sho_rtcut')], this.$blk.KEYS],
+            [[_('_Dwell OCR')], this.$blk.DOCR],
+            [[_('_Work mode')], this.$blk.OCRS],
+            [[_('Other para_meters')], this.$blk.HELP, this.$blk.OCRP],
         ].forEach(xs => this.$blk.OCR.add_row(new UI.PrefRow(...xs)));
-        let genExpander = (param, ...xs) => seq(x => xs.forEach(args => x.add_row(new UI.PrefRow(...args))), new Adw.ExpanderRow(param));
+        let genExpander = (param, ...xs) => seq(x => xs.forEach(args => x.add_row(new UI.PrefRow(...args))),
+            new Adw.ExpanderRow({useUnderline: true, ...param}));
         [
-            genExpander({title: _('Other')},
-                [[_('Trim blank lines')], this.$blk.TSTP],
-                [[_('Autohide interval')], this.$blk.ATHD],
-                [[_('RegExp filter')], this.$blk.TFLT]),
-            genExpander({title: _('Panel'), subtitle: _('Middle click to copy the result')},
-                [[_('Hide title')], this.$blk.HDTT],
-                [[_('Right command'), _('Right click to run and hide panel')], this.$blk.RCMD],
-                [[_('Left command'), _('Left click to run')], this.$blk.LCMD]),
-            genExpander({title: _('Popup'), subtitle: _('Scroll to flip pages')},
-                [[_('Enable tooltip')], this.$blk.TIP],
-                [[_('Page size')], this.$blk.PGSZ]),
+            genExpander({title: _('_Other')},
+                [[_('T_rim blank lines')], this.$blk.TSTP],
+                [[_('Autohide inter_val')], this.$blk.ATHD],
+                [[_('RegE_xp filter')], this.$blk.TFLT]),
+            genExpander({title: _('Pa_nel'), subtitle: _('Middle click to copy the result')},
+                [[_('_Hide title')], this.$blk.HDTT],
+                [[_('Ri_ght command'), _('Right click to run and hide panel')], this.$blk.RCMD],
+                [[_('Le_ft command'), _('Left click to run')], this.$blk.LCMD]),
+            genExpander({title: _('Pop_up'), subtitle: _('Scroll to flip pages')},
+                [[_('Enable toolt_ip')], this.$blk.TIP],
+                [[_('Page si_ze')], this.$blk.PGSZ]),
             this.$blk.OCR,
         ].forEach(x => this.addToGroup(x));
     }
@@ -357,13 +358,13 @@ please scrutinize the code as in a termibal;
 <tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview;
 other: some native functions like <tt>LDWORD.trim()</tt>;`));
         return {
-            command: ['', [_('Run command')],    new UI.Entry('gio open "$LDWORD"', true, _('Use (env) var LDWORD for the selected text'))],
-            type:    [0,  [_('Command type')],   new UI.Drop(['Bash', 'JS']), help],
-            icon:    ['', [_('Icon name')],      new UI.Icon()],
-            result:  [0,  [],                    new ResultRows()],
-            apps:    ['', [_('App list')],       new Apps(_('Click the app icon to remove'), _('Allowlist'))],
-            regexp:  ['', [_('RegExp matcher')], new UI.Entry('(https?|ftp|file)://.*')],
-            tooltip: ['', [_('Icon tooltip')],   new UI.Entry('Open URL')],
+            command: ['', [_('_Run command')],    new UI.Entry('gio open "$LDWORD"', true, _('Use (env) var LDWORD for the selected text'))],
+            type:    [0,  [_('_Command type')],   new UI.Drop(['Bash', 'JS']), help],
+            icon:    ['', [_('_Icon name')],      new UI.Icon()],
+            result:  [0,  [],                     new ResultRows()],
+            apps:    ['', [_('_App list')],       new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            regexp:  ['', [_('RegE_xp matcher')], new UI.Entry('(https?|ftp|file)://.*')],
+            tooltip: ['', [_('Ic_on tooltip')],   new UI.Entry('Open URL')],
         };
     }
 
@@ -520,9 +521,9 @@ export default class PrefsWidget extends UI.Prefs {
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT}/icons`);
         let gset = this.getSettings();
         [
-            new PrefsBasic({title: _('Basic'), iconName: 'ld-disable-passive-symbolic'}, gset),
-            new PrefsSwift({title: _('Swift'), iconName: 'ld-swift-passive-symbolic'}, gset, Field.SCMDS),
-            new PrefsPopup({title: _('Popup'), iconName: 'ld-popup-passive-symbolic'}, gset, Field.PCMDS),
+            new PrefsBasic({title: _('_Basic'), iconName: 'ld-disable-passive-symbolic'}, gset),
+            new PrefsSwift({title: _('_Swift'), iconName: 'ld-swift-passive-symbolic'}, gset, Field.SCMDS),
+            new PrefsPopup({title: _('_Popup'), iconName: 'ld-popup-passive-symbolic'}, gset, Field.PCMDS),
         ].forEach(x => win.add(x));
     }
 }
