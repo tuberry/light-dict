@@ -13,7 +13,6 @@ export const Field = {
     TFLT:  'text-filter',
     LCMD:  'left-command',
     PSV:   'passive-mode',
-    TSTP:  'enable-strip',
     OCRS:  'ocr-work-mode',
     PGSZ:  'icon-pagesize',
     RCMD:  'right-command',
@@ -24,6 +23,7 @@ export const Field = {
     SCMDS: 'swift-commands',
     STRY:  'enable-systray',
     TIP:   'enable-tooltip',
+    SPLC:  'enable-splicing',
     ATHD:  'autohide-timeout',
     KEYS:  'light-dict-ocr-shortcut',
 };

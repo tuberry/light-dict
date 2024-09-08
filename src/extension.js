@@ -63,7 +63,7 @@ const evaluate = (script, scope) => Function(Object.keys(scope).concat(EvalMask)
 
 function regexTest(exp, str, nil = true) {
     try {
-        return exp ? RegExp(exp).test(str) : nil;
+        return exp ? RegExp(exp, 'u').test(str) : nil;
     } catch(e) {
         logError(e, exp);
         return nil;
@@ -440,10 +440,10 @@ class LightDict extends Mortal {
 
     $bindSettings() {
         this.$set.attach({
-            filter:    [Field.TFLT, 'string'],
-            appList:   [Field.APPS, 'string'],
-            listType:  [Field.APP,  'uint'],
-            textStrip: [Field.TSTP, 'boolean'],
+            filter:   [Field.TFLT, 'string'],
+            appList:  [Field.APPS, 'string'],
+            listType: [Field.APP,  'uint'],
+            splicing: [Field.SPLC, 'boolean'],
         }, this);
     }
 
@@ -466,14 +466,14 @@ class LightDict extends Mortal {
     }
 
     $genSpinner() {
-        let spinner = new Spinner(16);
-        spinner.add_style_class_name('light-dict-view');
-        Main.layoutManager.addTopChrome(spinner);
+        let spin = new Spinner(16);
+        spin.add_style_class_name('light-dict-view');
+        Main.layoutManager.addTopChrome(spin);
         let [x, y] = getPointer();
         let s = Meta.prefs_get_cursor_size() >>> 1;
-        spinner.set_position(x + s, y + s);
-        spinner.play();
-        return spinner;
+        spin.set_position(x + s, y + s);
+        spin.play();
+        return spin;
     }
 
     $onButtonHold(mdf) {
@@ -592,7 +592,7 @@ class LightDict extends Mortal {
     }
 
     store(text) {
-        if(this.textStrip) text = text?.replace(/((?<=^)|(?<=\n))\s*(\n|$(?![\r\n]))/gm, '');
+        if(this.splicing) text = text?.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
         if(!text) throw Error('empty');
         this.txt = text;
     }

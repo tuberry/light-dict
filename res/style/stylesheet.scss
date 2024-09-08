@@ -1,9 +1,15 @@
+$contrast: 'normal';
+
 @import 'gnome-shell-sass/_colors';
 
 $pfx: 'light-dict';
 $radius: 0.4em;
 
 @function tone($color, $percent: 10%, $reverse: true){
+    @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
+}
+
+@function st-tone($color, $percent: 10%, $reverse: true){
     @return if($variant==if($reverse, 'light', 'dark'), st-darken($color, $percent), st-lighten($color, $percent))
 }
 
@@ -13,7 +19,7 @@ $radius: 0.4em;
 }
 
 .#{$pfx}-systray:state-busy {
-    color: tone(-st-accent-color, 10%);
+    color: st-tone(-st-accent-color, 10%);
 }
 
 .#{$pfx}-view {
@@ -36,7 +42,7 @@ $radius: 0.4em;
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
-    border-color: st-transparentize($bg_color, 0.5);
+    border-color: transparentize($bg_color, 0.5);
 }
 
 .#{$pfx}-iconbox {

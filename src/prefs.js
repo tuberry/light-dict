@@ -15,6 +15,7 @@ import {ROOT, BIND, omap, execute, pickle, hook, has, seq} from './util.js';
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
 const {_, _GTK, vprop, gprop}  = UI;
+const EXE = 'application/x-executable';
 
 class AppItem extends GObject.Object {
     static {
@@ -254,7 +255,7 @@ class PrefsBasic extends UI.PrefPage {
             HDTT: new UI.Switch(),
             STRY: new UI.Switch(),
             TIP:  new UI.Switch(),
-            TSTP: new UI.Switch(),
+            SPLC: new UI.Switch(),
             OCRP: new UI.Entry('-h'),
             TFLT: new UI.Entry('\\W'),
             PGSZ: new UI.Spin(1, 10, 1),
@@ -264,9 +265,9 @@ class PrefsBasic extends UI.PrefPage {
             APP:  new UI.Drop([_('Allowlist'), _('Blocklist')]),
             TRG:  new UI.Drop([_('Swift'), _('Popup'), _('Disable')]),
             OCRS: new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')]),
-            OCR:  new UI.FoldRow(_('O_CR'), _('Depends on python-opencv and python-pytesseract')),
-            LCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
-            RCMD: new UI.Entry('notify-send "$LDWORD"', true, _('Use (env) var LDWORD for the selected text')),
+            LCMD: new UI.Entry('notify-send "$LDWORD"', [EXE], _('Use env var LDWORD for the selected text')),
+            RCMD: new UI.Entry('notify-send "$LDWORD"', [EXE], _('Use env var LDWORD for the selected text')),
+            OCR:  new UI.FoldRow(_('O_CR'), _('Depends on <a href="https://pypi.org/project/opencv-python/">opencv-python</a> and <a href="https://pypi.org/project/pytesseract/">pytesseract</a>')),
         }, gset);
         this.$blk.HELP = new Help();
         this.$blk.KEYS = new UI.Keys({gset, key: Field.KEYS});
@@ -289,7 +290,7 @@ class PrefsBasic extends UI.PrefPage {
             new Adw.ExpanderRow({useUnderline: true, ...param}));
         [
             genExpander({title: _('_Other')},
-                [[_('T_rim blank lines')], this.$blk.TSTP],
+                [[_('Sp_lice text'), _('Try to replace redundant line breaks with spaces')], this.$blk.SPLC],
                 [[_('Autohide inter_val')], this.$blk.ATHD],
                 [[_('RegE_xp filter')], this.$blk.TFLT]),
             genExpander({title: _('Pa_nel'), subtitle: _('Middle click to copy the result')},
@@ -358,7 +359,7 @@ please scrutinize the code as in a termibal;
 <tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview;
 other: some native functions like <tt>LDWORD.trim()</tt>;`));
         return {
-            command: ['', [_('_Run command')],    new UI.Entry('gio open "$LDWORD"', true, _('Use (env) var LDWORD for the selected text'))],
+            command: ['', [_('_Run command')],    new UI.Entry('gio open "$LDWORD"', [EXE], _('Use (env) var LDWORD for the selected text'))],
             type:    [0,  [_('_Command type')],   new UI.Drop(['Bash', 'JS']), help],
             icon:    ['', [_('_Icon name')],      new UI.Icon()],
             result:  [0,  [],                     new ResultRows()],
