@@ -15,16 +15,16 @@ const save = (text, name) => Gio.File.new_for_path(ARGV.concat(name).join('/'))
 let a = 1 / 8,
     b = (1 - a) / 2,
     c = a + b,
-    d = b / 4;
+    d = 'd="M 0 .5 C 0 0 0 0 .5 0 S 1 0 1 .5 1 1 .5 1 0 1 0 .5"'; // approx. squircle
 
 for(let x of ['swift', 'popup', 'disable']) {
     for(let y of ['passive', 'proactive']) {
         save(`<svg ${SVG}>
   <g ${XFM}>
-    <rect width="${b}" height="${b}" rx="${d}" x="0" y="0" opacity="${x === 'swift' ? 0 : 1}"/>
-    <rect width="${b}" height="${b}" rx="${d}" x="${c}" y="0" opacity="${x === 'disable' ? 0 : 1}"/>
-    <rect width="${b}" height="${b}" rx="${d}" x="0" y="${c}" opacity="${x === 'disable' ? 0 : 1}"/>
-    <rect width="${b}" height="${b}" rx="${d}" x="${c}" y="${c}" opacity="${y === 'passive' ? 0.5 : 1}"/>
+    <path ${d} transform="translate(0 0) scale(${b})" opacity="${x === 'swift' ? 0 : 1}"/>
+    <path ${d} transform="translate(${c} 0) scale(${b})" opacity="${x === 'disable' ? 0 : 1}"/>
+    <path ${d} transform="translate(0 ${c}) scale(${b})" opacity="${x === 'disable' ? 0 : 1}"/>
+    <path ${d} transform="translate(${c} ${c}) scale(${b})" opacity="${y === 'passive' ? 0.5 : 1}"/>
   </g>
 </svg>`, `ld-${x}-${y}-symbolic.svg`);
     }

@@ -27,29 +27,6 @@ For older versions, it's recommended to install via:
 
 ## Features
 
-### Command
-
-#### Bash
-
-Scripts run within `bash -c`:
-
-* use envar `$LDWORD` to get the captured text (by primary selection or OCR);
-* use envar `$LDAPPID` to get the focused app (most likely where the text from);
-* enable `Await result` to show a spinner when running (eye candy for time-consuming commands);
-
-#### JS
-
-Scripts run within scoped JS `eval()` to provide DE related functions:
-
-* `LDWORD`: the captured text;
-* `LDAPPID`: the focused app;
-* `open('uri')`: open uri with default app;
-* `copy(LDWORD)`: copy `LDWORD` to clipboard;
-* `search(LDWORD)`: search `LDWORD`in Overview;
-* `key('super+a')`: simulate keyboard input;
-
-And some native JS functions like `LDWORD.toUpperCase()`.
-
 ### DBus
 
 For the [DBus] usage, see [_ldocr.fish](/cli/_ldocr.fish) as a sample reference.
@@ -64,7 +41,7 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 ##### OCR
 
-* args: `a string` (temporary arguments for OCR)
+* params: `a string` (temporary parameters for OCR)
 
 ##### Run
 
@@ -79,12 +56,8 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 #### Dependencies
 
-* [python-opencv]
-* [python-pytesseract]
-
- ```bash
-yay -S python-opencv python-pytesseract # use the package manager of your distro
-```
+* [opencv-python]
+* [pytesseract]
 
 ![ldpref](https://github.com/user-attachments/assets/c2edd859-75a1-4f94-b15e-94c26f6c6bd5)
 
@@ -92,19 +65,37 @@ yay -S python-opencv python-pytesseract # use the package manager of your distro
 
 https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4
 
+### Command
+
+#### Bash
+
+Scripts run within `bash -c`:
+
+* use envar `$LDWORD` to get the captured text (by primary selection or OCR);
+* use envar `$LDAPPID` to get the focused app (most likely where the text from);
+
+#### JS
+
+Scripts run within scoped JS `eval()` to provide DE related functions:
+
+* `LDWORD`: the captured text;
+* `LDAPPID`: the focused app;
+* `open('uri')`: open uri with default app;
+* `copy(LDWORD)`: copy `LDWORD` to clipboard;
+* `search(LDWORD)`: search `LDWORD`in Overview;
+* `key('super+a')`: simulate keyboard input;
+
+And some native JS functions like `LDWORD.toUpperCase()`.
+
 ## Notes
 
-* This extension doesn't offer any additional icons or dictionaries.
-* If you need English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
-* If you need to customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
+* By lightweight, I mean that it doesn't come with any dictionary sources. :)
+* For English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
+* To customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
 
 ## Contributions
 
-Any contribution is welcome.
-
-### Ideas
-
-For any question or idea, feel free to open an issue or PR in the repo.
+Feel free to open an issue or PR in the repo for any question or idea.
 
 ### Translations
 
@@ -128,7 +119,7 @@ npm install @girs/gnome-shell --save-dev
 * [swift-selection-search]: the stylesheet of iconbar
 * [capture2text]: the idea of bubble OCR (dialog OCR here)
 
-[python-opencv]:https://opencv.org/
+[opencv-python]:https://github.com/opencv/opencv-python
 [dict-cedict]:https://github.com/tuberry/dict-cedict
 [dict-ecdict]:https://github.com/tuberry/dict-ecdict
 [DBus]:https://www.freedesktop.org/wiki/Software/dbus/
@@ -137,5 +128,5 @@ npm install @girs/gnome-shell --save-dev
 [EGO]:https://extensions.gnome.org/extension/2959/light-dict/
 [license]:https://img.shields.io/badge/license-GPLv3+-green.svg
 [swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
-[python-pytesseract]:https://github.com/madmaze/pytesseract
+[pytesseract]:https://github.com/madmaze/pytesseract
 [capture2text]:https://capture2text.sourceforge.net/

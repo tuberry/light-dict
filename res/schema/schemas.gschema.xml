@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.light-dict" path="/org/gnome/shell/extensions/light-dict/">
-    <key type="b" name="hide-title">
-        <default>true</default>
-        <summary>hide popup panel title</summary>
+    <key type="b" name="enable-title">
+        <default>false</default>
+        <summary>enable popup panel title</summary>
     </key>
-    <key type="b" name="enable-splicing">
-        <default>true</default>
+    <key type="b" name="enable-splice">
+        <default>false</default>
         <summary>enable text concatenation</summary>
     </key>
     <key type="b" name="enable-tooltip">
@@ -88,7 +88,7 @@
         <summary>shortcut to invoke the ocr script</summary>
     </key>
     <key type="av" name="swift-commands">
-        <default><![CDATA[[<{'name': <'Trans'>, 'command': <'trans -b -- "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
+        <default><![CDATA[[<{'name': <'Echo'>, 'command': <'echo -- echo "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="av" name="popup-commands">

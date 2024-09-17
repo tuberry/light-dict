@@ -9,18 +9,18 @@ import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
+import * as Util from './util.js';
 import {Field, Result} from './const.js';
-import {ROOT, BIND, omap, execute, pickle, hook, has, seq} from './util.js';
+
+const {_}  = UI;
+const EXE = 'application/x-executable';
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
-
-const {_, _GTK, vprop, gprop}  = UI;
-const EXE = 'application/x-executable';
 
 class AppItem extends GObject.Object {
     static {
         GObject.registerClass({
-            Properties: gprop({
+            Properties: UI.trait({
                 selected: ['boolean', false],
                 app: ['object', Gio.DesktopAppInfo],
             }),
@@ -31,20 +31,6 @@ class AppItem extends GObject.Object {
         super();
         this.app = app;
         this.toggle = () => { this.selected = !this.selected; };
-    }
-}
-
-class Help extends Gtk.MenuButton {
-    static {
-        GObject.registerClass(this);
-    }
-
-    constructor(info, param) {
-        super({iconName: 'help-about-symbolic', hasFrame: false, valign: Gtk.Align.CENTER, ...param});
-        this.set_popover(hook({'notify::visible': w => w.child.select_region(-1, -1)}, // HACK: workaround to grab focus without selecting
-            new Gtk.Popover({child: new Gtk.Label({selectable: true, cssClasses: ['ld-popover']})})));
-        this.setInfo = x => this.get_popover().child.set_markup(x);
-        if(info) this.setInfo(info);
     }
 }
 
@@ -65,18 +51,18 @@ class AppsDialog extends UI.AppDialog {
     }
 
     $buildWidgets(opts) {
-        let factory = hook({
+        let factory = Util.hook({
                 setup: (_f, x) => x.set_child(new AppLabel('application-x-executable-symbolic')),
                 bind: (_f, {child, item}) => {
                     UI.Broker.tie(item, 'selected', child.$check, 'visible');
-                    child.setContent(item.app.get_icon(), item.app.get_display_name());
+                    child.setup(item.app.get_icon(), item.app.get_display_name());
                 },
                 unbind: (_f, {child, item}) => UI.Broker.untie(item, child.$check),
             }, new Gtk.SignalListItemFactory()),
             filter = Gtk.CustomFilter.new(null),
             model = new Gio.ListStore({itemType: AppItem}),
             select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
-            content = hook({activate: () => select.get_selected_item().toggle()},
+            content = Util.hook({activate: () => select.get_selected_item().toggle()},
                 new Gtk.ListView({singleClickActivate: true, model: select, factory, vexpand: true}));
         if(opts?.noDisplay) model.splice(0, 0, Gio.AppInfo.get_all().map(x => new AppItem(x)));
         else model.splice(0, 0, Gio.AppInfo.get_all().filter(x => x.should_show()).map(x => new AppItem(x)));
@@ -107,7 +93,7 @@ class Apps extends UI.DialogButtonBase {
 
     $genApp(id) {
         let app = Gio.DesktopAppInfo.new(id);
-        return hook({clicked: () => { this.$gvalue.delete(id); this.value = [...this.$gvalue].join(','); }}, app
+        return Util.hook({clicked: () => { this.$gvalue.delete(id); this.value = [...this.$gvalue].join(','); }}, app
             ? new Gtk.Button({child: new Gtk.Image({gicon: app.get_icon()}), tooltipText: app.get_display_name(), hasFrame: false})
             : new Gtk.Button({iconName: 'system-help-symbolic', tooltipText: id, hasFrame: false}));
     }
@@ -127,7 +113,7 @@ class Apps extends UI.DialogButtonBase {
 class SideItem extends GObject.Object {
     static {
         GObject.registerClass({
-            Properties: gprop({
+            Properties: UI.trait({
                 cmd: ['jsobject', null],
                 enable: ['boolean', false],
             }),
@@ -160,9 +146,9 @@ class SideRow extends Gtk.ListBoxRow {
     constructor(item, group, param) {
         super({hexpand: false, ...param});
         this.$grp = group;
-        this.$btn = hook({toggled: () => this.emit('toggled', this.get_index(), this.$btn.active)},
+        this.$btn = Util.hook({toggled: () => this.emit('toggled', this.get_index(), this.$btn.active)},
             new UI.Check({group: group ? new UI.Check() : null}));
-        this.$txt = hook({changed: () => !this.$txt.editing && this.emit('changed', this.get_index(), this.$txt.text)},
+        this.$txt = Util.hook({changed: () => !this.$txt.editing && this.emit('changed', this.get_index(), this.$txt.text)},
             new Gtk.EditableLabel({maxWidthChars: 9}));
         this.$img = new Gtk.Image({iconName: 'list-drag-handle-symbolic'});
         this.set_child(new UI.Box([this.$btn, this.$txt, this.$img], {spacing: 5, marginEnd: 5}));
@@ -175,16 +161,16 @@ class SideRow extends Gtk.ListBoxRow {
 
     $buildDND(item, handle) {
         // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
-        handle.add_controller(hook({
+        handle.add_controller(Util.hook({
             prepare: () => Gdk.ContentProvider.new_for_value(this),
             drag_begin: (_s, drag) => {
                 let {width: widthRequest, height: heightRequest} = this.get_allocation();
                 let row = new SideRow(item, this.$grp ? new UI.Check() : null, {widthRequest, heightRequest, cssClasses: ['ld-dragging']});
                 Gtk.DragIcon.get_for_drag(drag).set_child(row);
-                drag.set_hotspot(widthRequest - this.$img.get_width() / 2, heightRequest - this.$img.get_height() / 2); // FIXME: not working since GNOME 47
+                drag.set_hotspot(widthRequest - this.$img.get_width() / 2, heightRequest - this.$img.get_height() / 2);
             },
         }, new Gtk.DragSource({actions: Gdk.DragAction.MOVE})));
-        this.add_controller(hook({
+        this.add_controller(Util.hook({
             motion: (_t, _x, y) => {
                 let top = y < this.get_height() / 2;
                 this.add_css_class(top ? 'ld-drop-top' : 'ld-drop-bottom');
@@ -192,7 +178,7 @@ class SideRow extends Gtk.ListBoxRow {
                 return Gdk.DragAction.MOVE;
             },
             drop: (_t, src, _x, y) => {
-                this.$clearDropStyle();
+                this.#clearDropStyle();
                 if(src.$grp !== this.$grp) return false;
                 let drag = src.get_index(),
                     target = this.get_index() + (y > this.get_height() / 2),
@@ -201,11 +187,11 @@ class SideRow extends Gtk.ListBoxRow {
                 this.emit('dropped', drag, drop);
                 return true;
             },
-            leave: () => this.$clearDropStyle(),
+            leave: () => this.#clearDropStyle(),
         }, Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)));
     }
 
-    $clearDropStyle() {
+    #clearDropStyle() {
         this.remove_css_class('ld-drop-top');
         this.remove_css_class('ld-drop-bottom');
     }
@@ -218,7 +204,7 @@ class SideRow extends Gtk.ListBoxRow {
 
 class ResultRows extends GObject.Object {
     static {
-        GObject.registerClass(vprop('uint', 0, GLib.MAXINT32, 0), this);
+        GObject.registerClass(UI.val('uint', 0, GLib.MAXINT32, 0), this);
     }
 
     addToPane(group) {
@@ -230,29 +216,29 @@ class ResultRows extends GObject.Object {
             [Result.SELECT, [_('Se_lect result')], new UI.Switch()],
             [Result.COMMIT, [_('Co_mmit result')], new UI.Switch()],
         ].forEach(([mask, titles, widget]) => {
-            group.add(new UI.PrefRow(titles, widget));
-            this.bind_property_full('value', widget, 'active', BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
+            group.add(new UI.ActRow(titles, widget));
+            this.bind_property_full('value', widget, 'active', Util.BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
                 (_b, v) => [!!(this.value & mask) ^ v, this.value ^ mask]);
         });
     }
 }
 
-class PrefsBasic extends UI.PrefPage {
+class PrefsBasic extends UI.PrefsPage {
     static {
         GObject.registerClass(this);
     }
 
     constructor(param, gset) {
         super(param);
-        this.$buildWidgets(gset);
-        this.$buildUI();
+        this.#buildWidgets(gset);
+        this.#buildUI();
     }
 
-    $buildWidgets(gset) {
-        this.$blk = UI.block({
+    #buildWidgets(gset) {
+        this.$blk = UI.tie({
             KEY:  new UI.Check(),
             DOCR: new UI.Switch(),
-            HDTT: new UI.Switch(),
+            TITL: new UI.Switch(),
             STRY: new UI.Switch(),
             TIP:  new UI.Switch(),
             SPLC: new UI.Switch(),
@@ -262,39 +248,39 @@ class PrefsBasic extends UI.PrefPage {
             ATHD: new UI.Spin(1000, 10000, 250),
             APPS: new Apps(_('Click the app icon to remove')),
             PSV:  new UI.Drop([_('Proactive'), _('Passive')]),
-            APP:  new UI.Drop([_('Allowlist'), _('Blocklist')]),
+            APP:  new UI.Drop([_('Whitelist'), _('Blacklist')]),
             TRG:  new UI.Drop([_('Swift'), _('Popup'), _('Disable')]),
             OCRS: new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')]),
             LCMD: new UI.Entry('notify-send "$LDWORD"', [EXE], _('Use env var LDWORD for the selected text')),
             RCMD: new UI.Entry('notify-send "$LDWORD"', [EXE], _('Use env var LDWORD for the selected text')),
             OCR:  new UI.FoldRow(_('O_CR'), _('Depends on <a href="https://pypi.org/project/opencv-python/">opencv-python</a> and <a href="https://pypi.org/project/pytesseract/">pytesseract</a>')),
         }, gset);
-        this.$blk.HELP = new Help();
         this.$blk.KEYS = new UI.Keys({gset, key: Field.KEYS});
-        execute(`python ${ROOT}/ldocr.py -h`).then(x => this.$blk.HELP.setInfo(x)).catch(e => this.$blk.HELP.setInfo(e.message));
+        this.$blk.HELP = new UI.Help('', {cssClasses: ['ld-popover'], useMarkup: false});
+        Util.execute(`python ${Util.ROOT}/ldocr.py -h`).then(x => this.$blk.HELP.setup(x)).catch(e => this.$blk.HELP.setup(e.message, true));
     }
 
-    $buildUI() {
-        [
+    #buildUI() {
+        this.addActRows([
             [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], this.$blk.STRY],
             [[_('_Trigger style'), _('Passive means pressing Alt to trigger')], this.$blk.PSV, this.$blk.TRG],
             [[_('_App list')], this.$blk.APPS, this.$blk.APP],
-        ].forEach(xs => this.addToGroup(new UI.PrefRow(...xs)));
+        ]);
         [
             [this.$blk.KEY, [_('Sho_rtcut')], this.$blk.KEYS],
             [[_('_Dwell OCR')], this.$blk.DOCR],
             [[_('_Work mode')], this.$blk.OCRS],
             [[_('Other para_meters')], this.$blk.HELP, this.$blk.OCRP],
-        ].forEach(xs => this.$blk.OCR.add_row(new UI.PrefRow(...xs)));
-        let genExpander = (param, ...xs) => seq(x => xs.forEach(args => x.add_row(new UI.PrefRow(...args))),
+        ].forEach(xs => this.$blk.OCR.add_row(new UI.ActRow(...xs)));
+        let genExpander = (param, ...xs) => Util.seq(x => xs.forEach(args => x.add_row(new UI.ActRow(...args))),
             new Adw.ExpanderRow({useUnderline: true, ...param}));
         [
             genExpander({title: _('_Other')},
                 [[_('Sp_lice text'), _('Try to replace redundant line breaks with spaces')], this.$blk.SPLC],
-                [[_('Autohide inter_val')], this.$blk.ATHD],
+                [[_('Autohide inter_val'), _('Unit: millisecond')], this.$blk.ATHD],
                 [[_('RegE_xp filter')], this.$blk.TFLT]),
             genExpander({title: _('Pa_nel'), subtitle: _('Middle click to copy the result')},
-                [[_('_Hide title')], this.$blk.HDTT],
+                [[_('_Enable title')], this.$blk.TITL],
                 [[_('Ri_ght command'), _('Right click to run and hide panel')], this.$blk.RCMD],
                 [[_('Le_ft command'), _('Left click to run')], this.$blk.LCMD]),
             genExpander({title: _('Pop_up'), subtitle: _('Scroll to flip pages')},
@@ -305,7 +291,7 @@ class PrefsBasic extends UI.PrefPage {
     }
 }
 
-class PrefsPopup extends UI.PrefPage {
+class PrefsPopup extends UI.PrefsPage {
     static {
         GObject.registerClass(this);
     }
@@ -314,7 +300,7 @@ class PrefsPopup extends UI.PrefPage {
         super(param);
         this.$save = (func, grab, name, pane) => {
             func(this.$cmds);
-            gset.set_value(key, pickle([...this.$cmds].map(x => x.cmd), false));
+            gset.set_value(key, Util.pickle([...this.$cmds].map(x => x.cmd), false));
             if(grab >= 0) this.grabFocus(grab, name);
             if(pane) this.$updatePaneSensitive(this.$cmds.nItems > 0);
         };
@@ -331,10 +317,10 @@ class PrefsPopup extends UI.PrefPage {
     $genSide(cmds, group) {
         this.$cmds = new Gio.ListStore({item_type: SideItem});
         this.$cmds.splice(0, 0, cmds.map(x => new SideItem(x)));
-        this.$list = hook({'row-selected': (_w, row) => row && this.$onSelect(row.get_index())},
+        this.$list = Util.hook({'row-selected': (_w, row) => row && this.$onSelect(row.get_index())},
             new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true}));
         this.$list.add_css_class('data-table');
-        this.$list.bind_model(this.$cmds, item => hook({
+        this.$list.bind_model(this.$cmds, item => Util.hook({
             dropped: (_w, f, t) => this.$onDrop(f, t),
             changed: (_w, p, v) => this.$onChange(p, 'name',  v),
             toggled: (_w, p, v) => this.$onChange(p, 'enable', v),
@@ -349,21 +335,24 @@ class PrefsPopup extends UI.PrefPage {
         if(name) row.editName();
     }
 
+    $genCmdHelp() {
+        return new UI.Help(_(`<b>Bash</b>
+please scrutinize your code as in a terminal
+<b>JS</b>
+<tt>open('URI')</tt>: open URI with default app
+<tt>key('super+a')</tt>: simulate keyboard input
+<tt>copy(LDWORD)</tt>: copy <tt>LDWORD</tt> to clipboard
+<tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview
+other: some native functions like <tt>LDWORD.trim()</tt>`), {cssClasses: ['ld-popover']});
+    }
+
     $genPaneWidgets() {
-        let help = new Help(_(`<b>Bash</b>:
-please scrutinize the code as in a termibal;
-<b>JS</b>:
-<tt>open('URI')</tt>: open URI with default app;
-<tt>key('super+a')</tt>: simulate keyboard input;
-<tt>copy(LDWORD)</tt>: copy <tt>LDWORD</tt> to clipboard;
-<tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview;
-other: some native functions like <tt>LDWORD.trim()</tt>;`));
         return {
             command: ['', [_('_Run command')],    new UI.Entry('gio open "$LDWORD"', [EXE], _('Use (env) var LDWORD for the selected text'))],
-            type:    [0,  [_('_Command type')],   new UI.Drop(['Bash', 'JS']), help],
+            type:    [0,  [_('_Command type')],   new UI.Drop(['Bash', 'JS']), this.$genCmdHelp()],
             icon:    ['', [_('_Icon name')],      new UI.Icon()],
             result:  [0,  [],                     new ResultRows()],
-            apps:    ['', [_('_App list')],       new Apps(_('Click the app icon to remove'), _('Allowlist'))],
+            apps:    ['', [_('_App list')],       new Apps(_('Click the app icon to remove'), _('Whitelist'))],
             regexp:  ['', [_('RegE_xp matcher')], new UI.Entry('(https?|ftp|file)://.*')],
             tooltip: ['', [_('Ic_on tooltip')],   new UI.Entry('Open URL')],
         };
@@ -372,10 +361,10 @@ other: some native functions like <tt>LDWORD.trim()</tt>;`));
     $genPane() {
         let pane = new Adw.PreferencesGroup({hexpand: true});
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); pane.set_sensitive(x); };
-        this.$pane = omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
+        this.$pane = Util.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             if(widget instanceof ResultRows) widget.addToPane(pane);
-            else if(help) pane.add(new UI.PrefRow(titles, help, widget));
-            else pane.add(new UI.PrefRow(titles, widget));
+            else if(help) pane.add(new UI.ActRow(titles, help, widget));
+            else pane.add(new UI.ActRow(titles, widget));
             widget.connect('notify::value', ({value}) => !this.$syncing && this.$select(p => this.$onChange(p, key, value)));
             widget.fallback = fallback;
             return [[key, widget]];
@@ -389,7 +378,7 @@ other: some native functions like <tt>LDWORD.trim()</tt>;`));
             ['list-remove-symbolic', _('Remove'), () => this.$select(p => this.$onRemove(p))],
             ['edit-copy-symbolic',   _('Copy'),   () => this.$select(p => this.$onCopy(p))],
             ['edit-paste-symbolic',  _('Paste'),  () => this.$onPaste()],
-        ].map(([x, y, z]) => hook({clicked: z}, new Gtk.Button({iconName: x, tooltipText: y, hasFrame: false}))));
+        ].map(([x, y, z]) => Util.hook({clicked: z}, new Gtk.Button({iconName: x, tooltipText: y, hasFrame: false}))));
     }
 
     get selected() {
@@ -425,21 +414,22 @@ other: some native functions like <tt>LDWORD.trim()</tt>;`));
     }
 
     $toastRemove(item) {
-        this.get_root().add_toast(hook({'button-clicked': () => this.$save(x => x.append(item), this.$cmds.nItems, true, true)},
-            new Adw.Toast({title: _('Command %s has been removed').format(item.cmd.name ?? ''), buttonLabel: _GTK('_Undo')})));
+        this.get_root().add_toast(Util.hook({'button-clicked': () => this.$save(x => x.append(item), this.$cmds.nItems, true, true)},
+            new Adw.Toast({title: _('Removed <i>%s</i> command').format(item.cmd.name ?? ''), buttonLabel: UI._GTK('_Undo')})));
     }
 
     $onCopy(pos) {
-        this.get_clipboard().set(JSON.stringify(this.$cmds.get_item(pos).cmd));
-        this.$toastInfo(_('Command copied'));
+        let {cmd} = this.$cmds.get_item(pos);
+        this.get_clipboard().set(JSON.stringify(cmd));
+        this.$toastInfo(_('Copied <i>%s</i> command').format(cmd.name ?? ''));
     }
 
     async $onPaste() {
         try {
             let cmd = JSON.parse(await this.get_clipboard().read_text_async(null));
-            this.$onAdd(omap(cmd, ([k, v]) => has(this.$pane, k) || k === 'name' || k === 'enable' ? [[k, v]] : []));
+            this.$onAdd(Util.omap(cmd, ([k, v]) => Util.has(this.$pane, k) || k === 'name' || k === 'enable' ? [[k, v]] : []));
         } catch(e) {
-            this.$toastInfo(_('Pasted command parsing failed'));
+            this.$toastInfo(_('Failed to parse pasted command'));
         }
     }
 
@@ -451,7 +441,7 @@ other: some native functions like <tt>LDWORD.trim()</tt>;`));
 class PrefsSwift extends PrefsPopup {
     static {
         GObject.registerClass({
-            Properties: gprop({
+            Properties: UI.trait({
                 enabled: ['int', -1, GLib.MAXINT32, -1],
             }),
         }, this);
@@ -509,17 +499,16 @@ class PrefsSwift extends PrefsPopup {
     }
 }
 
-export default class PrefsWidget extends UI.Prefs {
+export default class Prefs extends UI.Prefs {
     fillPreferencesWindow(win) {
-        let provider = new Gtk.CssProvider();
-        // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
+        let provider = new Gtk.CssProvider(); // Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
         provider.load_from_string(`:root { --abc: var(--accent-bg-color); --ac: var(--accent-color); }
-                                  .ld-popover { caret-color: var(--ac); }
-                                  .ld-dragging { background: color-mix(in srgb, var(--window-bg-color) 65%, transparent); color: var(--ac); border: 1px dashed var(--ac); border-radius: 4px; }
-                                  .ld-drop-top { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 85%, transparent) 0%, color-mix(in srgb, var(--abc) 0, transparent) 35%); }
-                                  .ld-drop-bottom { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 0, transparent) 65%, color-mix(in srgb, var(--abc) 85%, transparent) 100%); }`);
+.ld-popover { caret-color: var(--ac); }
+.ld-dragging { background: color-mix(in srgb, var(--window-bg-color) 65%, transparent); color: var(--ac); border: 1px dashed var(--ac); border-radius: 4px; }
+.ld-drop-top { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 85%, transparent) 0%, color-mix(in srgb, var(--abc) 0, transparent) 35%); }
+.ld-drop-bottom { background: linear-gradient(to bottom, color-mix(in srgb, var(--abc) 0, transparent) 65%, color-mix(in srgb, var(--abc) 85%, transparent) 100%); }`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${ROOT}/icons`);
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(`${Util.ROOT}/icons`);
         let gset = this.getSettings();
         [
             new PrefsBasic({title: _('_Basic'), iconName: 'ld-disable-passive-symbolic'}, gset),

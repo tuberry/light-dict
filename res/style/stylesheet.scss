@@ -30,7 +30,7 @@ $radius: 0.4em;
     max-height: 30em !important; /* min height for scroll */
     background-color: tone($bg_color, 10%);
     &:state-error { border: 0.1em solid $error_color; }
-    &:state-empty { border: 0.1em solid $warning_color; }
+    &:state-empty { border: 0.1em solid $warning_color; font-family: monospace; }
 }
 
 .#{$pfx}-content {
@@ -42,7 +42,7 @@ $radius: 0.4em;
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
-    border-color: transparentize($bg_color, 0.5);
+    border-color: transparentize($bg_color, 0.45);
 }
 
 .#{$pfx}-iconbox {
