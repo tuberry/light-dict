@@ -1,30 +1,38 @@
+# SPDX-FileCopyrightText: tuberry
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 project(
   'gnome-shell-extension-light-dict',
   license: 'GPL-3.0-or-later',
-  version: '47.beta',
+  version: '48.0',
+  meson_version: '>= 1.4.0',
 )
-
-_name = meson.project_name().replace('gnome-shell-extension-', '')
-_version = get_option('version')
-metadata = {
-    'name': 'Light Dict',
-    'uuid': _name + '@tuberry.github.io',
-    'gettext': meson.project_name(),
-    'shell': meson.project_version().split('.')[0],
-    'url': 'https://github.com/tuberry' / _name,
-    'schemas': 'org.gnome.shell.extensions.' + _name,
-    'version': _version != 0 ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=2959' / _name]).stdout().strip(),
-    'description': 'Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups'
-      + '\\n\\nFor support, please report issues via the Homepage link below rather than the comments section below it'
-}
 
 fs = import('fs')
 i18n = import('i18n')
 gnome = import('gnome')
 
+_name = 'Light Dict'
+_version = get_option('version')
+_title = meson.project_name().replace('gnome-shell-extension-', '')
 target = get_option('target')
-datadir = get_option('datadir')
+
+metadata = {
+  'name': _name,
+  'gettext': meson.project_name(),
+  'uuid': _title + '@tuberry.github.io',
+  'url': 'https://github.com/tuberry' / _title,
+  'shell': meson.project_version().split('.')[0],
+  'rdnn': 'org.gnome.shell.extensions.' + _title,
+  'path': f'/org/gnome/shell/extensions/@_title@/',
+  'dbus': 'org.gnome.Shell.Extensions.' + _name.replace(' ', ''),
+  'version': _version != 0 ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=2959' / _title]).stdout().strip(),
+  'description': 'Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups'
+    + (target == 'zip' ? '\\n\\nFor support, please report issues via the Homepage link below rather than the review section below it' : '')
+}
+
 if(target == 'system')
+  datadir = get_option('datadir')
   locale_dir = get_option('localedir')
   schema_dir = datadir / 'glib-2.0' / 'schemas'
   target_dir = datadir / 'gnome-shell' / 'extensions' / metadata['uuid']
@@ -42,13 +50,9 @@ if(target == 'zip')
     'a',
     zip_dir / '@0@_v@1@.zip'.format(metadata['gettext'], metadata['version']),
     target_dir / '*'
-    )
+  )
 endif
 
 subdir('po')
 subdir('res')
-install_subdir(
-  'src',
-  strip_directory: true,
-  install_dir: target_dir,
-)
+install_subdir('src', strip_directory: true, install_dir: target_dir)

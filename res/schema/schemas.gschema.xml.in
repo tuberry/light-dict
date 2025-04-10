@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
-  <schema id="org.gnome.shell.extensions.light-dict" path="/org/gnome/shell/extensions/light-dict/">
+<schemalist gettext-domain="@gettext@">
+  <schema id="@rdnn@" path="@path@">
     <key type="b" name="enable-title">
         <default>false</default>
         <summary>enable popup panel title</summary>
@@ -21,10 +21,6 @@
         <default>true</default>
         <summary>enable ocr</summary>
     </key>
-    <key type="b" name="short-ocr">
-        <default>false</default>
-        <summary>enable ocr shortcut</summary>
-    </key>
     <key type="b" name="dwell-ocr">
         <default>false</default>
         <summary>enable dwell ocr</summary>
@@ -35,7 +31,7 @@
         <summary>need modifier to trigger(1) or not(0)</summary>
     </key>
     <key type="u" name="autohide-timeout">
-        <range min="1000" max="10000"/>
+        <range min="1000" max="20000"/>
         <default>2500</default>
         <summary>autohide popup interval</summary>
     </key>
@@ -47,17 +43,17 @@
     <key type="u" name="trigger-style">
         <range min="0" max="2"/>
         <default>0</default>
-        <summary>trigger style: 0-swift, 1-popup 2-disable</summary>
+        <summary>trigger style: 0 - swift, 1 - popup 2 - disable</summary>
     </key>
     <key type="u" name="list-type">
         <range min="0" max="1"/>
         <default>1</default>
-        <summary>global app list type: 0-allow 1-block</summary>
+        <summary>global app list type: 0 - whitelist 1 - blacklist</summary>
     </key>
     <key type="u" name="ocr-work-mode">
         <range min="0" max="5"/>
         <default>0</default>
-        <summary>the work mode as ocr script parameter: 0-word 1-paragraph 2-area 3-selection 4-line 5-button</summary>
+        <summary>ocr work mode: 0 - word 1 - paragraph 2 - area 3 - line 4 - dialog</summary>
     </key>
     <key type="s" name="text-filter">
         <default>''</default>
@@ -67,9 +63,9 @@
         <default>""</default>
         <summary>command executed when right-clicking panel</summary>
     </key>
-    <key type="s" name="app-list">
-        <default>""</default>
-        <summary>app allowlist/blocklist</summary>
+    <key type="av" name="app-list">
+        <default>[]</default>
+        <summary>global app whitelist/blacklist</summary>
     </key>
     <key type="s" name="ocr-parameters">
         <default>""</default>
@@ -88,7 +84,7 @@
         <summary>shortcut to invoke the ocr script</summary>
     </key>
     <key type="av" name="swift-commands">
-        <default><![CDATA[[<{'name': <'Echo'>, 'command': <'echo -- echo "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
+        <default><![CDATA[[<{'name': <'Echo'>, 'command': <'echo echo "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
         <summary>alternative swift commands</summary>
     </key>
     <key type="av" name="popup-commands">

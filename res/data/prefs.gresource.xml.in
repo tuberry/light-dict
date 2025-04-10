@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="@path@theme">
+    <file compressed="true">@theme@</file>
+  </gresource>
+  <gresource prefix="@path@icons">
+    <file preprocess="xml-stripblanks" compressed="true">@0@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@1@</file>
+  </gresource>
+</gresources>

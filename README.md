@@ -1,3 +1,7 @@
+<!--
+SPDX-FileCopyrightText: tuberry
+SPDX-License-Identifier: CC-BY-SA-4.0
+-->
 # Light Dict
 
 Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.
@@ -11,7 +15,7 @@ Lightweight extension for on-the-fly manipulation to primary selections, especia
 
 ### Manual
 
-The latest and supported version should only work on the most current stable version of GNOME Shell.
+The latest and supported version should only work on the [current stable version](https://release.gnome.org/calendar/#branches) of GNOME Shell.
 
 ```bash
 git clone https://github.com/tuberry/light-dict.git && cd light-dict
@@ -21,6 +25,13 @@ meson setup build && meson install -C build
 
 For older versions, it's recommended to install via:
 
+```bash
+gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Extensions.InstallRemoteExtension 'light-dict@tuberry.github.io'
+```
+
+It's quite the same as installing from:
+
 ### E.G.O
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg?sanitize=true" alt="Get it on GNOME Extensions" height="100" align="middle">][EGO]
@@ -29,7 +40,7 @@ For older versions, it's recommended to install via:
 
 ### DBus
 
-For the [DBus] usage, see [_ldocr.fish](/cli/_ldocr.fish) as a sample reference.
+For the [DBus] usage, refer to [_ldocr.sh](/cli/_ldocr.sh).
 
 #### Methods
 
@@ -37,22 +48,24 @@ For the [DBus] usage, see [_ldocr.fish](/cli/_ldocr.fish) as a sample reference.
 gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict
 ```
 
+* The `Get` method is private for the built-in OCR [script](/src/ldocr.py).
+
 #### Arguments
 
 ##### OCR
 
-* params: `a string` (temporary parameters for OCR)
+* args: `a string` (temporary OCR arguments)
 
 ##### Run
 
-* type: `'^swift(:.+)?$'` | `'popup'` | `'display'` (fallback) | `'auto'` (follow the trigger)
+* type: `'auto'` (follow the trigger) | `'^swift(:.+)?$'` | `'popup'` | `'print'` (directly show `'text'` & `'info'`)
 * text: `a string` | `''` (for primary selection)
-* info: `a string` (for the `'display'` type) | `''` (for the other types)
-* area: `[x, y, width, height]` (the source area) | `[]` (default to the cursor)
+* info: `a string` (for the `'print'` type) | `''` (for the other types)
+* area: `[]` (default to the cursor) | `[x, y, width, height]` (the source area)
 
 ### OCR
 
-* OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
+OCR here is subject to factors such as fonts, colors, and backgrounds, which says any unexpected results are expected, but usually the simpler the scenes the better the results.
 
 #### Dependencies
 
@@ -63,29 +76,11 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 #### Screencast
 
-https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4
+<https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4>
 
 ### Command
 
-#### Bash
-
-Scripts run within `bash -c`:
-
-* use envar `$LDWORD` to get the captured text (by primary selection or OCR);
-* use envar `$LDAPPID` to get the focused app (most likely where the text from);
-
-#### JS
-
-Scripts run within scoped JS `eval()` to provide DE related functions:
-
-* `LDWORD`: the captured text;
-* `LDAPPID`: the focused app;
-* `open('uri')`: open uri with default app;
-* `copy(LDWORD)`: copy `LDWORD` to clipboard;
-* `search(LDWORD)`: search `LDWORD`in Overview;
-* `key('super+a')`: simulate keyboard input;
-
-And some native JS functions like `LDWORD.toUpperCase()`.
+Use (env)var `LDAPPID` to get the focused app (most likely where the text from);
 
 ## Notes
 
@@ -99,7 +94,7 @@ Feel free to open an issue or PR in the repo for any question or idea.
 
 ### Translations
 
-To update the po file from sources:
+To initialize or update the po file from sources:
 
 ```bash
 bash ./cli/update-po.sh [your_lang_code] # like zh_CN, default to $LANG

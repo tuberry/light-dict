@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/gnome/shell/dbus-interfaces">
+    <file preprocess="xml-stripblanks" compressed="true">@dbus@.xml</file>
+  </gresource>
+  <gresource prefix="/org/gnome/shell/icons">
+    <file preprocess="xml-stripblanks" compressed="true">@0@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@1@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@2@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@3@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@4@</file>
+    <file preprocess="xml-stripblanks" compressed="true">@5@</file>
+  </gresource>
+</gresources>

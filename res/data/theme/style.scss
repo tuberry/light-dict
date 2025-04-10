@@ -1,0 +1,35 @@
+$ac: var(--accent-color);
+$abc: var(--accent-bg-color);
+$wbc: var(--window-bg-color);
+
+.ld-apps {
+  outline: none;
+}
+
+.ld-popover {
+  caret-color: $ac;
+}
+
+// Ref: https://gist.github.com/JMoerman/6f2fa1494847ce7b7044b99787ccc769
+.ld-dragging {
+  color: $ac;
+  border-radius: 0.25em;
+  border: 0.08em dashed $ac;
+  background: color-mix(in srgb, $wbc 65%, transparent);
+}
+
+.ld-drop-top {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, $abc 85%, transparent) 0%,
+    color-mix(in srgb, $abc 0, transparent) 35%
+  );
+}
+
+.ld-drop-bottom {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, $abc 0, transparent) 65%,
+    color-mix(in srgb, $abc 85%, transparent) 100%
+  );
+}

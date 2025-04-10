@@ -1,0 +1,25 @@
+<!DOCTYPE node PUBLIC
+'-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
+'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+
+<!--
+    // NOTE: Maybe - https://gitlab.freedesktop.org/dbus/dbus/-/issues/25
+-->
+
+<node>
+  <interface name="@dbus@">
+    <method name="OCR">
+      <arg type="s" direction="in" name="args"/>
+    </method>
+    <method name="Run">
+      <arg type="s" direction="in" name="type"/>
+      <arg type="s" direction="in" name="text"/>
+      <arg type="s" direction="in" name="info"/>
+      <arg type="ai" direction="in" name="area"/>
+    </method>
+    <method name="Get">
+      <arg type="as" direction="in" name="props"/>
+      <arg type="aai" direction="out" name="results"/>
+    </method>
+  </interface>
+</node>

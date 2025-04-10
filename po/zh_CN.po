@@ -17,332 +17,13 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:343
-msgid "All"
-msgstr "全部"
-
-#: src/ui.js:343
-msgid "Normal"
-msgstr "常规"
-
-#: src/ui.js:343
-msgid "Symbolic"
-msgstr "符号"
-
-#: src/ui.js:382
-msgid "Clear"
-msgstr "清除"
-
-#: src/ui.js:480
+#: src/ui.js:384
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:615
+#: src/ui.js:516
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
-
-#: src/prefs.js:213
-msgid "S_how result"
-msgstr "显示结果(_H)"
-
-#: src/prefs.js:214
-msgid "Cop_y result"
-msgstr "复制结果(_Y)"
-
-#: src/prefs.js:215
-msgid "A_wait result"
-msgstr "等待结果(_W)"
-
-#: src/prefs.js:215
-msgid "Show a spinner when running"
-msgstr "等待时显示加载动画"
-
-#: src/prefs.js:216
-msgid "Se_lect result"
-msgstr "选取结果(_L)"
-
-#: src/prefs.js:217
-msgid "Co_mmit result"
-msgstr "提交结果(_M)"
-
-#: src/prefs.js:249 src/prefs.js:355
-msgid "Click the app icon to remove"
-msgstr "点击应用图标移除"
-
-#: src/prefs.js:250
-msgid "Proactive"
-msgstr "主动"
-
-#: src/prefs.js:250
-msgid "Passive"
-msgstr "被动"
-
-#: src/prefs.js:251 src/prefs.js:355
-msgid "Whitelist"
-msgstr "白名单"
-
-#: src/prefs.js:251
-msgid "Blacklist"
-msgstr "黑名单"
-
-#: src/prefs.js:252 src/extension.js:358
-msgid "Swift"
-msgstr "即时"
-
-#: src/prefs.js:252
-msgid "Popup"
-msgstr "弹出"
-
-#: src/prefs.js:252
-msgid "Disable"
-msgstr "禁用"
-
-#: src/prefs.js:253
-msgid "Word"
-msgstr "单词"
-
-#: src/prefs.js:253
-msgid "Paragraph"
-msgstr "段落"
-
-#: src/prefs.js:253
-msgid "Area"
-msgstr "区域"
-
-#: src/prefs.js:253
-msgid "Line"
-msgstr "单行"
-
-#: src/prefs.js:253
-msgid "Dialog"
-msgstr "对话"
-
-#: src/prefs.js:254 src/prefs.js:255
-msgid "Use env var LDWORD for the selected text"
-msgstr "以环境变量 LDWORD 代替所选文本"
-
-#: src/prefs.js:256
-msgid "O_CR"
-msgstr "取词(_C)"
-
-#: src/prefs.js:256
-msgid ""
-"Depends on <a href=\"https://pypi.org/project/opencv-python/\">opencv-"
-"python</a> and <a href=\"https://pypi.org/project/pytesseract/"
-"\">pytesseract</a>"
-msgstr ""
-"依赖于 <a href=\"https://pypi.org/project/opencv-python/\">opencv-python</a> "
-"和 <a href=\"https://pypi.org/project/pytesseract/\">pytesseract</a>"
-
-#: src/prefs.js:265
-msgid "Enable s_ystray"
-msgstr "系统托盘(_Y)"
-
-#: src/prefs.js:265
-msgid "Scroll to toggle the trigger style"
-msgstr "滚动以切换触发方式"
-
-#: src/prefs.js:266
-msgid "_Trigger style"
-msgstr "触发方式(_T)"
-
-#: src/prefs.js:266
-msgid "Passive means pressing Alt to trigger"
-msgstr "被动即按住 Alt 触发"
-
-#: src/prefs.js:267 src/prefs.js:355
-msgid "_App list"
-msgstr "应用名单(_A)"
-
-#: src/prefs.js:270
-msgid "Sho_rtcut"
-msgstr "快捷键(_R)"
-
-#: src/prefs.js:271
-msgid "_Dwell OCR"
-msgstr "悬停取词(_D)"
-
-#: src/prefs.js:272
-msgid "_Work mode"
-msgstr "工作模式(_W)"
-
-#: src/prefs.js:273
-msgid "Other para_meters"
-msgstr "其它参数(_M)"
-
-#: src/prefs.js:278
-msgid "_Other"
-msgstr "其它(_O)"
-
-#: src/prefs.js:279
-msgid "Sp_lice text"
-msgstr "拼接文本(_L)"
-
-#: src/prefs.js:279
-msgid "Try to replace redundant line breaks with spaces"
-msgstr "尝试以空格替换冗余换行符"
-
-#: src/prefs.js:280
-msgid "Autohide inter_val"
-msgstr "隐藏延迟(_V)"
-
-#: src/prefs.js:280
-msgid "Unit: millisecond"
-msgstr "单位: 毫秒"
-
-#: src/prefs.js:281
-msgid "RegE_xp filter"
-msgstr "正则过滤(_X)"
-
-#: src/prefs.js:282
-msgid "Pa_nel"
-msgstr "气泡(_N)"
-
-#: src/prefs.js:282
-msgid "Middle click to copy the result"
-msgstr "中键复制结果"
-
-#: src/prefs.js:283
-msgid "_Enable title"
-msgstr "启用标题(_E)"
-
-#: src/prefs.js:284
-msgid "Ri_ght command"
-msgstr "右键命令(_G)"
-
-#: src/prefs.js:284
-msgid "Right click to run and hide panel"
-msgstr "右键运行并关闭气泡"
-
-#: src/prefs.js:285
-msgid "Le_ft command"
-msgstr "左键命令(_F)"
-
-#: src/prefs.js:285
-msgid "Left click to run"
-msgstr "左键运行"
-
-#: src/prefs.js:286
-msgid "Pop_up"
-msgstr "弹出(_U)"
-
-#: src/prefs.js:286
-msgid "Scroll to flip pages"
-msgstr "滚动翻页"
-
-#: src/prefs.js:287
-msgid "Enable toolt_ip"
-msgstr "启用提示(_I)"
-
-#: src/prefs.js:288
-msgid "Page si_ze"
-msgstr "页面容量(_Z)"
-
-#: src/prefs.js:339
-msgid ""
-"<b>Bash</b>\n"
-"please scrutinize your code as in a terminal\n"
-"<b>JS</b>\n"
-"<tt>open('URI')</tt>: open URI with default app\n"
-"<tt>key('super+a')</tt>: simulate keyboard input\n"
-"<tt>copy(LDWORD)</tt>: copy <tt>LDWORD</tt> to clipboard\n"
-"<tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview\n"
-"other: some native functions like <tt>LDWORD.trim()</tt>"
-msgstr ""
-"<b>Bash</b>\n"
-"请像在终端中一样仔细检查您的代码\n"
-"<b>JS</b>\n"
-"<tt>open('URI')</tt>: 用默认应用打开 URI\n"
-"<tt>key('super+a')</tt>: 模拟键盘输入\n"
-"<tt>copy(LDWORD)</tt>: 复制 <tt>LDWORD</tt> 到剪贴板\n"
-"<tt>search(LDWORD)</tt>: 在概览中搜索 <tt>LDWORD</tt>\n"
-"其它: 部分原生函数例如 <tt>LDWORD.trim()</tt>"
-
-#: src/prefs.js:351
-msgid "_Run command"
-msgstr "运行命令(_R)"
-
-#: src/prefs.js:351
-msgid "Use (env) var LDWORD for the selected text"
-msgstr "以(环境)变量 LDWORD 代替所选文本"
-
-#: src/prefs.js:352
-msgid "_Command type"
-msgstr "命令类型(_C)"
-
-#: src/prefs.js:353
-msgid "_Icon name"
-msgstr "图标名称(_I)"
-
-#: src/prefs.js:356
-msgid "RegE_xp matcher"
-msgstr "正则匹配(_X)"
-
-#: src/prefs.js:357
-msgid "Ic_on tooltip"
-msgstr "图标提示(_O)"
-
-#: src/prefs.js:377
-msgid "Add"
-msgstr "添加"
-
-#: src/prefs.js:378
-msgid "Remove"
-msgstr "移除"
-
-#: src/prefs.js:379
-msgid "Copy"
-msgstr "复制"
-
-#: src/prefs.js:380
-msgid "Paste"
-msgstr "粘贴"
-
-#: src/prefs.js:418
-#, javascript-format
-msgid "Removed <i>%s</i> command"
-msgstr "已移除 <i>%s</i> 命令"
-
-#: src/prefs.js:424
-#, javascript-format
-msgid "Copied <i>%s</i> command"
-msgstr "已复制 <i>%s</i> 命令"
-
-#: src/prefs.js:432
-msgid "Failed to parse pasted command"
-msgstr "无法解析所贴命令"
-
-#: src/prefs.js:514
-msgid "_Basic"
-msgstr "基本(_B)"
-
-#: src/prefs.js:515
-msgid "_Swift"
-msgstr "即时(_S)"
-
-#: src/prefs.js:516
-msgid "_Popup"
-msgstr "弹出(_P)"
-
-#: src/extension.js:337
-msgid "Dwell OCR"
-msgstr "悬停取词"
-
-#: src/extension.js:338
-msgid "OCR"
-msgstr "取词"
-
-#: src/extension.js:355
-msgid "Passive mode"
-msgstr "被动模式"
-
-#: src/extension.js:357
-msgid "Trigger"
-msgstr "触发"
-
-#: src/extension.js:361
-msgid "Settings"
-msgstr "设置"
 
 #: src/ldocr.py:39 src/ldocr.py:158
 msgid "OCR process failed. (-_-;)"
@@ -391,6 +72,364 @@ msgstr "OCR预处理失败。(~_~)"
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
+#: src/extension.js:305
+msgid "Dwell OCR"
+msgstr "悬停取词"
+
+#: src/extension.js:306 src/prefs.js:234
+msgid "OCR"
+msgstr "取词"
+
+#: src/extension.js:321
+msgid "Passive mode"
+msgstr "被动模式"
+
+#: src/extension.js:323
+msgid "Trigger"
+msgstr "触发"
+
+#: src/extension.js:324 src/prefs.js:208
+msgid "Swift"
+msgstr "即时"
+
+#: src/extension.js:327
+msgid "Settings"
+msgstr "设置"
+
+#: src/prefs.js:44
+msgid "Click the app icon to remove"
+msgstr "点击应用图标移除"
+
+#: src/prefs.js:174
+msgid "S_how result"
+msgstr "显示结果(_H)"
+
+#: src/prefs.js:175
+msgid "Cop_y result"
+msgstr "复制结果(_Y)"
+
+#: src/prefs.js:176
+msgid "A_wait result"
+msgstr "等待结果(_W)"
+
+#: src/prefs.js:176
+msgid "Show a spinner when running"
+msgstr "等待时显示加载动画"
+
+#: src/prefs.js:177
+msgid "Se_lect result"
+msgstr "选取结果(_L)"
+
+#: src/prefs.js:178
+msgid "Co_mmit result"
+msgstr "提交结果(_M)"
+
+#: src/prefs.js:206
+msgid "Proactive"
+msgstr "主动"
+
+#: src/prefs.js:206
+msgid "Passive"
+msgstr "被动"
+
+#: src/prefs.js:207 src/prefs.js:298
+msgid "Whitelist"
+msgstr "白名单"
+
+#: src/prefs.js:207
+msgid "Blacklist"
+msgstr "黑名单"
+
+#: src/prefs.js:208 src/prefs.js:231
+msgid "Popup"
+msgstr "弹出"
+
+#: src/prefs.js:208
+msgid "Disable"
+msgstr "禁用"
+
+#: src/prefs.js:209
+msgid "Word"
+msgstr "单词"
+
+#: src/prefs.js:209
+msgid "Paragraph"
+msgstr "段落"
+
+#: src/prefs.js:209
+msgid "Area"
+msgstr "区域"
+
+#: src/prefs.js:209
+msgid "Line"
+msgstr "单行"
+
+#: src/prefs.js:209
+msgid "Dialog"
+msgstr "对话"
+
+#: src/prefs.js:210 src/prefs.js:211
+msgid "get captured text with the environment variable LDWORD"
+msgstr "通过(环境)变量<b>LDWORD</b>获取捕获的文本"
+
+#: src/prefs.js:221
+msgid "Enable s_ystray"
+msgstr "系统托盘(_Y)"
+
+#: src/prefs.js:221
+msgid "Scroll to toggle the trigger style"
+msgstr "滚动以切换触发方式"
+
+#: src/prefs.js:222
+msgid "_Trigger style"
+msgstr "触发方式(_T)"
+
+#: src/prefs.js:222
+msgid "Passive means pressing Alt to trigger"
+msgstr "被动即按住 Alt 触发"
+
+#: src/prefs.js:223 src/prefs.js:298
+msgid "_App list"
+msgstr "应用名单(_A)"
+
+#: src/prefs.js:224
+msgid "RegE_xp filter"
+msgstr "正则过滤(_X)"
+
+#: src/prefs.js:225
+msgid "Autohide inter_val"
+msgstr "隐藏延迟(_V)"
+
+#: src/prefs.js:225
+msgid "ms"
+msgstr "毫秒"
+
+#: src/prefs.js:226
+msgid "Sp_lice text"
+msgstr "拼接文本(_L)"
+
+#: src/prefs.js:226
+msgid "Try to replace redundant line breaks with spaces"
+msgstr "尝试以空格替换冗余换行符"
+
+#: src/prefs.js:227
+msgid "Panel"
+msgstr "气泡"
+
+#: src/prefs.js:227
+msgid "Middle click to copy the result"
+msgstr "中键复制结果"
+
+#: src/prefs.js:228
+msgid "_Enable title"
+msgstr "启用标题(_E)"
+
+#: src/prefs.js:229
+msgid "Ri_ght command"
+msgstr "右键命令(_G)"
+
+#: src/prefs.js:229
+msgid "Right click to run and hide panel"
+msgstr "右键运行并关闭气泡"
+
+#: src/prefs.js:230
+msgid "Le_ft command"
+msgstr "左键命令(_F)"
+
+#: src/prefs.js:230
+msgid "Left click to run"
+msgstr "左键运行"
+
+#: src/prefs.js:231
+msgid "Scroll to flip pages"
+msgstr "滚动翻页"
+
+#: src/prefs.js:232
+msgid "Enable toolt_ip"
+msgstr "启用提示(_I)"
+
+#: src/prefs.js:233
+msgid "Page si_ze"
+msgstr "页面容量(_Z)"
+
+#: src/prefs.js:234
+msgid "Depends on: "
+msgstr "依赖于: "
+
+#: src/prefs.js:235
+msgid "Sho_rtcut"
+msgstr "快捷键(_R)"
+
+#: src/prefs.js:236
+msgid "_Dwell OCR"
+msgstr "悬停取词(_D)"
+
+#: src/prefs.js:237
+msgid "_Work mode"
+msgstr "工作模式(_W)"
+
+#: src/prefs.js:238
+msgid "Other para_meters"
+msgstr "其它参数(_M)"
+
+#: src/prefs.js:284
+msgid "_Run command"
+msgstr "运行命令(_R)"
+
+#: src/prefs.js:285
+msgid "_Command type"
+msgstr "命令类型(_C)"
+
+#: src/prefs.js:286
+msgid "Bash environment variable"
+msgstr "Bash 环境变量"
+
+#: src/prefs.js:287
+msgid "the captured text"
+msgstr "捕获的文本"
+
+#: src/prefs.js:288
+msgid "the focused app"
+msgstr "聚集的应用"
+
+#: src/prefs.js:289
+msgid "JS script statement"
+msgstr "JS 脚本语句"
+
+#: src/prefs.js:290
+msgid "open <tt>URI</tt> with default app"
+msgstr "用默认应用打开 <tt>URI</tt>"
+
+#: src/prefs.js:291
+msgid "simulate keyboard input"
+msgstr "模拟键盘输入"
+
+#: src/prefs.js:292
+msgid "copy <tt>LDWORD</tt> to clipboard"
+msgstr "复制 <tt>LDWORD</tt> 到剪贴板"
+
+#: src/prefs.js:293
+msgid "search <tt>LDWORD</tt> in Overview"
+msgstr "在概览中搜索 <tt>LDWORD</tt>"
+
+#: src/prefs.js:294
+msgid "some native functions"
+msgstr "部分原生函数"
+
+#: src/prefs.js:296
+msgid "_Icon name"
+msgstr "图标名称(_I)"
+
+#: src/prefs.js:299
+msgid "RegE_xp matcher"
+msgstr "正则匹配(_X)"
+
+#: src/prefs.js:300
+msgid "Ic_on tooltip"
+msgstr "图标提示(_O)"
+
+#: src/prefs.js:320
+msgid "Add"
+msgstr "添加"
+
+#: src/prefs.js:321
+msgid "Remove"
+msgstr "移除"
+
+#: src/prefs.js:322
+msgid "Copy"
+msgstr "复制"
+
+#: src/prefs.js:323
+msgid "Paste"
+msgstr "粘贴"
+
+#: src/prefs.js:361
+#, javascript-format
+msgid "Removed <i>%s</i> command"
+msgstr "已移除 <i>%s</i> 命令"
+
+#: src/prefs.js:367
+#, javascript-format
+msgid "Copied <i>%s</i> command"
+msgstr "已复制 <i>%s</i> 命令"
+
+#: src/prefs.js:375
+msgid "Failed to parse pasted command"
+msgstr "无法解析所贴命令"
+
+#: src/prefs.js:439
+msgid "_Basic"
+msgstr "基本(_B)"
+
+#: src/prefs.js:440
+msgid "_Swift"
+msgstr "即时(_S)"
+
+#: src/prefs.js:441
+msgid "_Popup"
+msgstr "弹出(_P)"
+
+#~ msgid "All"
+#~ msgstr "全部"
+
+#~ msgid "Normal"
+#~ msgstr "常规"
+
+#~ msgid "Symbolic"
+#~ msgstr "符号"
+
+#~ msgid "Use env var LDWORD for the selected text"
+#~ msgstr "以环境变量 LDWORD 代替所选文本"
+
+#~ msgid "O_CR"
+#~ msgstr "取词(_C)"
+
+#~ msgid ""
+#~ "Depends on <a href=\"https://pypi.org/project/opencv-python/\">opencv-"
+#~ "python</a> and <a href=\"https://pypi.org/project/pytesseract/"
+#~ "\">pytesseract</a>"
+#~ msgstr ""
+#~ "依赖于 <a href=\"https://pypi.org/project/opencv-python/\">opencv-python</"
+#~ "a> 和 <a href=\"https://pypi.org/project/pytesseract/\">pytesseract</a>"
+
+#~ msgid "_Other"
+#~ msgstr "其它(_O)"
+
+#~ msgid "Unit: millisecond"
+#~ msgstr "单位: 毫秒"
+
+#~ msgid "Pa_nel"
+#~ msgstr "气泡(_N)"
+
+#~ msgid "Pop_up"
+#~ msgstr "弹出(_U)"
+
+#~ msgid ""
+#~ "<b>Bash</b>\n"
+#~ "please scrutinize your code as in a terminal\n"
+#~ "<b>JS</b>\n"
+#~ "<tt>open('URI')</tt>: open URI with default app\n"
+#~ "<tt>key('super+a')</tt>: simulate keyboard input\n"
+#~ "<tt>copy(LDWORD)</tt>: copy <tt>LDWORD</tt> to clipboard\n"
+#~ "<tt>search(LDWORD)</tt>: search <tt>LDWORD</tt> in Overview\n"
+#~ "other: some native functions like <tt>LDWORD.trim()</tt>"
+#~ msgstr ""
+#~ "<b>Bash</b>\n"
+#~ "请像在终端中一样仔细检查您的代码\n"
+#~ "<b>JS</b>\n"
+#~ "<tt>open('URI')</tt>: 用默认应用打开 URI\n"
+#~ "<tt>key('super+a')</tt>: 模拟键盘输入\n"
+#~ "<tt>copy(LDWORD)</tt>: 复制 <tt>LDWORD</tt> 到剪贴板\n"
+#~ "<tt>search(LDWORD)</tt>: 在概览中搜索 <tt>LDWORD</tt>\n"
+#~ "其它: 部分原生函数例如 <tt>LDWORD.trim()</tt>"
+
+#~ msgid "Use (env) var LDWORD for the selected text"
+#~ msgstr "以(环境)变量 LDWORD 代替所选文本"
+
+#~ msgid "Clear"
+#~ msgstr "清除"
+
 #~ msgid "Allowlist"
 #~ msgstr "白名单"
 
@@ -410,9 +449,6 @@ msgstr "太靠边了。(>_<)"
 #~ msgid "T_rim blank lines"
 #~ msgstr "去除空行(_R)"
 
-#~ msgid "Panel"
-#~ msgstr "气泡"
-
 #, javascript-format
 #~ msgid "Visit the <a href=\"%s\">homepage</a> for help"
 #~ msgstr "访问<a href=\"%s\">主页</a>获取帮助"
@@ -428,9 +464,6 @@ msgstr "太靠边了。(>_<)"
 #~ "Lightweight extension for on-the-fly manipulation to primary selections, "
 #~ "especially optimized for Dictionary lookups."
 #~ msgstr "即时操作所选文本的轻量扩展，为查词而生。"
-
-#~ msgid "Get the selected text via the <b>LDWORD</b> (environment) variable"
-#~ msgstr "通过(环境)变量<b>LDWORD</b>获取所选文本"
 
 #~ msgid "Simulate keyboard input in JS statement: <tt>key(\"ctrl+c\")</tt>"
 #~ msgstr "JS语句模拟键盘输入: <tt>key(\"ctrl+c\")</tt>"

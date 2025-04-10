@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: tuberry
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 $contrast: 'normal';
 
 @import 'gnome-shell-sass/_colors';
@@ -15,11 +18,18 @@ $radius: 0.4em;
 
 .#{$pfx}-box-boxpointer {
     // -arrow-rize: 1em;
-    box-shadow: 0 0.1em 0.15em 0 $shadow_color; // ?: not working with St.ScrollView
+    box-shadow: 0.05em 0.15em 0.25em 0 $shadow_color;
 }
 
 .#{$pfx}-systray:state-busy {
     color: st-tone(-st-accent-color, 10%);
+}
+
+.#{$pfx}-spinner {
+    padding: 0.2em;
+    border-radius: 0.8em; // percent value not supported
+    background-color: tone($bg_color, 5%);
+    box-shadow: 0 0 0.2em 0.2em $shadow_color;
 }
 
 .#{$pfx}-view {
@@ -29,6 +39,7 @@ $radius: 0.4em;
     max-width: 40em !important; /* for text line wrap */
     max-height: 30em !important; /* min height for scroll */
     background-color: tone($bg_color, 10%);
+    border: 0.05em solid tone($outer_borders_color, 13%);
     &:state-error { border: 0.1em solid $error_color; }
     &:state-empty { border: 0.1em solid $warning_color; font-family: monospace; }
 }
@@ -47,6 +58,7 @@ $radius: 0.4em;
 
 .#{$pfx}-iconbox {
     padding: 0;
+    border-radius: 0.6em;
     & StIcon {
         icon-size: 2em;
         padding: 0 0.1em;
@@ -56,6 +68,7 @@ $radius: 0.4em;
 .#{$pfx}-button {
     font-weight: bold;
     padding: 0.5em 0.3em;
+    transition-duration: 50ms;
     &:hover {
         border-width: 0;
         border-style: double;

@@ -36,7 +36,7 @@ class Result:
 
     @property
     def param(self):
-        style, text, info = ['display', '', self.error or _('OCR process failed. (-_-;)')] if self.erroneous else [self.style, self.text, '']
+        style, text, info = ['print', '', self.error or _('OCR process failed. (-_-;)')] if self.erroneous else [self.style, self.text, '']
         return ('Run', ('(sssai)', (style, text.strip(), info, self.area or [])))
 
 def main():
