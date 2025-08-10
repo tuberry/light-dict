@@ -23,6 +23,6 @@ export const Key = {
     SCMDS: 'swift-commands',
     TIP:   'enable-tooltip',
     TRAY:  'enable-systray',
-    WAIT:  'autohide-timeout',
+    TIME:  'autohide-timeout',
     KEYS:  'light-dict-ocr-shortcut',
 };

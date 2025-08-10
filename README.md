@@ -4,7 +4,7 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 -->
 # Light Dict
 
-Lightweight extension for on-the-fly manipulation to primary selections, especially optimized for Dictionary lookups.
+GNOME Shell extension to manipulate primary selections on the fly, typically used as Lightweight Dictionaries.
 
 >L, you know what? The Shinigami only eats apples. —— *Light Yagami*\
 [![license]](/LICENSE.md)
@@ -58,7 +58,7 @@ gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell
 
 ##### Run
 
-* type: `'auto'` (follow the trigger) | `'^swift(:.+)?$'` | `'popup'` | `'print'` (directly show `'text'` & `'info'`)
+* type: `'auto'` (follow the trigger) | `'^swift(:.+)?$'` | `'popup'` | `'print'` (directly show the following `text` & `info`)
 * text: `a string` | `''` (for primary selection)
 * info: `a string` (for the `'print'` type) | `''` (for the other types)
 * area: `[]` (default to the cursor) | `[x, y, width, height]` (the source area)
@@ -72,15 +72,9 @@ OCR here is subject to factors such as fonts, colors, and backgrounds, which say
 * [opencv-python]
 * [pytesseract]
 
-![ldpref](https://github.com/user-attachments/assets/c2edd859-75a1-4f94-b15e-94c26f6c6bd5)
-
 #### Screencast
 
 <https://user-images.githubusercontent.com/17917040/137623193-9a21117b-733e-4e1b-95d2-ac32f865af26.mp4>
-
-### Command
-
-Use (env)var `LDAPPID` to get the focused app (most likely where the text from);
 
 ## Notes
 
@@ -110,8 +104,8 @@ npm install @girs/gnome-shell --save-dev
 
 ## Acknowledgements
 
-* [youdaodict]: the idea of popup
-* [swift-selection-search]: the stylesheet of iconbar
+* [youdaodict]: the idea of panel
+* [swift-selection-search]: the stylesheet of popup
 * [capture2text]: the idea of bubble OCR (dialog OCR here)
 
 [opencv-python]:https://github.com/opencv/opencv-python

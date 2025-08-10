@@ -9,7 +9,7 @@ scss = custom_target(
   command: [
     find_program('sassc'),
     '-t',
-    'compressed',
+    'compact',
     '-a',
     '@INPUT@',
     '@OUTPUT@'

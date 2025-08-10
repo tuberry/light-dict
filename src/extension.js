@@ -24,6 +24,7 @@ import * as F from './fubar.js';
 import {Key as K, Result} from './const.js';
 
 const {_} = F;
+const {$, $$, $_} = T;
 const DBusSSS = Main.shellDBusService._screenshotService._senderChecker;
 
 const Trigger = {SWIFT: 0, POPUP: 1, DISABLE: 2};
@@ -37,14 +38,14 @@ const Modifier = {ctrl: Clutter.KEY_Control_L, shift: Clutter.KEY_Shift_L, alt: 
 const keyval = keysym => Modifier[keysym] ?? Clutter[`KEY_${keysym}`] ?? Clutter.KEY_VoidSymbol;
 const approx = (exp, str, nil = true) => T.essay(() => exp ? RegExp(exp, 'u').test(str) : nil, e => (logError(e, exp), nil)); // =~
 const allowed = (cmd, app, str) => cmd ? (!cmd.apps?.length || cmd.apps.includes(app)) && approx(cmd.regexp, str) : false;
-const evaluate = (script, scope) => Function(Object.keys(scope).concat(EvalMask).join(','),
-    `'use strict'; return eval(${JSON.stringify(script)})`)(...Object.values(scope));
+const evaluate = (script, scope) => Function(Object.keys(scope)[$].push(EvalMask).join(','),
+    `'use strict'; return eval(${JSON.stringify(script)})`)(...Object.values(scope)); // NOTE: https://github.com/tc39/proposal-shadowrealm
 
 class GB {
-    static get ptr() { return global.get_pointer(); };
-    static get size() { return global.display.get_size(); }
-    static get win() { return global.display.get_focus_window(); }
-    static get csr() { return Meta.prefs_get_cursor_size(); }
+    static get pointer() { return global.get_pointer(); };
+    static get display() { return global.display.get_size(); }
+    static get window() { return global.display.get_focus_window(); }
+    static get cursor() { return Meta.prefs_get_cursor_size(); }
 }
 
 class DictBtn extends M.Button {
@@ -53,19 +54,13 @@ class DictBtn extends M.Button {
     }
 
     constructor(click) {
-        super({styleClass: 'light-dict-button candidate-box'}, () => click(this.$index), null);
+        super(() => click(this.$index), null)[$].set({styleClass: 'light-dict-button candidate-box'});
     }
 
     setup({icon, name, tooltip}, index, tip) {
-        if(icon) {
-            this.set_label('');
-            this.set_icon_name(icon);
-        } else {
-            this.set_icon_name('');
-            this.set_label(name || 'Name');
-        }
-        this.$index = index;
-        this.setTip(tip ? tooltip : '');
+        if(icon) this[$].set_label('').set_icon_name(icon);
+        else this[$].set_icon_name('').set_label(name || 'Name');
+        this[$].$index(index).setTip(tip ? tooltip : '');
     }
 }
 
@@ -75,26 +70,23 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     constructor(set) {
-        super(St.Side.BOTTOM);
-        this.#buildWidgets();
-        this.#bindSettings(set);
+        super(St.Side.BOTTOM)[$].set({visible: false, styleClass: 'light-dict-bar-boxpointer'})[$]
+            .$buildWidgets()[$].$bindSettings(set);
     }
 
-    #buildWidgets() {
-        this.set({visible: false, styleClass: 'light-dict-bar-boxpointer'});
+    $buildWidgets() {
         this.$src = F.Source.tie({hide: F.Source.newTimer(x => [() => this.dispel(), x])}, this);
-        this.$box = T.hook({
-            'scroll-event': (...xs) => this.#onScroll(...xs),
-            'notify::hover': ({hover}) => this.$src.hide.switch(!hover, this[K.WAIT] / 10),
-        }, new St.BoxLayout({
+        this.$box = T.seq(new St.BoxLayout({
             reactive: true, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content',
-        }));
-        this.bin.set_child(this.$box);
+        })[$$].connect([
+            ['scroll-event', (...xs) => this.#onScroll(...xs)],
+            ['notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10)],
+        ]), w => this.bin.set_child(w));
     }
 
-    #bindSettings(set) {
+    $bindSettings(set) {
         this.$set = set.tie([
-            K.WAIT, K.PGSZ, [K.TIP, x => this.#onTooltipSet(x)],
+            K.TIME, K.PGSZ, [K.TIP, x => this.#onTooltipSet(x)],
             [['cmds', K.PCMDS], x => this.#onCommandsSet(x)],
         ], this);
     }
@@ -102,13 +94,13 @@ class DictBar extends BoxPointer.BoxPointer {
     #onTooltipSet(tip) {
         if(T.xnor(this[K.TIP], tip)) return;
         let setup = tip ? (x, i) => x.setTip(this.cmds[i].tooltip) : x => x.setTip();
-        [...this.$box].forEach(setup);
+        Iterator.from(this.$box).forEach(setup);
     }
 
     #onCommandsSet(commands) {
-        return T.seq(cmds => T.homolog(this.cmds, cmds, this[K.TIP] ? ['icon', 'name', 'tooltip'] : ['icon', 'name']) ||
-            M.upsert(this.$box, x => x.add_child(new DictBtn(y => { this.dispel(); this.emit('dict-bar-clicked', this.cmds[y]); })),
-                cmds, (v, x, i) => x.setup(v, i, this[K.TIP]), x => [...x]), commands.filter(x => x.enable));
+        return T.seq(commands.filter(x => x.enable), cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$_].push(this[K.TIP], 'tooltip')) ||
+            M.upsert(this.$box, x => x.add_child(new DictBtn(y => this[$].dispel().emit('dict-bar-clicked', this.cmds[y]))),
+                cmds, (v, x, i) => x.setup(v, i, this[K.TIP]), Iterator.from));
     }
 
     #getPages() {
@@ -146,7 +138,7 @@ class DictBar extends BoxPointer.BoxPointer {
         if(F.offstage(this)) Main.layoutManager.addTopChrome(this);
         this.#updatePages(pages);
         this.open(BoxPointer.PopupAnimation.NONE);
-        this.$src.hide.revive(this[K.WAIT]);
+        this.$src.hide.revive(this[K.TIME]);
     }
 
     dispel() {
@@ -163,28 +155,25 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     constructor(set) {
-        super(St.Side.TOP);
-        this.#buildWidgets();
-        this.#bindSettings(set);
+        super(St.Side.TOP, {styleClass: 'light-dict-view-bin'})[$].set({visible: false, styleClass: 'light-dict-box-boxpointer'})[$]
+            .$buildWidgets()[$].$bindSettings(set);
     }
 
-    #buildWidgets() {
-        this.set({visible: false, styleClass: 'light-dict-box-boxpointer'});
+    $buildWidgets() {
         this.$src = F.Source.tie({hide: F.Source.newTimer(x => [() => this.dispel(), x])}, this);
-        this.$view = T.hook({
-            'button-press-event': (...xs) => this.#onClick(...xs),
-            'notify::hover': ({hover}) => this.$src.hide.switch(!hover, this[K.WAIT] / 10),
-        }, new St.ScrollView({
+        this.$view = T.seq(new St.ScrollView({
             child: new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, styleClass: 'light-dict-content'}),
             styleClass: 'light-dict-view', overlayScrollbars: true, reactive: true, trackHover: true,
-        }));
+        })[$$].connect([
+            ['button-press-event', (...xs) => this.#onClick(...xs)],
+            ['notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10)],
+        ]), w => this.bin.set_child(w));
         this.$info = this.#insertLabel('light-dict-info');
-        this.bin.set_child(this.$view);
     }
 
-    #bindSettings(set) {
+    $bindSettings(set) {
         this.$set = set.tie([
-            K.LCMD, K.RCMD, K.WAIT,
+            K.LCMD, K.RCMD, K.TIME,
             [K.HEAD, x => { if(!T.xnor(x, this.$text)) x ? this.$text = this.#insertLabel() : F.omit(this, '$text'); }],
         ], this);
     }
@@ -200,13 +189,12 @@ class DictBox extends BoxPointer.BoxPointer {
         let [, , w, h] = this.get_preferred_size(),
             theme = this.$view.get_theme_node(),
             limit = theme.get_max_height();
-        if(limit <= 0) limit = GB.size.at(1) * 15 / 32;
+        if(limit <= 0) limit = GB.display.at(1) * 15 / 32;
         let scroll = h >= limit;
         let count = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
-            : [...this.$info.get_text()].reduce((p, x) => p + (GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1), 0);
-        this.$wait = Math.clamp(this[K.WAIT] * count / 36, 1000, 20000);
-        this.$view.vscrollbarPolicy = scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER; // HACK: workaround for trailing lines with default policy (AUTOMATIC)
-        this.$view.vadjustment.set_value(0);
+            : Iterator.from(this.$info.get_text()).reduce((p, x) => p + (GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1), 0);
+        this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
+        this.$delay = Math.clamp(this[K.TIME] * count / 36, 1000, 20000);
     }
 
     #onClick(_a, event) {
@@ -220,8 +208,8 @@ class DictBox extends BoxPointer.BoxPointer {
     #setState(error, info) {
         let state = error ? 'state-error' : info ? '' : 'state-empty';
         if(this.$state === state) return;
-        if(this.$state) this.$view.remove_style_pseudo_class(this.$state);
-        if((this.$state = state)) this.$view.add_style_pseudo_class(this.$state);
+        this.$view[$_].remove_style_pseudo_class(this.$state, this.$state)[$_]
+            .add_style_pseudo_class(this.$state = state, this.$state);
     }
 
     summon(info, text, error) {
@@ -232,13 +220,13 @@ class DictBox extends BoxPointer.BoxPointer {
         try {
             Pango.parse_markup(info, -1, '');
             F.marks(this.$info, info);
-        } catch(e) {
+        } catch{
             this.$info.set_text(info);
         }
         this.$text?.set_text(text);
         this.#updateScroll();
         this.open(BoxPointer.PopupAnimation.NONE);
-        this.$src.hide.revive(this.$wait);
+        this.$src.hide.revive(this.$delay);
     }
 
     dispel() {
@@ -252,24 +240,22 @@ class DictBox extends BoxPointer.BoxPointer {
 
 class DictAct extends F.Mortal {
     constructor(set) {
-        super();
-        this.#bindSettings(set);
-        this.#buildSources();
+        super()[$].$bindSettings(set)[$].$buildSources();
     }
 
-    #bindSettings(set) {
+    $bindSettings(set) {
         this.$set = set.tie([
-            [K.TRG, null, x => this.tray?.$menu.trigger.choose(x)],
-            [K.PSV, x => !!x, x => this.tray?.$menu.passive.setToggleState(x)],
-        ], this, () => this.#onTrayIconSet(), () => this.tray?.$icon.set_icon_name(this.icon)).tie([
+            [K.TRG, null, x => this.$src.tray.hub?.$menu.trigger.choose(x)],
+            [K.PSV, x => !!x, x => this.$src.tray.hub?.$menu.passive.setToggleState(x)],
+        ], this, () => this.#onTrayIconSet(), () => this.$src.tray.hub?.$icon.set_icon_name(this.icon)).tie([
             [['cmds', K.SCMDS], x => this.#onCommandsSet(x)],
             [K.TRAY, null, x => this.$src.tray.toggle(x)],
             [K.OCR, null, x => this.#onEnableOcrSet(x)],
-            [K.SCMD, null, x => this.tray?.$menu.cmds.choose(x)],
+            [K.SCMD, null, x => this.$src.tray.hub?.$menu.cmds.choose(x)],
         ], this);
     }
 
-    #buildSources() {
+    $buildSources() {
         let cancel = F.Source.newCancel(),
             tty = new F.Source(() => new Gio.SubprocessLauncher({flags: T.PIPE}), x => x.close(), true),
             ocr = F.Source.new(() => this.#genOCR(tty.hub), this[K.OCR]),
@@ -281,14 +267,6 @@ class DictAct extends F.Mortal {
         this.$src = F.Source.tie({cancel, ocr, tray, tty, stroke, kbd}, this);
     }
 
-    get ocr() {
-        return this.$src.ocr.hub;
-    }
-
-    get tray() {
-        return this.$src.tray.hub;
-    }
-
     #stroke(keys, kbd) {
         keys.forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
         keys.reverse().forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
@@ -297,47 +275,46 @@ class DictAct extends F.Mortal {
     #genOCR(tty) {
         let ret = new F.Mortal();
         this.$set.tie([
-            K.OCRP, [K.OCRS, null, x => this.tray?.$menu.ocrMode.choose(x)],
+            K.OCRP, [K.OCRS, null, x => this.$src.tray.hub?.$menu.ocr.choose(x)],
         ], ret, () => { ret.cmd = `python ${T.ROOT}/ldocr.py -m ${OCRModes[ret[K.OCRS]]} ${ret[K.OCRP]}`; }).tie([
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
-            [K.DOCR, null, x => { ret.$src.dwell.toggle(x); this.tray?.setDwell(x); }],
+            [K.DOCR, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ], ret);
         ret.$genDwellItem = () => new M.SwitchItem(_('Dwell OCR'), ret[K.DOCR], x => this.$set.set(K.DOCR, x));
         ret.$genModeItem = () => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.OCRS], x => this.$set.set(K.OCRS, x));
-        let keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => ret.invoke(), ret[K.KEYS]),
-            emit = F.Source.newTimer(x => T.seq(() => { ret.ppt = ret.pt; ret.pt = x; }, [() => this.emit('dict-act-dwelled', GB.ptr[2], ret.ppt), 180])), // 180 = 170 + 10
+        let emit = F.Source.newTimer(x => T.seq([() => this.emit('dict-act-dwelled', GB.pointer[2], ret.ppt), 180], () => { ret.ppt = ret.pt; ret.pt = x; })), // 180 = 170 + 10
             dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(170, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DOCR]),
-            spawn = F.Source.newInjector([tty, {spawnv: (a, f, xs) => T.seq(p => { ret.pid = parseInt(p.get_identifier()); }, f.call(a, ...xs))},
-                DBusSSS, [['_isSenderAllowed', async (a, f, xs) => ret.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
-                    'GetConnectionUnixProcessID', T.pickle(xs), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]]);
-        ret.invoke = x => spawn.active || spawn.invoke(() => this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete ret.pid));
+            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => T.seq(f.apply(a, xs), p => { ret.pid = parseInt(p.get_identifier()); })},
+                DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => ret.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
+                    'GetConnectionUnixProcessID', T.pickle(xs), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
+                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete ret.pid)),
+            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]);
         ret.$src = F.Source.tie({spawn, dwell, emit, keys}, ret);
         return ret;
     }
 
     #genSystray(ocr) {
-        let ret = new M.Systray({
+        return new M.Systray({
             dwell:   ocr?.$genDwellItem(),
             passive: new M.SwitchItem(_('Passive mode'), this[K.PSV], x => this.$set.set(K.PSV, x ? 1 : 0)),
             sep0:    new M.Separator(),
             trigger: new M.RadioItem(_('Trigger'), M.RadioItem.getopt(Trigger), this[K.TRG], x => this.$set.set(K.TRG, x)),
             cmds:    new M.RadioItem(_('Swift'), this.cmds.map(x => x.name), this[K.SCMD], x => this.$set.set(K.SCMD, x)),
-            ocrMode: ocr?.$genModeItem(),
+            ocr:     ocr?.$genModeItem(),
             sep1:    new M.Separator(),
             prefs:   new M.Item(_('Settings'), () => F.me().openPreferences()),
-        }, this.icon);
-        ret.add_style_class_name('light-dict-systray');
-        ret.setDwell = T.thunk(x => {
-            x ? ret.add_style_pseudo_class('state-busy') : ret.remove_style_pseudo_class('state-busy');
-            ret.$menu.dwell.setToggleState(x);
-        }, ocr?.[K.DOCR]);
-        ret.connect('scroll-event', (_a, event) => {
+        }, this.icon)[$]
+        .add_style_class_name('light-dict-systray')[$_]
+        .add_style_pseudo_class(ocr?.[K.DOCR], 'state-busy')[$]
+        .$setDwell(function (dwell) {
+            dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
+            this.$menu.dwell.setToggleState(dwell);
+        })[$].connect('scroll-event', (_a, event) => {
             switch(event.get_scroll_direction()) {
             case Clutter.ScrollDirection.UP: this.$set.set(K.TRG, (this[K.TRG] + 1) % 2); break;
             case Clutter.ScrollDirection.DOWN: this.$set.set(K.PSV, this[K.PSV] ? 0 : 1); break;
             }
         });
-        return ret;
     }
 
     #onTrayIconSet() {
@@ -346,11 +323,11 @@ class DictAct extends F.Mortal {
 
     #onEnableOcrSet(enable) {
         this.$src.ocr.toggle(enable);
-        M.record(enable, this.tray, () => this.ocr.$genDwellItem(), 'dwell', 'passive', () => this.ocr.$genModeItem(), 'ocrMode', 'sep1');
+        M.record(enable, this.$src.tray.hub, () => this.$src.ocr.hub.$genDwellItem(), 'dwell', 'passive', () => this.$src.ocr.hub.$genModeItem(), 'ocr', 'sep1');
     }
 
     #onCommandsSet(commands) {
-        return T.seq(x => T.homolog(this.cmds, x, ['name']) || this.$src?.tray.hub?.$menu.cmds.setup(x.map(c => c.name)), commands);
+        return T.seq(commands, cmds => T.homolog(this.cmds, cmds, ['name']) || this.$src?.tray.hub?.$menu.cmds.setup(cmds.map(x => x.name)));
     }
 
     getCommand(name) {
@@ -358,7 +335,7 @@ class DictAct extends F.Mortal {
     }
 
     OCR(args) {
-        this.ocr?.invoke(args);
+        this.$src.ocr.hub?.$src.spawn.invoke(args);
     }
 
     stroke(keys) {
@@ -366,9 +343,9 @@ class DictAct extends F.Mortal {
     }
 
     commit(string) {
-        let mgr = Keyboard.getInputSourceManager();
-        if(mgr.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(string); // TODO: not tested
-        else mgr._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(string));
+        let ism = Keyboard.getInputSourceManager();
+        if(ism.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(string); // TODO: not tested
+        else ism._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(string));
     }
 
     execute(cmd, env) {
@@ -378,47 +355,40 @@ class DictAct extends F.Mortal {
 
 class LightDict extends F.Mortal {
     constructor(gset) {
-        super();
-        this.#bindSettings(gset);
-        this.#buildSources();
-        this.#buildWidgets();
+        super()[$].$bindSettings(gset)[$].$buildSources()[$].$buildWidgets();
     }
 
-    #bindSettings(gset) {
+    $bindSettings(gset) {
         this.$set = new F.Setting(gset, [K.TFLT, K.APPS, K.APP, K.SPLC], this);
     }
 
-    #buildSources() {
+    $buildSources() {
         let box = new DictBox(this.$set),
-            csr = T.seq(x => Main.uiGroup.add_child(x), new Clutter.Actor({opacity: 0, x: 1, y: 1})), // HACK: init pos to avoid misplacing at the first occurrence
-            act = T.hook({'dict-act-dwelled': (...xs) => this.#onDwell(...xs)}, new DictAct(this.$set)),
-            bar = T.hook({'dict-bar-clicked': (_a, x) => { this.$lck.dwell[0] = true; this.runCmd(x); }}, new DictBar(this.$set)),
+            csr = T.seq(new Clutter.Actor({opacity: 0, x: 1, y: 1}), x => Main.uiGroup.add_child(x)), // HACK: init pos to avoid misplacing at the first occurrence
+            act = new DictAct(this.$set)[$].connect('dict-act-dwelled', (...xs) => this.#onDwell(...xs)),
+            bar = new DictBar(this.$set)[$].connect('dict-bar-clicked', (_a, x) => { this.$lck.dwell[0] = true; this.runCmd(x); }),
             dbus = F.Source.newDBus('org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', this, true),
-            poll = F.Source.newDefer(() => this.#postPoll(), () => !(GB.ptr.at(2) & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
-            wait = new F.Source(() => this.#genSpinner());
+            poll = F.Source.newDefer(() => this.#postPoll(), () => !(GB.pointer.at(2) & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
+            wait = F.Source.newInvoker(() => F.Source.new(() => this.#genSpinner(), true), (...xs) => act.execute(...xs));
         this.$src = F.Source.tie({box, csr, act, bar, dbus, poll, wait}, this);
     }
 
-    #buildWidgets() {
+    $buildWidgets() {
         this.$lck = {dwell: []};
         F.connect(this, global.display.get_selection(), 'owner-changed', (...xs) => this.#onSelect(...xs),
-            global.display, 'notify::focus-window', () => { this.dispelAll(); this.#syncApp(); });
-        this.#syncApp();
+            global.display, 'notify::focus-window', (() => { this.dispelAll(); this.#syncApp(); })[$].call());
     }
 
     #genSpinner() {
-        let [x, y] = GB.ptr,
-            size = GB.csr >>> 1,
-            ret = new St.Bin({child: new Animation.Spinner(18), styleClass: 'light-dict-spinner'});
-        Main.layoutManager.addTopChrome(ret);
-        ret.set_position(x + size, y + size);
-        ret.child.play();
-        return ret;
+        let [x, y] = GB.pointer;
+        let size = GB.cursor >>> 1;
+        return T.seq(new St.Bin({styleClass: 'light-dict-spinner', child: new Animation.Spinner(18)[$].play()})[$]
+            .set_position(x + size, y + size), w => Main.layoutManager.addTopChrome(w));
     }
 
     #onSelect(_s, type, src) {
         if(type !== St.ClipboardType.PRIMARY || !src || src instanceof Meta.SelectionSourceMemory ||
-            this.#denyApp() || this.denyMdf() || this.$src.act[K.TRG] === Trigger.DISABLE) return;
+            this.#denyApp() || this.#denyMdf() || this.$src.act[K.TRG] === Trigger.DISABLE) return;
         this.$src.poll.revive();
     }
 
@@ -426,31 +396,30 @@ class LightDict extends F.Mortal {
         F.paste(true).then(x => (this.$src.act[K.PSV] || !approx(this[K.TFLT], x, false)) && this.run('auto', x)).catch(T.nop);
     }
 
-    #setArea(area) {
+    #setSourceArea(area) {
         this.dispelAll();
-        let [x, y, w, h] = area && area[3] < GB.size.at(1) / 2 ? area
-            : (s => (([a, b], c, d) => [a - c, b - c, d, d])(GB.ptr, s / 2, s * 1.15))(GB.csr);
-        this.center = area && w > 250;
-        this.$src.csr.set_position(x, y);
-        this.$src.csr.set_size(w, h);
+        let [x, y, w, h] = area && area[3] < GB.display.at(1) / 2 ? area
+            : (s => (([a, b], c, d) => [a - c, b - c, d, d])(GB.pointer, s / 2, s * 1.15))(GB.cursor);
+        this.$src.csr[$].set_position(x, y).set_size(w, h);
+        this.$align = area && w > 250 ? 1 / 2 : 1 / 10;
     }
 
     #syncApp() {
-        this.app = (w => w ? Shell.WindowTracker.get_default().get_window_app(w)?.get_id() ?? '' : '')(GB.win);
+        this.app = (w => w ? Shell.WindowTracker.get_default().get_window_app(w)?.get_id() ?? '' : '')(GB.window);
     }
 
     #denyApp() {
         return this[K.APPS].length && T.xnor(this[K.APP], this[K.APPS].includes(this.app));
     }
 
-    denyMdf(mdf = GB.ptr.at(2)) {
+    #denyMdf(mdf = GB.pointer.at(2)) {
         return this.$src.act[K.PSV] && !(mdf & Clutter.ModifierType.MOD1_MASK);
     }
 
     #onDwell(_a, mdf, [x, y]) {
         let {box, bar, act} = this.$src;
-        if(this.$lck.dwell.pop() || box.prect?.contains_point(new Graphene.Point().init(x, y)) || act.ocrMode === OCRMode.AREA ||
-            (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.denyMdf(mdf)) return;
+        if(this.$lck.dwell.pop() || box.prect?.contains_point(new Graphene.Point().init(x, y)) || act.$src.ocr.hub?.[K.OCRS] === OCRMode.AREA ||
+            (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.#denyMdf(mdf)) return;
         act.OCR('--quiet');
     }
 
@@ -464,12 +433,8 @@ class LightDict extends F.Mortal {
     async #runSh({command: cmd, result}) {
         let env = {LDWORD: this.txt, LDAPPID: this.app};
         if(result) {
-            try {
-                if(result & Result.AWAIT) this.#postRun(await this.$src.wait.invoke(() => this.$src.act.execute(cmd, env)), result);
-                else this.#postRun(await this.$src.act.execute(cmd, env), result);
-            } catch(e) {
-                if(!F.Source.cancelled(e)) this.print(e.message, true);
-            }
+            await Promise.try(result & Result.AWAIT ? () => this.$src.wait.invoke(cmd, env) : () => this.$src.act.execute(cmd, env))
+            .then(output => this.#postRun(output, result)).catch(e => F.Source.cancelled(e) || this.print(e.message, true));
         } else {
             T.execute(cmd, env).catch(logError);
         }
@@ -478,12 +443,10 @@ class LightDict extends F.Mortal {
     #runJS({command, result}) {
         try {
             let output = evaluate(command, {
-                open: F.open,
-                copy: F.copy,
-                LDWORD: this.txt,
-                LDAPPID: this.app,
+                LDWORD: this.txt, LDAPPID: this.app,
+                open: F.open, copy: F.copy,
                 key: x => this.$src.act.stroke(x),
-                search: x => { Main.overview.show(); Main.overview.searchEntry.set_text(x); },
+                search: x => Main.overview[$].show().searchEntry.set_text(x),
             });
             if(result) this.#postRun(String(output), result);
         } catch(e) {
@@ -505,17 +468,15 @@ class LightDict extends F.Mortal {
     }
 
     popup() {
-        this.$src.bar.setPosition(this.$src.csr, 1 / 2);
-        this.$src.bar.summon(this.app, this.txt);
+        this.$src.bar[$].setPosition(this.$src.csr, 1 / 2).summon(this.app, this.txt);
     }
 
     print(info, error) {
-        this.$src.box.setPosition(this.$src.csr, this.center ? 1 / 2 : 1 / 10);
-        this.$src.box.summon(info, this.txt, error);
+        this.$src.box[$].setPosition(this.$src.csr, this.$align).summon(info, this.txt, error);
     }
 
     async run(type, text, info, area) {
-        this.#setArea(area);
+        this.#setSourceArea(area);
         let [kind, name] = type === 'auto' ? [Triggers[this.$src.act[K.TRG]]] : type.split(':');
         this.txt = text || (kind === 'print' ? 'Oops' : await F.paste(true));
         if(this[K.SPLC]) this.txt = this.txt.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
@@ -526,9 +487,9 @@ class LightDict extends F.Mortal {
         }
     }
 
-    async RunAsync([type, text, info, area], invocation) {
-        await this.run(type, text, info, area.length === 4 ? area : null).catch(T.nop);
-        invocation.return_value(null);
+    RunAsync([type, text, info, area], invocation) {
+        return Promise.try(() => this.run(type, text, info, area.length === 4 ? area : null))
+            .catch(T.nop).finally(() => invocation.return_value(null));
     }
 
     async GetAsync([props], invocation) {
@@ -536,9 +497,9 @@ class LightDict extends F.Mortal {
             await DBusSSS.checkInvocation(invocation);
             invocation.return_value(new GLib.Variant('(aai)', [props.map(x => {
                 switch(x) {
-                case 'display': return GB.size;
-                case 'pointer': return GB.ptr.slice(0, 2);
-                case 'focused': return (r => r ? [r.x, r.y, r.width, r.height] : null)(GB.win?.get_frame_rect?.());
+                case 'display': return GB.display;
+                case 'pointer': return GB.pointer.slice(0, 2);
+                case 'focused': return (r => r ? [r.x, r.y, r.width, r.height] : null)(GB.window?.get_frame_rect?.());
                 default: throw Error(`Unknown property: ${x}`);
                 }
             })]));
@@ -549,8 +510,7 @@ class LightDict extends F.Mortal {
     }
 
     OCR(args) {
-        this.dispelAll();
-        this.$src.act.OCR(args);
+        this[$].dispelAll().$src.act.OCR(args);
     }
 }
 
