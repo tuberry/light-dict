@@ -4,7 +4,7 @@
 project(
   'gnome-shell-extension-light-dict',
   license: 'GPL-3.0-or-later',
-  version: '49.beta',
+  version: '49.0',
   meson_version: '>= 1.4.0',
 )
 
@@ -26,7 +26,7 @@ metadata = {
   'rdnn': 'org.gnome.shell.extensions.' + _title,
   'path': f'/org/gnome/shell/extensions/@_title@/',
   'dbus': 'org.gnome.Shell.Extensions.' + _name.replace(' ', ''),
-  'version': _version != 0 ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=2959' / _title]).stdout().strip(),
+  'version': (_version != 0) ? _version : run_command('cli/get-version.sh', check: true, env: ['EGO=2959' / _title]).stdout().strip(),
   'description': 'Manipulate primary selections on the fly, typically used as Lightweight Dictionaries'
     + (target == 'zip' ? '\\n\\nFor support, please report issues in time via the Homepage link below rather than the review section below it' : '')
 }
@@ -49,7 +49,7 @@ if(target == 'zip')
     find_program('7z'),
     'a',
     zip_dir / '@0@_v@1@.zip'.format(metadata['gettext'], metadata['version']),
-    target_dir / '*'
+    target_dir / '*',
   )
 endif
 

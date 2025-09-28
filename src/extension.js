@@ -100,7 +100,7 @@ class DictBar extends BoxPointer.BoxPointer {
     #onCommandsSet(commands) {
         return T.seq(commands.filter(x => x.enable), cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$_].push(this[K.TIP], 'tooltip')) ||
             M.upsert(this.$box, x => x.add_child(new DictBtn(y => this[$].dispel().emit('dict-bar-clicked', this.cmds[y]))),
-                cmds, (v, x, i) => x.setup(v, i, this[K.TIP]), Iterator.from));
+                cmds, (v, x, i) => x.setup(v, i, this[K.TIP]), x => [...x]));
     }
 
     #getPages() {
@@ -191,10 +191,10 @@ class DictBox extends BoxPointer.BoxPointer {
             limit = theme.get_max_height();
         if(limit <= 0) limit = GB.display.at(1) * 15 / 32;
         let scroll = h >= limit;
+        this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
         let count = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
             : Iterator.from(this.$info.get_text()).reduce((p, x) => p + (GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1), 0);
-        this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
-        this.$delay = Math.clamp(this[K.TIME] * count / 36, 1000, 20000);
+        this.$delay = Math.clamp(this[K.TIME] * count / 36, 1000, 20000); // TODO: ? WPM
     }
 
     #onClick(_a, event) {
@@ -343,9 +343,9 @@ class DictAct extends F.Mortal {
     }
 
     commit(string) {
-        let ism = Keyboard.getInputSourceManager();
-        if(ism.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(string); // TODO: not tested
-        else ism._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(string));
+        let kism = Keyboard.getInputSourceManager();
+        if(kism.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(string); // TODO: not tested
+        else kism._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(string));
     }
 
     execute(cmd, env) {
@@ -462,15 +462,6 @@ class LightDict extends F.Mortal {
         cmd.type ? this.#runJS(cmd) : await this.#runSh(cmd);
     }
 
-    async swift(name) {
-        let cmd = this.$src.act.getCommand(name);
-        if(allowed(cmd, this.app, this.txt)) await this.runCmd(cmd);
-    }
-
-    popup() {
-        this.$src.bar[$].setPosition(this.$src.csr, 1 / 2).summon(this.app, this.txt);
-    }
-
     print(info, error) {
         this.$src.box[$].setPosition(this.$src.csr, this.$align).summon(info, this.txt, error);
     }
@@ -481,8 +472,11 @@ class LightDict extends F.Mortal {
         this.txt = text || (kind === 'print' ? 'Oops' : await F.paste(true));
         if(this[K.SPLC]) this.txt = this.txt.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
         switch(kind) {
-        case 'swift': await this.swift(name); break;
-        case 'popup': this.popup(); break;
+        case 'swift': {
+            let cmd = this.$src.act.getCommand(name);
+            if(allowed(cmd, this.app, this.txt)) await this.runCmd(cmd); break;
+        }
+        case 'popup': this.$src.bar[$].setPosition(this.$src.csr, 1 / 2).summon(this.app, this.txt); break;
         case 'print': this.print(info, !text); break;
         }
     }

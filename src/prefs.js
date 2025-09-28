@@ -6,6 +6,7 @@ import Gdk from 'gi://Gdk';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
+import GioUnix from 'gi://GioUnix';
 import GObject from 'gi://GObject';
 
 import * as UI from './ui.js';
@@ -20,7 +21,7 @@ Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
 class AppItem extends GObject.Object {
     static {
-        T.enrol(this, {chosen: false, app: Gio.DesktopAppInfo});
+        T.enrol(this, {chosen: false, app: GioUnix.DesktopAppInfo});
     }
 
     constructor(app, callback) {
@@ -56,21 +57,21 @@ class Apps extends UI.DialogButtonBase {
                     }],
                     ['unbind', (_f, {item}) => item.$bind.unbind()],
                 ]),
-                filter = Gtk.CustomFilter.new(null)[$].set({set_search(s) { this.set_filter_func(s ? (a => x => a.has(x.app.get_id()))(new Set(Gio.DesktopAppInfo.search(s).flat())) : null); }}),
+                filter = Gtk.CustomFilter.new(null)[$].set({set_search(s) { this.set_filter_func(s ? (a => x => a.has(x.app.get_id()))(new Set(GioUnix.DesktopAppInfo.search(s).flat())) : null); }}),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
                 content = new Gtk.ListView({singleClickActivate: true, model: select, factory, vexpand: true})[$]
                     .connect('activate', () => select.get_selected_item().toggle()),
-                timer, count = () => { clearTimeout(timer); timer = setTimeout(() => title.child.setup(null, String(Iterator.from(model).reduce((p, x) => p + x.chosen ? 1 : 0, 0)), 50)); };
-            UI.once(() => clearTimeout(timer), dlg, 'close-request');
+                timer, count = () => { clearTimeout(timer); timer = setTimeout(() => title.child.setup(null, String(Iterator.from(model).reduce((p, x) => x.chosen ? p + 1 : p, 0)), 50)); };
             model.splice(0, 0, (x => opt?.noDisplay ? x : x.filter(y => y.should_show()))(Gio.AppInfo.get_all()).map(x => new AppItem(x, count)));
-            dlg.initChosen = s => Iterator.from(model).forEach(x => x.toggle(s.has(x.app.get_id())));
-            dlg.getChosen = () => [...model].filter(x => x.chosen).map(x => x.app.get_id());
+            dlg[$].initChosen(s => Iterator.from(model).forEach(x => x.toggle(s.has(x.app.get_id()))))[$]
+                .getChosen(() => Iterator.from(model).reduce((p, x) => x.chosen ? p[$].push(x.app.get_id()) : p, []))[$]
+                .connect('close-request', () => { clearTimeout(timer); timer = null; });
             return {content, filter, title};
         });
     }
 
     $genApp(id) {
-        let app = Gio.DesktopAppInfo.new(id);
+        let app = GioUnix.DesktopAppInfo.new(id);
         return new Gtk.Button(app ? {child: new Gtk.Image({gicon: app.get_icon()}), tooltipText: app.get_display_name(), hasFrame: false}
             : {iconName: 'system-help-symbolic', tooltipText: id, hasFrame: false})[$].connect('clicked', () => { this.value = this.value.filter(x => x !== id); });
     }
@@ -214,13 +215,13 @@ class PrefsBasic extends UI.Page {
             [[_('Sp_lice text'), _('Try to replace redundant line breaks with spaces')], K.SPLC],
         ]], [[[_('Panel'), _('Middle click to copy the result')]], [
             [[_('_Enable title')], K.HEAD],
-            [[_('Ri_ght command'), _('Right click to run and hide panel')], K.RCMD],
-            [[_('Le_ft command'), _('Left click to run')], K.LCMD],
+            [[_('P_rimary command'), _('Primary click to run')], K.LCMD],
+            [[_('Se_condary command'), _('Secondary click to run and close')], K.RCMD],
         ]], [[[_('Popup'), _('Scroll to flip pages')]], [
             [[_('Enable toolt_ip')], K.TIP],
             [[_('Page si_ze')], K.PGSZ],
         ]], [[[_('OCR'), `${_('Depends on: ')} ${opencv} &amp; ${tesseract}`], K.OCR], [
-            [[_('Sho_rtcut')], K.KEYS],
+            [[_('S_hortcut')], K.KEYS],
             [[_('_Dwell OCR')], K.DOCR],
             [[_('_Work mode')], K.OCRS],
             [[_('Other para_meters')], ocr, K.OCRP],
@@ -292,7 +293,7 @@ class PrefsPopup extends UI.Page {
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); ret.set_sensitive(x); };
         this.$pane = T.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             widget instanceof ResultRows ? widget.addToPane(addRow) : addRow(titles, widget, help);
-            widget.connect('notify::value', ({value}) => !this.$syncing && this.$select(p => this.$onChange(p, key, value)));
+            widget.connect('notify::value', ({value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
             widget.$fallback = fallback;
             return [[key, widget]];
         });
