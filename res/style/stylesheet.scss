@@ -7,6 +7,7 @@ $contrast: 'normal';
 
 $pfx: 'light-dict';
 $radius: 0.4em;
+$spacing: $radius / 3;
 
 @function tone($color, $percent: 10%, $reverse: true){
     @return if($variant==if($reverse, 'light', 'dark'), darken($color, $percent), lighten($color, $percent))
@@ -51,15 +52,20 @@ $radius: 0.4em;
 }
 
 .#{$pfx}-content {
-    padding: $radius;
+    padding: $radius - $spacing $radius $radius;
     border-radius: $radius;
 }
 
 .#{$pfx}-text {
+    padding: $spacing 0 $spacing ;
     border-width: 0;
     border-style: dashed;
     border-bottom-width: 0.1em;
     border-color: transparentize($bg_color, 0.45);
+}
+
+.#{$pfx}-info {
+    padding-top: $spacing;
 }
 
 .#{$pfx}-iconbox {

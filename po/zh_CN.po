@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:366
+#: src/ui.js:365
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:488
+#: src/ui.js:482
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -72,27 +72,27 @@ msgstr "OCR预处理失败。(~_~)"
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/extension.js:283
+#: src/extension.js:277
 msgid "Dwell OCR"
 msgstr "悬停取词"
 
-#: src/extension.js:284 src/prefs.js:223
+#: src/extension.js:278 src/prefs.js:223
 msgid "OCR"
 msgstr "取词"
 
-#: src/extension.js:299
+#: src/extension.js:284
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: src/extension.js:301
+#: src/extension.js:286
 msgid "Trigger"
 msgstr "触发"
 
-#: src/extension.js:302 src/prefs.js:197
+#: src/extension.js:287 src/prefs.js:197
 msgid "Swift"
 msgstr "即时"
 
-#: src/extension.js:305
+#: src/extension.js:290
 msgid "Settings"
 msgstr "设置"
 
@@ -281,8 +281,8 @@ msgid "_Command type"
 msgstr "命令类型(_C)"
 
 #: src/prefs.js:271
-msgid "Bash environment variable"
-msgstr "Bash 环境变量"
+msgid "SHELL environment variable"
+msgstr "SHELL 环境变量"
 
 #: src/prefs.js:272
 msgid "the captured text"
@@ -290,7 +290,7 @@ msgstr "捕获的文本"
 
 #: src/prefs.js:273
 msgid "the focused app"
-msgstr "聚集的应用"
+msgstr "聚焦的应用"
 
 #: src/prefs.js:274
 msgid "JS script statement"
@@ -328,45 +328,45 @@ msgstr "正则匹配(_X)"
 msgid "Ic_on tooltip"
 msgstr "图标提示(_O)"
 
-#: src/prefs.js:305
+#: src/prefs.js:307
 msgid "Add"
 msgstr "添加"
 
-#: src/prefs.js:306
+#: src/prefs.js:308
 msgid "Remove"
 msgstr "移除"
 
-#: src/prefs.js:307
+#: src/prefs.js:309
 msgid "Copy"
 msgstr "复制"
 
-#: src/prefs.js:308
+#: src/prefs.js:310
 msgid "Paste"
 msgstr "粘贴"
 
-#: src/prefs.js:347
+#: src/prefs.js:349
 #, javascript-format
 msgid "Copied <i>%s</i> command"
 msgstr "已复制 <i>%s</i> 命令"
 
-#: src/prefs.js:353
+#: src/prefs.js:355
 msgid "Failed to parse pasted command"
 msgstr "无法解析所贴命令"
 
-#: src/prefs.js:358
+#: src/prefs.js:360
 #, javascript-format
 msgid "Removed <i>%s</i> command"
 msgstr "已移除 <i>%s</i> 命令"
 
-#: src/prefs.js:411
+#: src/prefs.js:413
 msgid "_Basic"
 msgstr "基本(_B)"
 
-#: src/prefs.js:412
+#: src/prefs.js:414
 msgid "_Swift"
 msgstr "即时(_S)"
 
-#: src/prefs.js:413
+#: src/prefs.js:415
 msgid "_Popup"
 msgstr "弹出(_P)"
 

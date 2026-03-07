@@ -13,8 +13,8 @@ import * as UI from './ui.js';
 import * as T from './util.js';
 import {Key as K, Result} from './const.js';
 
-const {_, _G} = UI;
-const {$, $$, $_} = T;
+const {$, $$, $_, $s} = T;
+const {_, _G, getv, setv} = UI;
 const EXE = 'application/x-executable';
 
 Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
@@ -31,16 +31,16 @@ class AppItem extends GObject.Object {
 
 class Apps extends UI.DialogButtonBase {
     static {
-        UI.enrol(this);
+        UI.enrol(this, ['boxed', GLib.strv_get_type()]);
     }
 
     constructor(tip, param) {
         super(null, null, false, param)[$]
-            .set({$getInitial() { return new Set(this.value); }})[$]
+            .set({$getInitial() { return new Set(this[getv]); }})[$]
             .prepend(this.$bin = new Gtk.ScrolledWindow({vexpand: false, cssName: 'entry', cssClasses: ['ld-apps'], vscrollbarPolicy: Gtk.PolicyType.NEVER}))[$]
-            .bind_property_full('value', this.$bin, 'child', GObject.BindingFlags.SYNC_CREATE, (_b, x) => [true, new UI.Box(x?.map(y => this.$genApp(y)))[$]
+            .bind_property_full(getv, this.$bin, 'child', T.SYNC, (_b, v) => [true, new UI.Box(v?.map(x => this.$genApp(x)))[$]
                 .set({hexpand: true, tooltipText: _('Click the app icon to remove')})], null);
-        this.$btn[$_].set_tooltip_text(tip, tip)[$].set_icon_name('list-add-symbolic');
+        this.$btn[$_].set_tooltip_text(tip, tip).set_icon_name('list-add-symbolic');
     }
 
     $genDialog(opt) {
@@ -48,11 +48,11 @@ class Apps extends UI.DialogButtonBase {
             let model = new Gio.ListStore(),
                 title = new Gtk.Button({child: new UI.Sign('edit-clear-symbolic', true), cssClasses: ['flat']})[$]
                     .connect('clicked', () => Iterator.from(model).forEach(x => x.toggle(false))),
-                factory = new Gtk.SignalListItemFactory()[$$].connect([
-                    ['setup', (_f, x) => x.set_child(T.seq(new UI.Sign('application-x-executable-symbolic')[$].marginStart(6),
-                        w => w.append(w.$check = new Gtk.Image({iconName: 'object-select-symbolic'}))))],
+                factory = new Gtk.SignalListItemFactory()[$s].connect([
+                    ['setup', (_f, x) => x.set_child(new UI.Sign('application-x-executable-symbolic')[$].marginStart(6)[$$](w =>
+                        w.append(w.$check = new Gtk.Image({iconName: 'object-select-symbolic'}))))],
                     ['bind', (_f, {child, item}) => {
-                        item.$bind = item.bind_property('chosen', child.$check, 'visible', GObject.BindingFlags.SYNC_CREATE);
+                        item.$bind = item.bind_property('chosen', child.$check, 'visible', T.SYNC);
                         child.setup(item.app.get_icon(), item.app.get_display_name());
                     }],
                     ['unbind', (_f, {item}) => item.$bind.unbind()],
@@ -64,7 +64,7 @@ class Apps extends UI.DialogButtonBase {
                 timer, count = () => { clearTimeout(timer); timer = setTimeout(() => title.child.setup(null, String(Iterator.from(model).reduce((p, x) => x.chosen ? p + 1 : p, 0)), 50)); };
             model.splice(0, 0, (x => opt?.noDisplay ? x : x.filter(y => y.should_show()))(Gio.AppInfo.get_all()).map(x => new AppItem(x, count)));
             dlg[$].initChosen(s => Iterator.from(model).forEach(x => x.toggle(s.has(x.app.get_id()))))[$]
-                .getChosen(() => Iterator.from(model).reduce((p, x) => x.chosen ? p[$].push(x.app.get_id()) : p, []))[$]
+                .getChosen(() => Iterator.from(model).reduce((p, x) => x.chosen ? p[$].push(x.app.get_id()) : p, []))
                 .connect('close-request', () => { clearTimeout(timer); timer = null; });
             return {content, filter, title};
         });
@@ -73,7 +73,7 @@ class Apps extends UI.DialogButtonBase {
     $genApp(id) {
         let app = GioUnix.DesktopAppInfo.new(id);
         return new Gtk.Button(app ? {child: new Gtk.Image({gicon: app.get_icon()}), tooltipText: app.get_display_name(), hasFrame: false}
-            : {iconName: 'system-help-symbolic', tooltipText: id, hasFrame: false})[$].connect('clicked', () => { this.value = this.value.filter(x => x !== id); });
+            : {iconName: 'system-help-symbolic', tooltipText: id, hasFrame: false})[$].connect('clicked', () => this[setv](this[getv].filter(x => x !== id)));
     }
 }
 
@@ -112,14 +112,14 @@ class SideRow extends Gtk.ListBoxRow {
             .connect('changed', () => !this.$txt.editing && this.emit('changed', this.get_index(), this.$txt.text));
         this.$img = new Gtk.Image({iconName: 'list-drag-handle-symbolic'});
         this.$txt.get_delegate().connect('activate', () => this.emit('changed', this.get_index(), this.$txt.text));
-        item.bind_property_full('cmd', this.$txt, 'text', GObject.BindingFlags.SYNC_CREATE, (_b, v) => [true, v.name], null);
-        if(group) item.bind_property('enable', this.$btn, 'active', GObject.BindingFlags.SYNC_CREATE);
-        else item.bind_property_full('cmd', this.$btn, 'active', GObject.BindingFlags.SYNC_CREATE, (_b, v) => [true, !!v.enable], null);
+        item.bind_property_full('cmd', this.$txt, 'text', T.SYNC, (_b, v) => [true, v.name], null);
+        if(group) item.bind_property('enable', this.$btn, 'active', T.SYNC);
+        else item.bind_property_full('cmd', this.$btn, 'active', T.SYNC, (_b, v) => [true, !!v.enable], null);
         this[$].set_child(new UI.Box([this.$btn, this.$txt, this.$img])[$].set({spacing: 5, marginEnd: 5})).$buildDND(item, this.$img);
     }
 
     $buildDND(item, handle) { // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
-        handle.add_controller(new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$$].connect([
+        handle.add_controller(new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$s].connect([
             ['prepare', () => Gdk.ContentProvider.new_for_value(this)],
             ['drag-begin', (_s, drag) => {
                 let width = this.get_width();
@@ -129,21 +129,21 @@ class SideRow extends Gtk.ListBoxRow {
                 drag.set_hotspot(width - this.$img.get_width() / 2, height - this.$img.get_height() / 2);
             }],
         ]));
-        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$$].connect([
+        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$s].connect([
             ['motion', (_t, _x, y) => {
                 if(y < this.get_height() / 2) this[$].remove_css_class('ld-drop-bottom').add_css_class('ld-drop-top');
                 else this[$].remove_css_class('ld-drop-top').add_css_class('ld-drop-bottom');
                 return Gdk.DragAction.MOVE;
             }],
             ['drop', (_t, src, _x, y) => {
-                this[$].remove_css_class('ld-drop-top').remove_css_class('ld-drop-bottom');
+                this[$s].remove_css_class(['ld-drop-top', 'ld-drop-bottom']);
                 if(src.$grp !== this.$grp) return false;
                 let drag = src.get_index(),
                     target = this.get_index() + (y > this.get_height() / 2),
                     drop = target > drag ? target - 1 : target;
-                return T.seq(drag !== drop, x => x && this.emit('dropped', drag, drop));
+                return (drag !== drop)[$$](x => x && this.emit('dropped', drag, drop));
             }],
-            ['leave', () => this[$].remove_css_class('ld-drop-top').remove_css_class('ld-drop-bottom')],
+            ['leave', () => void this[$s].remove_css_class(['ld-drop-top', 'ld-drop-bottom'])],
         ]));
     }
 
@@ -167,8 +167,8 @@ class ResultRows extends GObject.Object {
             [Result.COMMIT, [_('Co_mmit result')], new UI.Switch()],
         ].forEach(([mask, titles, widget]) => {
             addRow(titles, widget);
-            this.bind_property_full('value', widget, 'active', T.BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
-                (_b, v) => [!!(this.value & mask) ^ v, this.value ^ mask]);
+            this.bind_property_full(getv, widget, 'active', T.BIND, (_b, v) => (x => [x ^ widget.active, x])(!!(v & mask)),
+                (_b, v) => [!!(this[getv] & mask) ^ v, this[getv] ^ mask]);
         });
     }
 }
@@ -204,8 +204,8 @@ class PrefsBasic extends UI.Page {
     $buildUI() {
         let opencv = '<a href="https://github.com/opencv/opencv-python">opencv-python</a>',
             tesseract = '<a href="https://github.com/madmaze/pytesseract">pytesseract</a>',
-            ocr = T.seq(new UI.Help()[$].set({popover: new Gtk.Popover()[$].connect('notify::visible', w => w.child?.select_region(-1, -1))}), // HACK: workaround for full selection on popup
-                w => T.execute(`python ${T.ROOT}/ldocr.py -h`).then(x => w.setup(x, {selectable: true, cssClasses: ['ld-popover']})).catch(e => w.setup(e.message, null, true)));
+            ocr = new UI.Help()[$].set({popover: new Gtk.Popover()[$].connect('notify::visible', w => w.child?.select_region(-1, -1))})[$$](w => // HACK: workaround for full selection on popup
+                T.execute(`python ${T.ROOT}/ldocr.py -h`).then(x => w.setup(x, {selectable: true, cssClasses: ['ld-popover']})).catch(e => w.setup(e.message, null, true)));
         this.$add([null, [
             [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], K.TRAY],
             [[_('_Trigger style'), _('Passive means pressing Alt to trigger')], K.PSV, K.TRG],
@@ -236,13 +236,13 @@ class PrefsPopup extends UI.Page {
 
     constructor(gset, field) {
         super(gset)[$].$tie([[field, this]])[$]
-            .$add([null, [new Gtk.Frame({child: new UI.Box([this.$genSide(this.value, field), this.$genPane()], {vexpand: false, cssName: 'list'})})]])[$]
+            .$add([null, [new Gtk.Frame({child: new UI.Box([this.$genSide(this[getv], field), this.$genPane()], {vexpand: false, cssName: 'list'})})]])
             .grabFocus(0); // init pane
     }
 
     $save(func, grab, name, pane) {
         func(this.$cmds);
-        this.value = [...this.$cmds].map(x => x.cmd);
+        this[getv] = [...this.$cmds].map(x => x.cmd);
         if(grab >= 0) this.grabFocus(grab, name);
         if(pane) this.$updatePaneSensitive(this.$cmds.nItems > 0);
     }
@@ -252,7 +252,7 @@ class PrefsPopup extends UI.Page {
         this.$list = new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true})[$]
             .add_css_class('data-table')[$]
             .connect('row-selected', (_w, row) => row && this.$onSelect(row.get_index()))[$]
-            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMDS)[$$].connect([
+            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMDS)[$s].connect([
                 ['dropped', (_w, f, t) => this.$onDrop(f, t)],
                 ['changed', (_w, p, v) => this.$onChange(p, 'name',  v)],
                 ['toggled', (_w, p, v) => this.$onChange(p, 'enable', v)],
@@ -261,14 +261,14 @@ class PrefsPopup extends UI.Page {
     }
 
     grabFocus(index, name) {
-        this.$list.select_row(this.$list.get_row_at_index(index)?.[$_].editName(name) ?? null);
+        this.$list.select_row(this.$list.get_row_at_index(index)?.[$_].editName(name));
     }
 
     $genPaneWidgets() {
         return {
             command: ['', [_('_Run command')],    new UI.Entry('gio open "$LDWORD"', [EXE])],
-            type:    [0,  [_('_Command type')],   new UI.Drop(['Bash', 'JS']), new UI.Help(({h, d}) =>
-                [h(_('Bash environment variable')), d([
+            type:    [0,  [_('_Command type')],   new UI.Drop(['SHELL', 'JS']), new UI.Help(({h, d}) =>
+                [h(_('SHELL environment variable')), d([
                     'LDWORD', _('the captured text'),
                     'LDAPPID', _('the focused app'),
                 ]), h(_('JS script statement')), d([
@@ -278,7 +278,7 @@ class PrefsPopup extends UI.Page {
                     'search(LDWORD)', _('search <tt>LDWORD</tt> in Overview'),
                     'LDWORD.trim()', _('some native functions'),
                 ])])],
-            icon:    ['', [_('_Icon name')],      new UI.Icon()],
+            icon:    ['', [_('_Icon name')],      new UI.Icon()[$].setup()],
             result:  [0,  [],                     new ResultRows()],
             apps:    [[], [_('_App list')],       new Apps(_('Whitelist'))],
             regexp:  ['', [_('RegE_xp matcher')], new UI.Entry('(https?|ftp|file)://.*')],
@@ -288,13 +288,15 @@ class PrefsPopup extends UI.Page {
 
     $genPane() {
         let ret = new Adw.PreferencesGroup({hexpand: true});
-        let addRow = ([title, subtitle = ''], widget, help) => ret.add(T.seq(new Adw.ActionRow({title, subtitle, activatableWidget: widget, useUnderline: true}),
-            w => [help, widget].forEach(x => x && w.add_suffix(x))));
+        let addRow = ([title, subtitle = ''], widget, help) => ret.add(new Adw.ActionRow({
+            title, subtitle, activatableWidget: widget, useUnderline: true,
+        })[$$](w => [help, widget].forEach(x => x && w.add_suffix(x))));
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); ret.set_sensitive(x); };
         this.$pane = T.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             widget instanceof ResultRows ? widget.addToPane(addRow) : addRow(titles, widget, help);
-            widget.connect('notify::value', ({value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
-            widget.$fallback = fallback;
+            let prop = widget[UI.esse];
+            widget[$][UI.dftv](fallback)[$].notify(prop)
+                .connect(`notify::${prop}`, ({[prop]: value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
             return [[key, widget]];
         });
         return ret;
@@ -321,7 +323,7 @@ class PrefsPopup extends UI.Page {
     $onSelect(pos = this.selected) {
         this.$syncing = true;
         let cmd = pos < 0 ? {} : this.$cmds.get_item(pos).cmd;
-        for(let k in this.$pane) this.$pane[k].value = cmd[k] ?? this.$pane[k].$fallback;
+        for(let k in this.$pane) this.$pane[k][setv](cmd[k]);
         this.$syncing = false;
     }
 
@@ -334,11 +336,11 @@ class PrefsPopup extends UI.Page {
     }
 
     $onDrop(drag, drop) {
-        this.$save(x => x.insert(drop, T.seq(x.get_item(drag), () => x.remove(drag))), drop);
+        this.$save(x => x.insert(drop, x.get_item(drag)[$$](() => x.remove(drag))), drop);
     }
 
     $onRemove(pos) {
-        this.$save(x => this.$toast(T.seq(x.get_item(pos), () => x.remove(pos))), Math.min(pos, this.$cmds.nItems - 2), false, true);
+        this.$save(x => this.$toast(x.get_item(pos)[$$](() => x.remove(pos))), Math.min(pos, this.$cmds.nItems - 2), false, true);
     }
 
     $onCopy(pos) {
@@ -348,25 +350,25 @@ class PrefsPopup extends UI.Page {
     }
 
     $onPaste() {
-        return Promise.try(this.get_clipboard().read_text_async, null)
+        this.get_clipboard().read_text_async(null)
             .then(cmd => this.$onAdd(T.omap(JSON.parse(cmd), ([k, v]) => k in this.$pane || k === 'name' || k === 'enable' ? [[k, v]] : [])))
             .catch(() => this.$toast(_('Failed to parse pasted command')));
     }
 
     $toast(msg) {
-        this.get_root().add_toast(T.str(msg) ? new Adw.Toast({title: msg, timeout: 7})
-            : new Adw.Toast({title: _('Removed <i>%s</i> command').format(msg.cmd.name ?? ''), buttonLabel: _G('_Undo')})[$]
+        this.get_root().add_toast(T.str(msg) ? new Adw.Toast({title: msg, timeout: 3})
+            : new Adw.Toast({title: _('Removed <i>%s</i> command').format(msg.cmd.name ?? ''), buttonLabel: _G('_Undo'), timeout: 7})[$]
             .connect('button-clicked', () => this.$save(x => x.append(msg), this.$cmds.nItems, true, true)));
     }
 }
 
 class PrefsSwift extends PrefsPopup {
     static {
-        T.enrol(this, {enabled: ['int', -1, GLib.MAXINT32, -1], value: null}); // HACK: workaround for the trait overwrite rather than extend the super
+        T.enrol(this, {enabled: ['int', -1, GLib.MAXINT32, -1]});
     }
 
     constructor(gset, field) {
-        super(gset, field)[$].connect('notify::enabled', () => Iterator.from(this.$cmds).forEach((x, i) => x[$].enable(i === this.enabled)))[$]
+        super(gset, field)[$].connect('notify::enabled', () => Iterator.from(this.$cmds).forEach((x, i) => x[$].enable(i === this.enabled)))
             .$tie([[K.SCMD, this, 'enabled']]);
     }
 

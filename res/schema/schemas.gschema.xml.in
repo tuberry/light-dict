@@ -63,7 +63,7 @@
         <default>""</default>
         <summary>command executed when right-clicking panel</summary>
     </key>
-    <key type="av" name="app-list">
+    <key type="as" name="app-list">
         <default>[]</default>
         <summary>global app whitelist/blacklist</summary>
     </key>
