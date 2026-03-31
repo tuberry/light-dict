@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # type: ignore
 
+import re
 import cv2
-import string
 import gettext
 import argparse
 import colorsys
@@ -24,11 +24,10 @@ class Result:
     def __init__(self, text=None, area=None, error=None, cancel=None):
         self.text, self.area, self.error, self.cancel, self.style = text, area, error, cancel, 'swift'
 
-    def set_style(self, style, name):
+    def setup(self, style, name, quiet):
         self.style = style + ':' + name if name else style
-
-    def set_quiet(self, quiet):
         if quiet and self.erroneous: self.cancel = True
+        return self
 
     @property
     def erroneous(self):
@@ -45,8 +44,7 @@ def main():
     ret = exe_mode(arg)
     if ret.cancel: exit(125)
     if arg.flash and ret.area: gs_dbus_call('FlashArea', ('(iiii)', (*ret.area,)))
-    if arg.cursor: ret.area = None
-    # ISSUE: https://gitlab.gnome.org/GNOME/mutter/-/issues/207
+    if arg.pointer: ret.area = None
     gs_dbus_call(*ret.param, '', '/Extensions/LightDict', '.Extensions.LightDict')
 
 def locale():
@@ -56,32 +54,28 @@ def locale():
     gettext.textdomain(domain)
 
 def parser():
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('-h', '--help',   help=_('show this help message and exit'), action='help')
-    parser.add_argument('-m', '--mode',   help=_('specify work mode: [%(choices)s] (default: %(default)s)'), default='word', choices=['word', 'paragraph', 'area', 'line', 'dialog'])
-    parser.add_argument('-s', '--style',  help=_('specify LD trigger style: [%(choices)s] (default: %(default)s)'), default='auto', choices=['auto', 'swift', 'popup'])
-    parser.add_argument('-l', '--lang',   help=_('specify language(s) used by Tesseract OCR (default: %(default)s)'), default='eng')
-    parser.add_argument('-n', '--name',   help=_('specify LD swift style name'), action='store', default='')
-    parser.add_argument('-c', '--cursor', help=_('invoke LD around the cursor'), action=argparse.BooleanOptionalAction)
-    parser.add_argument('-f', '--flash',  help=_('flash on the detected area'), action=argparse.BooleanOptionalAction)
-    parser.add_argument('-q', '--quiet',  help=_('suppress error messages'), action=argparse.BooleanOptionalAction)
-    return parser.parse_args()
+    ap = argparse.ArgumentParser(add_help=False)
+    ap.add_argument('-h', '--help',    help=_('show this help message and exit'), action='help')
+    ap.add_argument('-m', '--mode',    help=_('specify OCR mode: [%(choices)s] (default: %(default)s)'), default='word', choices=['word', 'paragraph', 'area', 'line', 'dialog'])
+    ap.add_argument('-s', '--style',   help=_('specify trigger style: [%(choices)s] (default: %(default)s)'), default='auto', choices=['auto', 'swift', 'popup'])
+    ap.add_argument('-l', '--lang',    help=_('specify language(s) used by Tesseract OCR (default: %(default)s)'), default='eng')
+    ap.add_argument('-n', '--name',    help=_('specify swift style name'), action='store', default='')
+    ap.add_argument('-p', '--pointer', help=_('invoke around the pointer'), action=argparse.BooleanOptionalAction)
+    ap.add_argument('-f', '--flash',   help=_('flash on the detected area'), action=argparse.BooleanOptionalAction)
+    ap.add_argument('-q', '--quiet',   help=_('suppress error messages'), action=argparse.BooleanOptionalAction)
+    return ap.parse_args()
 
 def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Screenshot', interface_name='.Screenshot'):
-    proxy = Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
+    return (Gio.DBusProxy.new_for_bus_sync(Gio.BusType.SESSION, Gio.DBusProxyFlags.NONE, None, 'org.gnome.Shell' + name,
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
-    return proxy.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
+            .call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack())
 
-def point_in_rect(p, r): return p[0] > r[0] and p[0] < r[0] + r[2] and p[1] > r[1] and p[1] < r[1] + r[3]
-
-def point_to_rect(p, r): return sum([max(a - b, 0, b - a - c) ** 2 for (a, b, c) in zip(r[0:2], p, r[2:4])])
-
-def find_rect(rects, point): return min(filter(lambda x: point_in_rect(point, x), rects), key=lambda x: x[4], default=None) \
-    or min(rects, key=lambda x: point_to_rect(point, x), default=None)
+def find_rect(rs, p):
+    return min(rs, key=lambda r: (sum([max(a - b, 0, b - a - c) ** 2 for (a, b, c) in zip(r[0:2], p, r[2:4])]), r[4]), default=None)
 
 def bincount_img(img, point):
     bgcolor = None # Ref: https://stackoverflow.com/a/50900143 ; detect if image bgcolor is dark or not
-    if point is not None:
+    if point:
         bgcolor = img[*reversed(point)] # for dialog
     else:
         colors = np.ravel_multi_index(img.reshape(-1, img.shape[-1]).T, (256, 256, 256))
@@ -108,10 +102,12 @@ def dialog_img(filename, point):
     mask2 = cv2.floodFill(np.zeros((h, w), np.uint8), mask1, (0, 0), 255)[1]
     return cv2.bitwise_or(img, cv2.bitwise_or(mask2, mask1[1:-1, 1:-1]))
 
-def debug_img(image, rects, point):
+def debug_img(image, rects, point, title='img'):
     for x in rects: cv2.rectangle(image, (x[0], x[1]), (x[0] + x[2], x[1] + x[3]), (40, 240, 80), 2)
     cv2.circle(image, point, 20, (240, 80, 40))
-    cv2.imshow('img', image)
+    cv2.namedWindow(title, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(title, 1000, 800)
+    cv2.imshow(title, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -121,13 +117,13 @@ def crop_img(image, point, kernel):
     area = image.shape[0] * image.shape[1]
     dilate = dilate_img(image, kernel)
     contours = cv2.findContours(dilate, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
-    rects = list(filter(lambda x: x[4] > 0.002 and x[4] < 0.95, [x + (x[2] * x[3] / area,) for x in map(cv2.boundingRect, contours)]))
-    if DEBUG: debug_img(image, rects, point) # cv2.drawContours(img, cs, -1, (40, 240, 80), 2)
+    rects = [x for x in [y + (y[2] * y[3] / area,) for y in map(cv2.boundingRect, contours)] if 0.002 < x[4] < 0.95]
+    if DEBUG: debug_img(image, rects, point) # cv2.drawContours(image, contours, -1, (40, 240, 80), 2)
     return find_rect(rects, point)
 
 def scale_img(image, rect=None):
-    img = image if rect is None else image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
-    return cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR)
+    return cv2.resize(image[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]] if rect else image,
+                      None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR)
 
 def ocr_auto(lang, mode='paragraph'):
     ptr, = gs_dbus_call('Get', ('(as)', (['pointer'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
@@ -138,8 +134,8 @@ def ocr_auto(lang, mode='paragraph'):
         kernel = (6, 3) if mode == 'line' else (9, 7) if mode == 'paragraph' else (9, 9)
         image = dialog_img(path, ptr) if mode == 'dialog' else read_img(path)
         crop = crop_img(image, ptr, kernel)
-        return Result(text=pytesseract.image_to_string(scale_img(image, crop), lang=lang, config=CONFIG).strip() or None,
-                      area=(crop[0], crop[1], crop[2], crop[3])) if crop else Result(error=_('OCR preprocess failed. (~_~)'))
+        return Result(text=pytesseract.image_to_string(scale_img(image, crop), lang=lang, config=CONFIG) or None,
+                      area=crop[:4]) if crop else Result(error=_('OCR preprocess failed. (~_~)'))
 
 def ocr_word(lang, size=(250, 50)):
     ptr, display = gs_dbus_call('Get', ('(as)', (['pointer', 'display'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
@@ -151,31 +147,29 @@ def ocr_word(lang, size=(250, 50)):
         if not ok: return Result(error=path)
         data = pytesseract.image_to_data(scale_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=lang, config=CONFIG)
         bins = [[data[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, x in enumerate(data['text']) if x]
-        rect = find_rect(bins, (w * SCALE, h * SCALE))
         if DEBUG: debug_img(scale_img(read_img(path)), bins, (w * SCALE, h * SCALE))
-        return Result(text=rect[-1].strip(string.punctuation + '“”‘’，。').strip() or None,
-                      area=(rect[0] / SCALE + area[0], rect[1] / SCALE + area[1], rect[2] / SCALE, rect[3] / SCALE + 5)) \
-                              if rect else Result(error=_('OCR process failed. (-_-;)'))
+        rect = find_rect(bins, (w * SCALE, h * SCALE))
+        if not rect: return Result()
+        for i in range(4): rect[i] = round(rect[i] / SCALE)
+        site = round(min(max((w - rect[0]) / rect[2], 0), 1) * len(rect[-1]))
+        word = min(re.finditer(r'[^\W\d_]+', rect[-1]), key=lambda m: max(m.start() - site, 0, site - m.end() + 1), default=None)
+        if not word: return Result()
+        start, end = [round(rect[2] * x / len(rect[-1])) for x in word.span()]
+        return Result(text=word.group(), area=(rect[0] + area[0] + start, rect[1] + area[1], end - start, rect[3] + 5))
 
 def ocr_area(lang):
     area = gs_dbus_call('SelectArea', None)
     with NamedTemporaryFile(suffix='.png') as f:
         ok, path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))
-        return Result(text=pytesseract.image_to_string(scale_img(read_img(path)), lang=lang, config=CONFIG).strip() or None,
+        return Result(text=pytesseract.image_to_string(scale_img(read_img(path)), lang=lang, config=CONFIG) or None,
                       area=area) if ok else Result(error=path)
 
 def exe_mode(args):
     try:
-        ret = (lambda m: m[0](args.lang, *m[1]))({
-            'word': (ocr_word, ()),
-            'area': (ocr_area, ()),
-            'paragraph': (ocr_auto, ()),
-            'line': (ocr_auto, ('line',)),
-            'dialog': (ocr_auto, ('dialog',)),
-            }[args.mode])
-        ret.set_style(args.style, args.name)
-        ret.set_quiet(args.quiet)
-        return ret
+        mode = args.mode
+        return (ocr_word(args.lang) if mode == 'word' else
+                ocr_area(args.lang) if mode == 'area' else
+                ocr_auto(args.lang, mode)).setup(args.style, args.name, args.quiet)
     except GLib.Error as e:
         if e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.CANCELLED): return Result(cancel=True)
         else: raise

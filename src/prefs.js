@@ -160,9 +160,9 @@ class ResultRows extends GObject.Object {
     addToPane(addRow) {
         delete this.addToPane;
         [
-            [Result.SHOW,  [_('S_how result')],   new UI.Switch()],
-            [Result.COPY,  [_('Cop_y result')],   new UI.Switch()],
-            [Result.AWAIT, [_('A_wait result'), _('Show a spinner when running')],  new UI.Switch()],
+            [Result.SHOW,   [_('S_how result')],   new UI.Switch()],
+            [Result.COPY,   [_('Cop_y result')],   new UI.Switch()],
+            [Result.AWAIT,  [_('A_wait result'),   _('Show a spinner when running')], new UI.Switch()],
             [Result.SELECT, [_('Se_lect result')], new UI.Switch()],
             [Result.COMMIT, [_('Co_mmit result')], new UI.Switch()],
         ].forEach(([mask, titles, widget]) => {
@@ -183,19 +183,20 @@ class PrefsBasic extends UI.Page {
             [K.APPS, new Apps()],
             [K.KEYS, new UI.Keys()],
             [K.OCR,  new UI.Switch()],
-            [K.DOCR, new UI.Switch()],
+            [K.TAP,  new UI.Switch()],
+            [K.DWLL, new UI.Switch()],
             [K.HEAD, new UI.Switch()],
             [K.TRAY, new UI.Switch()],
             [K.TIP,  new UI.Switch()],
-            [K.SPLC, new UI.Switch()],
-            [K.OCRP, new UI.Entry('-h')],
-            [K.TFLT, new UI.Entry('\\W')],
-            [K.PGSZ, new UI.Spin(1, 10, 1)],
+            [K.JOIN, new UI.Switch()],
+            [K.PRMS, new UI.Entry('-h')],
+            [K.FLTR, new UI.Entry('\\W')],
+            [K.PAGE, new UI.Spin(1, 10, 1)],
             [K.TIME, new UI.Spin(1000, 20000, 250, _('ms'))],
             [K.PSV,  new UI.Drop([_('Proactive'), _('Passive')])],
             [K.APP,  new UI.Drop([_('Whitelist'), _('Blacklist')])],
             [K.TRG,  new UI.Drop([_('Swift'), _('Popup'), _('Disable')])],
-            [K.OCRS, new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
+            [K.MODE, new UI.Drop([_('Word'), _('Paragraph'), _('Area'), _('Line'), _('Dialog')])],
             [K.LCMD, new UI.Entry('notify-send "$LDWORD"', [EXE], _('get captured text with the environment variable LDWORD'))],
             [K.RCMD, new UI.Entry('notify-send "$LDWORD"', [EXE], _('get captured text with the environment variable LDWORD'))],
         ];
@@ -210,21 +211,22 @@ class PrefsBasic extends UI.Page {
             [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], K.TRAY],
             [[_('_Trigger style'), _('Passive means pressing Alt to trigger')], K.PSV, K.TRG],
             [[_('_App list')], K.APPS, K.APP],
-            [[_('RegE_xp filter')], K.TFLT],
-            [[_('Autohide inter_val')], K.TIME],
-            [[_('Sp_lice text'), _('Try to replace redundant line breaks with spaces')], K.SPLC],
+            [[_('RegE_xp filter')], K.FLTR],
+            [[_('A_utohide interval')], K.TIME],
+            [[_('Sp_lice text'), _('Try to replace redundant line breaks with spaces')], K.JOIN],
         ]], [[[_('Panel'), _('Middle click to copy the result')]], [
             [[_('_Enable title')], K.HEAD],
             [[_('P_rimary command'), _('Primary click to run')], K.LCMD],
             [[_('Se_condary command'), _('Secondary click to run and close')], K.RCMD],
         ]], [[[_('Popup'), _('Scroll to flip pages')]], [
             [[_('Enable toolt_ip')], K.TIP],
-            [[_('Page si_ze')], K.PGSZ],
+            [[_('Page si_ze')], K.PAGE],
         ]], [[[_('OCR'), `${_('Depends on: ')} ${opencv} &amp; ${tesseract}`], K.OCR], [
-            [[_('S_hortcut')], K.KEYS],
-            [[_('_Dwell OCR')], K.DOCR],
-            [[_('_Work mode')], K.OCRS],
-            [[_('Other para_meters')], ocr, K.OCRP],
+            [[_('S_hortcut')], K.KEYS], // NOTE:  https://gitlab.gnome.org/GNOME/mutter/-/issues/207
+            [[_('T_ouchpad'), _('Tap with 3 or more fingers')], K.TAP],
+            [[_('Ho_ver'), _('Trigger when the pointer hovers')], K.DWLL],
+            [[_('Mo_de')], K.MODE],
+            [[_('Para_meters')], ocr, K.PRMS],
         ]]);
     }
 }
@@ -249,10 +251,9 @@ class PrefsPopup extends UI.Page {
 
     $genSide(cmds, field) {
         this.$cmds = new Gio.ListStore()[$].splice(0, 0, cmds.map(x => new SideItem(x)));
-        this.$list = new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true})[$]
-            .add_css_class('data-table')[$]
+        this.$list = new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true})[$].add_css_class('data-table')[$]
             .connect('row-selected', (_w, row) => row && this.$onSelect(row.get_index()))[$]
-            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMDS)[$s].connect([
+            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMD)[$s].connect([
                 ['dropped', (_w, f, t) => this.$onDrop(f, t)],
                 ['changed', (_w, p, v) => this.$onChange(p, 'name',  v)],
                 ['toggled', (_w, p, v) => this.$onChange(p, 'enable', v)],
@@ -369,7 +370,7 @@ class PrefsSwift extends PrefsPopup {
 
     constructor(gset, field) {
         super(gset, field)[$].connect('notify::enabled', () => Iterator.from(this.$cmds).forEach((x, i) => x[$].enable(i === this.enabled)))
-            .$tie([[K.SCMD, this, 'enabled']]);
+            .$tie([[K.SIDX, this, 'enabled']]);
     }
 
     $genPaneWidgets() {
@@ -411,8 +412,8 @@ export default class extends UI.Prefs {
             .load_from_resource(`${path}theme/style.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)
         return [
             new PrefsBasic(gset)[$].set({title: _('_Basic'), iconName: 'applications-system-symbolic'}),
-            new PrefsSwift(gset, K.SCMDS)[$].set({title: _('_Swift'), iconName: 'ld-swift-passive-symbolic'}),
-            new PrefsPopup(gset, K.PCMDS)[$].set({title: _('_Popup'), iconName: 'ld-popup-passive-symbolic'}),
+            new PrefsSwift(gset, K.SCMD)[$].set({title: _('_Swift'), iconName: 'ld-swift-passive-symbolic'}),
+            new PrefsPopup(gset, K.PCMD)[$].set({title: _('_Popup'), iconName: 'ld-popup-passive-symbolic'}),
         ];
     }
 }

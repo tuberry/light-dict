@@ -4,7 +4,6 @@
 import St from 'gi://St';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
-import IBus from 'gi://IBus';
 import Meta from 'gi://Meta';
 import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
@@ -15,7 +14,6 @@ import Graphene from 'gi://Graphene';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Animation from 'resource:///org/gnome/shell/ui/animation.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
-import * as Keyboard from 'resource:///org/gnome/shell/ui/status/keyboard.js';
 import * as PointerWatcher from 'resource:///org/gnome/shell/ui/pointerWatcher.js';
 
 import * as T from './util.js';
@@ -24,17 +22,14 @@ import * as F from './fubar.js';
 import {Key as K, Result} from './const.js';
 
 const {_} = F;
-const {$, $$, $_, $s} = T;
+const {$, $$, $_, $s, hub} = T;
 const DBusSSS = Main.shellDBusService._screenshotService._senderChecker;
 
 const Trigger = {SWIFT: 0, POPUP: 1, DISABLE: 2};
 const OCRMode = {WORD: 0, PARAGRAPH: 1, AREA: 2, LINE: 3, DIALOG: 4};
-const EvalMask = Object.getOwnPropertyNames(globalThis).filter(x => x !== 'eval').join(',');
 
-const approx = (exp, str, nil = true) => T.essay(() => exp ? RegExp(exp, 'u').test(str) : nil, e => (logError(e, exp), nil)); // =~
-const allowed = (cmd, app, str) => cmd ? (!cmd.apps?.length || cmd.apps.includes(app)) && approx(cmd.regexp, str) : false;
-const evaluate = (script, scope) => Function(Object.keys(scope)[$].push(EvalMask).join(','),
-    `'use strict'; return eval(${JSON.stringify(script)})`)(...Object.values(scope)); // NOTE: https://github.com/tc39/proposal-shadowrealm
+const approx = (exp, str, nil = true) => T.essay(() => exp ? RegExp(exp, 'u').test(str) : nil, e => (logError(e, exp), nil));
+const allowed = (cmd, app, str) => !!cmd && (!cmd.apps?.length || cmd.apps.includes(app)) && approx(cmd.regexp, str);
 
 class GB {
     static get pointer() { return global.get_pointer(); };
@@ -45,7 +40,7 @@ class GB {
 
 class DictBar extends BoxPointer.BoxPointer {
     static {
-        T.enrol(this, null, {Signals: {'dict-bar-clicked': {param_types: [GObject.TYPE_JSOBJECT]}}});
+        T.enrol(this, null, {Signals: {'click': {param_types: [GObject.TYPE_JSOBJECT]}}});
     }
 
     constructor(set) {
@@ -64,8 +59,9 @@ class DictBar extends BoxPointer.BoxPointer {
 
     $bindSettings(set) {
         this.$set = set.tie(this, [
-            K.TIME, K.PGSZ, [K.TIP, x => this.$onTooltipSet(x)],
-            [['cmds', K.PCMDS], x => this.$onCommandsSet(x)],
+            [K.TIP, x => this.$onTooltipSet(x)],
+            [K.PAGE, () => { this.$index = 1; }], K.TIME,
+            [['cmds', K.PCMD], x => this.$onCommandsSet(x)],
         ]);
     }
 
@@ -78,27 +74,25 @@ class DictBar extends BoxPointer.BoxPointer {
     $onCommandsSet(commands) {
         return commands.filter(x => x.enable)[$$](cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$_].push(this[K.TIP], 'tooltip')) ||
             M.upsert(this.$box, x => x.add_child(new M.Button()[$].set({styleClass: 'light-dict-button candidate-box'})), cmds,
-                ({icon, name, tooltip}, button, index) => button.setup(() => this[$].dispel().emit('dict-bar-clicked', this.cmds[index]),
+                ({icon, name, tooltip}, button, index) => button.setup(() => this[$].dispel().emit('click', this.cmds[index]),
                     icon ?? '', this[K.TIP] && tooltip, icon ? '' : name ?? 'Name'), x => [...x]));
     }
 
-    $getPages() {
-        let length = this.cmds.reduce((p, x) => x.$visible ? p + 1 : p, 0);
-        return length && this[K.PGSZ] ? Math.ceil(length / this[K.PGSZ]) : 0;
-    }
-
-    $updatePages(pages) {
-        let icons = [...this.$box].filter((x, i) => (x.visible = this.cmds[i].$visible));
-        if(pages < 2) return;
-        this.$index = this.$index < 1 ? pages : this.$index > pages ? 1 : this.$index ?? 1;
-        if(this.$index === pages && icons.length % this[K.PGSZ]) {
-            let start = icons.length - this[K.PGSZ];
-            icons.forEach((x, i) => F.view(i >= start, x));
-        } else {
-            let end = this.$index * this[K.PGSZ];
-            let start = (this.$index - 1) * this[K.PGSZ];
-            icons.forEach((x, i) => F.view(i >= start && i < end, x));
+    $updatePages() {
+        let cmds = this.cmds.filter(x => x[hub]);
+        let pages = this[K.PAGE] ? Math.ceil(cmds.length / this[K.PAGE]) : cmds.length && 1;
+        switch(pages) {
+        case 0: break;
+        case 1: Iterator.from(this.$box).forEach((x, i) => F.view(this.cmds[i][hub], x)); break;
+        default: {
+            this.$index = this.$index < 1 ? pages : this.$index > pages ? 1 : this.$index;
+            let end = Math.min(this.$index * this[K.PAGE], cmds.length);
+            let start = end - this[K.PAGE];
+            cmds.forEach((x, i) => { x[hub] = i >= start && i < end ? 2 : 1; });
+            Iterator.from(this.$box).forEach((x, i) => F.view(this.cmds[i][hub] > 1, x));
         }
+        }
+        return pages;
     }
 
     $onScroll(_a, event) {
@@ -107,15 +101,13 @@ class DictBar extends BoxPointer.BoxPointer {
         case Clutter.ScrollDirection.DOWN: this.$index++; break;
         default: return;
         }
-        this.$updatePages(this.$getPages());
+        this.$updatePages();
     }
 
     summon(app, str) {
-        this.cmds.forEach(x => { x.$visible = allowed(x, app, str); });
-        let pages = this.$getPages();
-        if(pages < 1) return;
+        this.cmds.forEach(x => { x[hub] = allowed(x, app, str); });
+        if(!this.$updatePages()) return;
         if(F.offstage(this)) Main.layoutManager.addTopChrome(this);
-        this.$updatePages(pages);
         this.open(BoxPointer.PopupAnimation.NONE);
         this.$src.hide.revive(this[K.TIME]);
     }
@@ -151,14 +143,14 @@ class DictBox extends BoxPointer.BoxPointer {
     $bindSettings(set) {
         this.$set = set.tie(this, [
             K.LCMD, K.RCMD, K.TIME,
-            [K.HEAD, null, x => this.$src.text.toggle(x)],
+            [K.HEAD, null, x => this.$src.head.toggle(x)],
         ]);
     }
 
     $buildSources() {
         this.$src = F.Source.tie(this, {
             hide: F.Source.newTimer(x => [() => this.dispel(), x]),
-            text: F.Source.new(() => this.$genLabel(), this[K.HEAD]),
+            head: F.Source.new(() => this.$genLabel(), this[K.HEAD]),
         });
     }
 
@@ -207,7 +199,7 @@ class DictBox extends BoxPointer.BoxPointer {
         } catch{
             this.$info.set_text(info);
         }
-        this.$src.text.hub?.set_text(text);
+        this.$src.head.hub?.set_text(text);
         this.$updateScroll();
         this.open(BoxPointer.PopupAnimation.NONE);
         this.$src.hide.revive(this.$delay);
@@ -224,57 +216,60 @@ class DictBox extends BoxPointer.BoxPointer {
 
 class DictAct extends F.Mortal {
     static Trigger = T.omap(Trigger, ([k, v]) => [[v, k.toLowerCase()]]);
+    static Modifier = {ctrl: Clutter.KEY_Control_L, shift: Clutter.KEY_Shift_L, alt: Clutter.KEY_Alt_L, super: Clutter.KEY_Super_L};
+    static keyval = keys => keys.split('+').map(key => DictAct.Modifier[key] ?? Clutter[`KEY_${key}`] ?? Clutter.KEY_VoidSymbol);
 
     $bindSettings(set) {
         this.$set = set.tie(this, [
             [K.TRG, null, x => this.$src.tray.hub?.$menu.trigger.choose(x)],
             [K.PSV, x => !!x, x => this.$src.tray.hub?.$menu.passive.setToggleState(x)],
         ], null, () => this.$src.tray.hub?.$icon.set_icon_name(this.icon), [
-            [['cmds', K.SCMDS], x => this.$onCommandsSet(x)],
-            [K.TRAY, null, x => this.$src.tray.toggle(x)],
             [K.OCR, null, x => this.$onEnableOcrSet(x)],
-            [K.SCMD, null, x => this.$src.tray.hub?.$menu.cmds.choose(x)],
+            [K.TRAY, null, x => this.$src.tray.toggle(x)],
+            [['cmds', K.SCMD], x => this.$onCommandsSet(x)],
+            [K.SIDX, null, x => this.$src.tray.hub?.$menu.cmds.choose(x)],
         ]);
     }
 
     $buildSources() {
-        let cancel = F.Source.newCancel(),
+        let kbd = F.Source.newKeyboard(),
+            cancel = F.Source.newCancel(),
             tty = new F.Source(() => new Gio.SubprocessLauncher({flags: T.PIPE}), x => x.close(), true),
             ocr = F.Source.new(() => this.$genOCR(tty.hub), this[K.OCR]),
             tray = F.Source.new(() => this.$genSystray(ocr.hub), this[K.TRAY]),
-            kbd = new F.Source(() => Clutter.get_default_backend().get_default_seat().create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE),
-                x => x.run_dispose(), true), // run_dispose to release keys immediately
-            stroke = new F.Source(x => x.split(/\s+/).map((y, i) => setTimeout(() => this.$stroke(y.split('+'), kbd.hub), i * 50)),
-                x => x.forEach(clearTimeout));
+            stroke = new F.Source(kss => kss.split(/\s+/).map((ks, i) => setTimeout(() => kbd.stroke(ks.split('+').map(k =>
+                DictAct.Modifier[k] ?? Clutter[`KEY_${k}`] ?? Clutter.KEY_VoidSymbol)), i * 50)), x => x.forEach(clearTimeout));
         this.$src = F.Source.tie(this, {cancel, ocr, tray, tty, stroke, kbd});
-    }
-
-    $stroke(keys, kbd) {
-        let modifier = {ctrl: Clutter.KEY_Control_L, shift: Clutter.KEY_Shift_L, alt: Clutter.KEY_Alt_L, super: Clutter.KEY_Super_L};
-        let keyval = keysym => modifier[keysym] ?? Clutter[`KEY_${keysym}`] ?? Clutter.KEY_VoidSymbol;
-        keys.forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.PRESSED));
-        keys.reverse().forEach(k => kbd.notify_keyval(Clutter.get_current_event_time() * 1000, keyval(k), Clutter.KeyState.RELEASED));
     }
 
     $genOCR(tty) {
         let ret = new F.Mortal();
         let mode = T.omap(OCRMode, ([k, v]) => [[v, k.toLowerCase()]]);
         this.$set.tie(ret, [
-            K.OCRP, [K.OCRS, null, x => this.$src.tray.hub?.$menu.ocr.choose(x)],
-        ], () => { ret.cmd = `python ${T.ROOT}/ldocr.py -m ${mode[ret[K.OCRS]]} ${ret[K.OCRP]}`; }, [
+            K.PRMS, [K.MODE, null, x => this.$src.tray.hub?.$menu.ocr.choose(x)],
+        ], () => { ret.cmd = `python ${T.ROOT}/ldocr.py -m ${mode[ret[K.MODE]]} ${ret[K.PRMS]}`; }, [
+            [K.TAP, null, x => ret.$src.tap.toggle(x)],
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
-            [K.DOCR, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
+            [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ]);
-        let emit = F.Source.newTimer(x => [() => this.emit('dict-act-dwelled', GB.pointer[2], ret.ppt), 180][$$](() => { ret.ppt = ret.pt; ret.pt = x; })), // 180 = 170 + 10
-            dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(170, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DOCR]),
-            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$$](p => { ret.pid = parseInt(p.get_identifier()); })},
-                DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => ret.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
+        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), 180][$$](() => { ret.ppt = ret.pt; ret.pt = x; })), // 180 = 170 + 10
+            dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(170, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DWLL]),
+            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$$](p => { spawn.pid = parseInt(p.get_identifier()); })},
+                DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
                     'GetConnectionUnixProcessID', new GLib.Variant('(s)', xs), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
-                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete ret.pid)),
-            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]);
-        return ret[$].$src(F.Source.tie(ret, {spawn, dwell, emit, keys}))[$]
-            .genDwellItem(() => new M.SwitchItem(_('Dwell OCR'), ret[K.DOCR], x => this.$set.set(K.DOCR, x)))[$]
-            .genModeItem(() => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.OCRS], x => this.$set.set(K.OCRS, x)));
+                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)),
+            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]),
+            tap = F.Source.newHandler(global.stage, 'captured-event::touchpad', (_a, event) => {
+                if(event.type() !== Clutter.EventType.TOUCHPAD_HOLD || event.get_touchpad_gesture_finger_count() < 3) return;
+                switch(event.get_gesture_phase()) {
+                case Clutter.TouchpadGesturePhase.BEGIN: tap.only = true; tap.time = event.get_time(); break;
+                case Clutter.TouchpadGesturePhase.END: if(tap.only && event.get_time() - tap.time < 2002) spawn.invoke(); break;
+                default: tap.only = false;
+                } // NOTE: blocked by popups
+            }, ret[K.TAP]);
+        return ret[$].$src(F.Source.tie(ret, {spawn, dwell, emit, keys, tap}))[$]
+            .genDwellItem(() => new M.SwitchItem(_('Hover OCR'), ret[K.DWLL], x => this.$set.set(K.DWLL, x)))[$]
+            .genModeItem(() => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.MODE], x => this.$set.set(K.MODE, x)));
     }
 
     $genSystray(ocr) {
@@ -283,13 +278,13 @@ class DictAct extends F.Mortal {
             passive: new M.SwitchItem(_('Passive mode'), this[K.PSV], x => this.$set.set(K.PSV, x ? 1 : 0)),
             sep0: new M.Separator(),
             trigger: new M.RadioItem(_('Trigger'), M.RadioItem.getopt(Trigger), this[K.TRG], x => this.$set.set(K.TRG, x)),
-            cmds: new M.RadioItem(_('Swift'), this.cmds.map(x => x.name), this[K.SCMD], x => this.$set.set(K.SCMD, x)),
+            cmds: new M.RadioItem(_('Swift'), this.cmds.map(x => x.name), this[K.SIDX], x => this.$set.set(K.SIDX, x)),
             ocr: ocr?.genModeItem(),
             sep1: new M.Separator(),
             prefs: new M.Item(_('Settings'), () => F.me().openPreferences()),
         }, M.Icon.wrap(this.icon))[$]
             .add_style_class_name('light-dict-systray')[$_]
-            .add_style_pseudo_class(ocr?.[K.DOCR], 'state-busy')[$]
+            .add_style_pseudo_class(ocr?.[K.DWLL], 'state-busy')[$]
             .$setDwell(function (dwell) {
                 dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
                 this.$menu.dwell.setToggleState(dwell);
@@ -319,7 +314,7 @@ class DictAct extends F.Mortal {
     }
 
     getCommand(name) {
-        return (name ? this.cmds.find(x => x.name === name) : this.cmds[this[K.SCMD]]) ?? this.cmds[0];
+        return (name ? this.cmds.find(x => x.name === name) : this.cmds[this[K.SIDX]]) ?? this.cmds[0];
     }
 
     OCR(args) {
@@ -330,10 +325,8 @@ class DictAct extends F.Mortal {
         this.$src.stroke.revive(keys);
     }
 
-    commit(string) {
-        let kism = Keyboard.getInputSourceManager();
-        if(kism.currentSource.type !== Keyboard.INPUT_SOURCE_TYPE_IBUS) Main.inputMethod.commit(F.bracket(string)); // TODO: not tested
-        else kism._ibusManager._panelService?.commit_text(IBus.Text.new_from_string(F.bracket(string)));
+    commit(text) {
+        this.$src.kbd.commit(text);
     }
 
     execute(cmd, env) {
@@ -342,15 +335,19 @@ class DictAct extends F.Mortal {
 }
 
 class LightDict extends F.Mortal {
+    static EvalMask = Object.getOwnPropertyNames(globalThis).filter(x => x !== 'eval').join(',');
+    static evaluate = (script, scope) => Function(Object.keys(scope)[$].push(this.EvalMask).join(','),
+        `'use strict'; return eval(${JSON.stringify(script)})`)(...Object.values(scope)); // NOTE: https://github.com/tc39/proposal-shadowrealm
+
     $bindSettings(gset) {
-        this.$set = new F.Setting(gset, this, [K.TFLT, [K.APPS, x => new Set(x)], K.APP, K.SPLC]);
+        this.$set = new F.Setting(gset, this, [K.FLTR, [K.APPS, x => new Set(x)], K.APP, K.JOIN]);
     }
 
     $buildSources() {
         let box = new DictBox(this.$set),
+            act = new DictAct(this.$set)[$].connect('dwell', (...xs) => this.$onDwell(...xs)),
+            bar = new DictBar(this.$set)[$].connect('click', (_a, x) => { this.dwellLock = true; this.runCmd(x); }),
             csr = new Clutter.Actor({opacity: 0, x: 1, y: 1})[$$](w => Main.uiGroup.add_child(w)), // HACK: init pos to avoid misplacing at the first occurrence
-            act = new DictAct(this.$set)[$].connect('dict-act-dwelled', (...xs) => this.$onDwell(...xs)),
-            bar = new DictBar(this.$set)[$].connect('dict-bar-clicked', (_a, x) => { this.dwellLock = true; this.runCmd(x); }),
             dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', true),
             poll = F.Source.newDefer(() => this.$postPoll(), () => !(GB.pointer[2] & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
             wait = F.Source.newInvoker(() => F.Source.new(() => this.$genSpinner(), true), (...xs) => act.execute(...xs)),
@@ -374,7 +371,7 @@ class LightDict extends F.Mortal {
     }
 
     $postPoll() {
-        F.paste(true).then(x => (this.$src.act[K.PSV] || !approx(this[K.TFLT], x, false)) && this.run('auto', x)).catch(T.nop);
+        F.paste(true).then(x => (this.$src.act[K.PSV] || !approx(this[K.FLTR], x, false)) && this.run('auto', x)).catch(T.nop);
     }
 
     $setSourceArea(area) {
@@ -399,7 +396,7 @@ class LightDict extends F.Mortal {
 
     $onDwell(_a, mdf, [x, y]) {
         let {box, bar, act} = this.$src;
-        if(F.yank(this, 'dwellLock') || box.prect?.contains_point(new Graphene.Point({x, y})) || act.$src.ocr.hub?.[K.OCRS] === OCRMode.AREA ||
+        if(F.yank(this, 'dwellLock') || box.prect?.contains_point(new Graphene.Point({x, y})) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
             (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.$denyMdf(mdf)) return;
         act.OCR('--quiet');
     }
@@ -423,7 +420,7 @@ class LightDict extends F.Mortal {
 
     $runJS({command, result}) {
         try {
-            let output = evaluate(command, {
+            let output = LightDict.evaluate(command, {
                 LDWORD: this.txt, LDAPPID: this.app,
                 open: F.open, copy: F.copy,
                 key: x => this.$src.act.stroke(x),
@@ -451,7 +448,7 @@ class LightDict extends F.Mortal {
         this.$setSourceArea(area);
         let [kind, name] = type === 'auto' ? [this.$src.act.trigger] : type.split(':');
         this.txt = text || (kind === 'print' ? 'Oops' : await F.paste(true));
-        if(this[K.SPLC]) this.txt = this.txt.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
+        if(this[K.JOIN]) this.txt = this.txt.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
         switch(kind) {
         case 'swift': {
             let cmd = this.$src.act.getCommand(name);
