@@ -24,9 +24,9 @@ class Result:
     def __init__(self, text=None, area=None, error=None, cancel=None):
         self.text, self.area, self.error, self.cancel, self.style = text, area, error, cancel, 'swift'
 
-    def setup(self, style, name, quiet):
-        self.style = style + ':' + name if name else style
-        if quiet and self.erroneous: self.cancel = True
+    def setup(self, args):
+        self.style = args.style + ':' + args.name if args.name else args.style
+        if args.quiet and self.erroneous: self.cancel = True
         return self
 
     @property
@@ -169,7 +169,7 @@ def exe_mode(args):
         mode = args.mode
         return (ocr_word(args.lang) if mode == 'word' else
                 ocr_area(args.lang) if mode == 'area' else
-                ocr_auto(args.lang, mode)).setup(args.style, args.name, args.quiet)
+                ocr_auto(args.lang, mode)).setup(args)
     except GLib.Error as e:
         if e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.CANCELLED): return Result(cancel=True)
         else: raise
