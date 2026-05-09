@@ -74,8 +74,8 @@ class DictBar extends BoxPointer.BoxPointer {
     $onCommandsSet(commands) {
         return commands.filter(x => x.enable)[$$](cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$_].push(this[K.TIP], 'tooltip')) ||
             M.upsert(this.$box, x => x.add_child(new M.Button()[$].set({styleClass: 'light-dict-button candidate-box'})), cmds,
-                ({icon, name, tooltip}, button, index) => button.setup(() => this[$].dispel().emit('click', this.cmds[index]),
-                    icon ?? '', this[K.TIP] && tooltip, icon ? '' : name ?? 'Name'), x => [...x]));
+                ({icon, name, tooltip, command}, button, index) => button.setup(() => this[$].dispel().emit('click', this.cmds[index]),
+                    icon ?? '', this[K.TIP] && tooltip, icon ? '' : (name || command) ?? 'Name')));
     }
 
     $updatePages() {
@@ -124,6 +124,7 @@ class DictBox extends BoxPointer.BoxPointer {
     static {
         T.enrol(this);
         this.Kaomojis = ['_(:з」∠)_', '¯\\_(ツ)_/¯', 'o(T^T)o', 'Σ(ʘωʘﾉ)ﾉ', 'ヽ(ー_ー)ノ']; // placeholder
+        this.uniwidth = x => !GLib.unichar_ispunct(x) && GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1;
     }
 
     constructor(set) {
@@ -168,9 +169,9 @@ class DictBox extends BoxPointer.BoxPointer {
         if(limit <= 0) limit = GB.display[1] * 15 / 32;
         let scroll = h >= limit;
         this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
-        let count = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
-            : Iterator.from(this.$info.get_text()).reduce((p, x) => p + (GLib.unichar_iswide(x) ? 2 : GLib.unichar_iszerowidth(x) ? 0 : 1), 0);
-        this.$delay = Math.clamp(this[K.TIME] * count / 36, 1000, 20000); // TODO: ? WPM
+        let length = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
+            : T.glyphs(this.$info.get_text(), (p, x) => p + DictBox.uniwidth(x.segment));
+        this.$delay = Math.clamp(this[K.TIME] * length / 36, 1000, 20000); // TODO: ? WPM
     }
 
     $onClick(gesture) {
@@ -243,7 +244,7 @@ class DictAct extends F.Mortal {
     }
 
     $genOCR(tty) {
-        let ret = new F.Mortal();
+        let ret = new F.Mortal().set({EMIT: 180});
         let mode = T.omap(OCRMode, ([k, v]) => [[v, k.toLowerCase()]]);
         this.$set.tie(ret, [
             K.PRMS, [K.MODE, null, x => this.$src.tray.hub?.$menu.ocr.choose(x)],
@@ -252,11 +253,11 @@ class DictAct extends F.Mortal {
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
             [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ]);
-        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), 180][$$](() => { ret.ppt = ret.pt; ret.pt = x; })), // 180 = 170 + 10
-            dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(170, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DWLL]),
+        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), ret.EMIT][$$](() => { ret.ppt = ret.pt; ret.pt = x; })),
+            dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(ret.EMIT - 10, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DWLL]),
             spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$$](p => { spawn.pid = parseInt(p.get_identifier()); })},
                 DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
-                    'GetConnectionUnixProcessID', new GLib.Variant('(s)', xs), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
+                    'GetConnectionUnixProcessID', T.pickle(xs, '(s)'), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
                 this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)),
             keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]),
             tap = F.Source.newHandler(global.stage, 'captured-event::touchpad', (_a, event) => {
@@ -267,9 +268,11 @@ class DictAct extends F.Mortal {
                 default: tap.only = false;
                 } // NOTE: blocked by popups
             }, ret[K.TAP]);
-        return ret[$].$src(F.Source.tie(ret, {spawn, dwell, emit, keys, tap}))[$]
-            .genDwellItem(() => new M.SwitchItem(_('Hover OCR'), ret[K.DWLL], x => this.$set.set(K.DWLL, x)))[$]
-            .genModeItem(() => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.MODE], x => this.$set.set(K.MODE, x)));
+        return ret.set({
+            $src: F.Source.tie(ret, {spawn, dwell, keys, tap}, emit),
+            genDwellItem: () => new M.SwitchItem(_('Hover OCR'), ret[K.DWLL], x => this.$set.set(K.DWLL, x)),
+            genModeItem: () => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.MODE], x => this.$set.set(K.MODE, x)),
+        });
     }
 
     $genSystray(ocr) {
@@ -466,14 +469,14 @@ class LightDict extends F.Mortal {
     async GetAsync([props], invocation) {
         try {
             await DBusSSS.checkInvocation(invocation);
-            invocation.return_value(new GLib.Variant('(aai)', [props.map(prop => {
+            invocation.return_value(T.pickle([props.map(prop => {
                 switch(prop) {
                 case 'display': return GB.display;
                 case 'pointer': return GB.pointer.slice(0, 2);
                 case 'focused': return (r => [r.x, r.y, r.width, r.height])(GB.window.get_frame_rect());
                 default: throw Error(`Unknown property: ${prop}`);
                 }
-            })]));
+            })], '(aai)'));
         } catch(e) {
             if(e instanceof GLib.Error) invocation.return_gerror(e);
             else invocation.return_error_literal(Gio.DBusError, Gio.DBusError.FAILED, e.message);

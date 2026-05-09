@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:365
+#: src/ui.js:364
 msgid "Mismatched filetype"
 msgstr "文件类型不匹配"
 
-#: src/ui.js:482
+#: src/ui.js:481
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -72,27 +72,27 @@ msgstr "OCR预处理失败。(~_~)"
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/extension.js:271
+#: src/extension.js:273
 msgid "Hover OCR"
 msgstr "悬停取词"
 
-#: src/extension.js:272 src/prefs.js:224
+#: src/extension.js:274 src/prefs.js:224
 msgid "OCR"
 msgstr "取词"
 
-#: src/extension.js:278
+#: src/extension.js:281
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: src/extension.js:280
+#: src/extension.js:283
 msgid "Trigger"
 msgstr "触发"
 
-#: src/extension.js:281 src/prefs.js:198
+#: src/extension.js:284 src/prefs.js:198
 msgid "Swift"
 msgstr "即时"
 
-#: src/extension.js:284
+#: src/extension.js:287
 msgid "Settings"
 msgstr "设置"
 

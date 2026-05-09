@@ -25,7 +25,7 @@ class AppItem extends GObject.Object {
     }
 
     constructor(app, callback) {
-        super()[$].app(app)[$].toggle((x = !this.chosen) => { this.chosen = x; callback(); });
+        super().set({app, toggle(x = !this.chosen) { this.chosen = x; callback(); }});
     }
 }
 
