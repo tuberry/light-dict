@@ -4,35 +4,58 @@
 configure_file(
   input: 'metadata.json.in',
   output: 'metadata.json',
-  configuration: metadata,
+  configuration: me,
   install_dir: target_dir,
 )
 
-subdir('scalable/status') # HACK: for https://github.com/mesonbuild/meson/issues/2320
-foreach name: ['dbus', 'path']
-  icon.set(name, metadata[name])
+_icon = {}
+foreach p: ['passive', 'proactive']
+  foreach t: ['swift', 'popup', 'disable']
+    _icon += {f'icon_@t@_@p@': f'ld-@t@-@p@-symbolic.svg'}
+  endforeach
 endforeach
+_theme = 'prefs.css'
 
-subdir('theme')
-icon.set('theme', theme)
+_gres = me + _icon + {'theme': _theme}
 
-dbus = configure_file(
+_deps = [] + custom_target(
+  output: _icon.values(),
+  build_subdir: 'scalable/status',
+  build_by_default: true,
+  build_always_stale: true,
+  command: [
+    find_program('gjs'),
+    '-m',
+    '@SOURCE_ROOT@' / 'cli/gen-icon.js',
+    '@OUTDIR@',
+  ],
+) + custom_target(
+  input: fs.replace_suffix(_theme, '.scss'),
+  output: _theme,
+  command: [
+    find_program('sassc'),
+    '-t',
+    'compact',
+    '-a',
+    '@INPUT@',
+    '@OUTPUT@'
+  ],
+) + configure_file(
   input: 'dbus.xml.in',
-  output: '@0@.xml'.format(metadata['dbus']),
-  configuration: metadata,
-  install_dir: (target == 'system') ? datadir / 'dbus-1/interfaces' : '',
+  output: '@0@.xml'.format(me['dbus']),
+  configuration: me,
+  install_dir: target == 'system' ? get_option('datadir') / 'dbus-1/interfaces' : ''
 )
 
-foreach name: ['extension', 'prefs']
-  gres = configure_file(
-    input: f'@name@.gresource.xml.in',
-    output: f'@name@.gresource.xml',
-    configuration: icon,
-  )
+foreach x: ['extension', 'prefs']
   gnome.compile_resources(
-    name, gres,
+    x, configure_file(
+      input: f'@x@.gresource.xml.in',
+      output: f'@x@.gresource.xml',
+      configuration: _gres,
+    ),
     source_dir: '@OUTDIR@',
-    dependencies: [tray, scss, dbus],
+    dependencies: _deps,
     gresource_bundle: true,
     install: true,
     install_dir: target_dir / 'resource',

@@ -25,74 +25,75 @@ msgstr "文件类型不匹配"
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
-#: src/ldocr.py:38
+#: src/ldocr.py:29
 msgid "OCR process failed. (-_-;)"
 msgstr "OCR处理失败。(-_-;)"
 
-#: src/ldocr.py:58
+#. importtime ~ 23ms
+#: src/ldocr.py:48
+msgid "OCR preprocess failed. (~_~)"
+msgstr "OCR预处理失败。(~_~)"
+
+#: src/ldocr.py:59
 msgid "show this help message and exit"
 msgstr "显示此帮助信息并退出"
 
-#: src/ldocr.py:59
+#: src/ldocr.py:60
 #, python-format
 msgid "specify OCR mode: [%(choices)s] (default: %(default)s)"
 msgstr "指定取词模式: [%(choices)s] (默认: %(default)s)"
 
-#: src/ldocr.py:60
+#: src/ldocr.py:61
 #, python-format
 msgid "specify trigger style: [%(choices)s] (default: %(default)s)"
 msgstr "指定触发方式: [%(choices)s] (默认: %(default)s)"
 
-#: src/ldocr.py:61
+#: src/ldocr.py:62
 #, python-format
 msgid "specify language(s) used by Tesseract OCR (default: %(default)s)"
 msgstr "指定 Tesseract OCR 所用语言(默认: %(default)s)"
 
-#: src/ldocr.py:62
+#: src/ldocr.py:63
 msgid "specify swift style name"
 msgstr "指定即时方式名称"
 
-#: src/ldocr.py:63
+#: src/ldocr.py:64
 msgid "invoke around the pointer"
 msgstr "在指针附近唤起"
 
-#: src/ldocr.py:64
+#: src/ldocr.py:65
 msgid "flash on the detected area"
 msgstr "在检测区域闪烁"
 
-#: src/ldocr.py:65
+#: src/ldocr.py:66
 msgid "suppress error messages"
 msgstr "禁言报错消息"
 
-#: src/ldocr.py:138
-msgid "OCR preprocess failed. (~_~)"
-msgstr "OCR预处理失败。(~_~)"
-
-#: src/ldocr.py:143
+#: src/ldocr.py:119
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/extension.js:273
+#: src/extension.js:272
 msgid "Hover OCR"
 msgstr "悬停取词"
 
-#: src/extension.js:274 src/prefs.js:224
+#: src/extension.js:273 src/prefs.js:224
 msgid "OCR"
 msgstr "取词"
 
-#: src/extension.js:281
+#: src/extension.js:280
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: src/extension.js:283
+#: src/extension.js:282
 msgid "Trigger"
 msgstr "触发"
 
-#: src/extension.js:284 src/prefs.js:198
+#: src/extension.js:283 src/prefs.js:198
 msgid "Swift"
 msgstr "即时"
 
-#: src/extension.js:287
+#: src/extension.js:286
 msgid "Settings"
 msgstr "设置"
 

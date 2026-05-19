@@ -4,7 +4,7 @@
         <file compressed="true">@theme@</file>
     </gresource>
     <gresource prefix="@path@icons">
-        <file preprocess="xml-stripblanks" compressed="true">@0@</file>
-        <file preprocess="xml-stripblanks" compressed="true">@1@</file>
+        <file preprocess="xml-stripblanks" compressed="true">scalable/status/@icon_swift_passive@</file>
+        <file preprocess="xml-stripblanks" compressed="true">scalable/status/@icon_popup_passive@</file>
     </gresource>
 </gresources>

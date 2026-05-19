@@ -35,7 +35,6 @@ class GB {
     static get pointer() { return global.get_pointer(); };
     static get display() { return global.display.get_size(); }
     static get cursor() { return Meta.prefs_get_cursor_size(); }
-    static get window() { return global.display.get_focus_window(); }
 }
 
 class DictBar extends BoxPointer.BoxPointer {
@@ -385,8 +384,8 @@ class LightDict extends F.Mortal {
         this.$align = area && w > 250 ? 1 / 2 : 1 / 10;
     }
 
-    $syncApp() {
-        this.app = (w => w ? Shell.WindowTracker.get_default().get_window_app(w)?.get_id() ?? '' : '')(GB.window);
+    $syncApp(win = global.display.get_focus_window()) {
+        this.app = win ? Shell.WindowTracker.get_default().get_window_app(win)?.get_id() ?? '' : '';
     }
 
     $denyApp() {
@@ -449,7 +448,7 @@ class LightDict extends F.Mortal {
 
     async run(type, text, info, area) {
         this.$setSourceArea(area);
-        let [kind, name] = type === 'auto' ? [this.$src.act.trigger] : type.split(':');
+        let [kind, name] = type === 'auto' ? [this.$src.act.trigger] : type.split(/:(.*)/, 2);
         this.txt = text || (kind === 'print' ? 'Oops' : await F.paste(true));
         if(this[K.JOIN]) this.txt = this.txt.replace(/(?<![\p{Sentence_Terminal}\n])\n+/gu, ' ');
         switch(kind) {
@@ -473,7 +472,6 @@ class LightDict extends F.Mortal {
                 switch(prop) {
                 case 'display': return GB.display;
                 case 'pointer': return GB.pointer.slice(0, 2);
-                case 'focused': return (r => [r.x, r.y, r.width, r.height])(GB.window.get_frame_rect());
                 default: throw Error(`Unknown property: ${prop}`);
                 }
             })], '(aai)'));
