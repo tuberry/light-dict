@@ -22,7 +22,7 @@ import * as F from './fubar.js';
 import {Key as K, Result} from './const.js';
 
 const {_} = F;
-const {$, $$, $_, $s, hub} = T;
+const {$, $_, $$, hub} = T;
 const DBusSSS = Main.shellDBusService._screenshotService._senderChecker;
 
 const Trigger = {SWIFT: 0, POPUP: 1, DISABLE: 2};
@@ -50,10 +50,10 @@ class DictBar extends BoxPointer.BoxPointer {
         this.$src = F.Source.tie(this, {hide: F.Source.newTimer(x => [() => this.dispel(), x])});
         this.$box = new St.BoxLayout({
             reactive: true, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content',
-        })[$s].connect([
+        })[$$].connect([
             ['scroll-event', (...xs) => this.$onScroll(...xs)],
             ['notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10)],
-        ])[$$](w => this.bin.set_child(w));
+        ])[$_](w => this.bin.set_child(w));
     }
 
     $bindSettings(set) {
@@ -71,7 +71,7 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     $onCommandsSet(commands) {
-        return commands.filter(x => x.enable)[$$](cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$_].push(this[K.TIP], 'tooltip')) ||
+        return commands.filter(x => x.enable)[$_](cmds => T.homolog(this.cmds, cmds, ['icon', 'name'][$$].push(this[K.TIP] && [['tooltip']])) ||
             M.upsert(this.$box, x => x.add_child(new M.Button()[$].set({styleClass: 'light-dict-button candidate-box'})), cmds,
                 ({icon, name, tooltip, command}, button, index) => button.setup(() => this[$].dispel().emit('click', this.cmds[index]),
                     icon ?? '', this[K.TIP] && tooltip, icon ? '' : (name || command) ?? 'Name')));
@@ -136,7 +136,7 @@ class DictBox extends BoxPointer.BoxPointer {
             styleClass: 'light-dict-view', overlayScrollbars: true, reactive: true, trackHover: true,
             child: new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, styleClass: 'light-dict-content'}),
         })[$].add_action(new Clutter.ClickGesture()[$].connect('recognize', a => this.$onClick(a)))[$]
-            .connect('notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10))[$$](w => this.bin.set_child(w));
+            .connect('notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10))[$_](w => this.bin.set_child(w));
         this.$info = this.$genLabel('light-dict-info');
     }
 
@@ -155,7 +155,7 @@ class DictBox extends BoxPointer.BoxPointer {
     }
 
     $genLabel(styleClass = 'light-dict-text', index = 0) {
-        return new St.Label({styleClass})[$$](it => {
+        return new St.Label({styleClass})[$_](it => {
             it.clutterText.set({lineWrap: true, ellipsize: Pango.EllipsizeMode.NONE, lineWrapMode: Pango.WrapMode.WORD_CHAR});
             this.$view.child.insert_child_at_index(it, index);
         });
@@ -184,8 +184,8 @@ class DictBox extends BoxPointer.BoxPointer {
     $setState(error, info) {
         let state = error ? 'state-error' : info ? '' : 'state-empty';
         if(this.$state === state) return;
-        this.$view[$_].remove_style_pseudo_class(this.$state, this.$state)[$_]
-            .add_style_pseudo_class(this.$state = state, this.$state);
+        this.$view[$$].remove_style_pseudo_class(this.$state && [[this.$state]])[$$]
+            .add_style_pseudo_class((this.$state = state) && [[this.$state]]);
     }
 
     summon(info, text, error) {
@@ -252,9 +252,9 @@ class DictAct extends F.Mortal {
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
             [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ]);
-        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), ret.EMIT][$$](() => { ret.ppt = ret.pt; ret.pt = x; })),
+        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), ret.EMIT][$_](() => { ret.ppt = ret.pt; ret.pt = x; })),
             dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(ret.EMIT - 10, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DWLL]),
-            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$$](p => { spawn.pid = parseInt(p.get_identifier()); })},
+            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$_](p => { spawn.pid = parseInt(p.get_identifier()); })},
                 DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
                     'GetConnectionUnixProcessID', T.pickle(xs, '(s)'), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
                 this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)),
@@ -285,8 +285,8 @@ class DictAct extends F.Mortal {
             sep1: new M.Separator(),
             prefs: new M.Item(_('Settings'), () => F.me().openPreferences()),
         }, M.Icon.wrap(this.icon))[$]
-            .add_style_class_name('light-dict-systray')[$_]
-            .add_style_pseudo_class(ocr?.[K.DWLL], 'state-busy')[$]
+            .add_style_class_name('light-dict-systray')[$$]
+            .add_style_pseudo_class(ocr?.[K.DWLL] && [['state-busy']])[$]
             .$setDwell(function (dwell) {
                 dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
                 this.$menu.dwell.setToggleState(dwell);
@@ -312,7 +312,7 @@ class DictAct extends F.Mortal {
     }
 
     $onCommandsSet(commands) {
-        return commands[$$](cmds => T.homolog(this.cmds, cmds, ['name']) || this.$src?.tray.hub?.$menu.cmds.setup(cmds.map(x => x.name)));
+        return commands[$_](cmds => T.homolog(this.cmds, cmds, ['name']) || this.$src?.tray.hub?.$menu.cmds.setup(cmds.map(x => x.name)));
     }
 
     getCommand(name) {
@@ -349,7 +349,7 @@ class LightDict extends F.Mortal {
         let box = new DictBox(this.$set),
             act = new DictAct(this.$set)[$].connect('dwell', (...xs) => this.$onDwell(...xs)),
             bar = new DictBar(this.$set)[$].connect('click', (_a, x) => { this.dwellLock = true; this.runCmd(x); }),
-            csr = new Clutter.Actor({opacity: 0, x: 1, y: 1})[$$](w => Main.uiGroup.add_child(w)), // HACK: init pos to avoid misplacing at the first occurrence
+            csr = new Clutter.Actor({opacity: 0, x: 1, y: 1})[$_](w => Main.uiGroup.add_child(w)), // HACK: init pos to avoid misplacing at the first occurrence
             dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', true),
             poll = F.Source.newDefer(() => this.$postPoll(), () => !(GB.pointer[2] & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
             wait = F.Source.newInvoker(() => F.Source.new(() => this.$genSpinner(), true), (...xs) => act.execute(...xs)),
@@ -363,7 +363,7 @@ class LightDict extends F.Mortal {
         let s = GB.cursor / 2;
         let [x, y] = GB.pointer;
         return new St.Bin({styleClass: 'light-dict-spinner', child: new Animation.Spinner(18)[$].play()})[$]
-            .set_position(x + s, y + s)[$$](w => Main.layoutManager.addTopChrome(w));
+            .set_position(x + s, y + s)[$_](w => Main.layoutManager.addTopChrome(w));
     }
 
     $onSelect(_s, type, src) {

@@ -44,8 +44,8 @@ def main():
         if e.matches(Gio.io_error_quark(), Gio.IOErrorEnum.CANCELLED): ret = Result(cancel=True)
         else: raise
     except Exception as e:
+        ret = Result(error=_('OCR preprocess failed. (~_~)') if 'NoneType' in str(e) else str(e))
         if DEBUG: ret = Result(error=importlib.import_module('traceback').format_exc().rstrip()) # importtime ~ 23ms
-        else: ret = Result(error=_('OCR preprocess failed. (~_~)') if 'NoneType' in str(e) else str(e))
     ret.toss(args or ap.parse_args([]))
 
 def locale():
@@ -71,8 +71,8 @@ def gs_dbus_call(method_name, parameters, name='.Screenshot', object_path='/Scre
                                            '/org/gnome/Shell' + object_path, 'org.gnome.Shell' + interface_name, None)
     return proxy.call_sync(method_name, parameters and GLib.Variant(*parameters), Gio.DBusCallFlags.NONE, -1, None).unpack()
 
-def find_bin(bins, point):
-    return min(bins, key=lambda x: (sum(max(a - b, 0, b - a - c) ** 2 for a, b, c in zip(x[0:2], point, x[2:4])), x[4]), default=None)
+def find_bin(bins, point, key=lambda x: x[4]):
+    return min(bins, key=lambda x: (sum(max(a - b, 0, b - a - c) ** 2 for a, b, c in zip(x[0:2], point, x[2:4])), key(x)), default=None)
 
 def read_img(path, point=None):
     img = cv2.imread(path) # Ref: https://stackoverflow.com/a/50900494
@@ -121,12 +121,12 @@ def ocr_word(args):
     with NamedTemporaryFile(suffix='.png', dir=TMPDIR) as f:
         path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))[1]
         data = pytesseract.image_to_data(scale_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=args.lang, config=CONFIG)
-        bins = [[data[x][i] for x in ['left', 'top', 'width', 'height', 'text']] for i, y in enumerate(data['conf']) if y > -1]
+        bins = [tuple([data[x][i] for x in ('left', 'top', 'width', 'height')] + [y]) for i, y in enumerate(data['text']) if any(c.isalpha() for c in y)]
         if DEBUG: debug_img(scale_img(read_img(path)), bins, size * SCALE)
-        *rect, text = find_bin(bins, size * SCALE)
+        *rect, text = find_bin(bins, size * SCALE, lambda x: -len(x[4]))
         rect = np.divide(rect, SCALE)
         spot = np.clip((size[0] - rect[0]) / rect[2], 0, 1) * len(text)
-        word = min(re.finditer(r'[^\W\d_]+', text), key=lambda m: max(m.start() - spot, 0, spot - m.end() + 1), default=None)
+        word = min(re.finditer(r'[^\W\d_]+', text), key=lambda x: max(x.start() - spot, 0, spot - x.end() + 1), default=None)
         init, last = np.array(word.span()) * rect[2] / len(text)
         return Result(text=word.group(), area=tuple(np.round(rect + (area[0] + init, area[1], last - init - rect[2], 5))))
 

@@ -13,11 +13,9 @@ import * as UI from './ui.js';
 import * as T from './util.js';
 import {Key as K, Result} from './const.js';
 
-const {$, $$, $_, $s} = T;
+const {$, $_, $$} = T;
 const {_, _G, getv, setv} = UI;
 const EXE = 'application/x-executable';
-
-Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
 
 class AppItem extends GObject.Object {
     static {
@@ -39,8 +37,8 @@ class Apps extends UI.DialogButtonBase {
             .set({$getInitial() { return new Set(this[getv]); }})[$]
             .prepend(this.$bin = new Gtk.ScrolledWindow({vexpand: false, cssName: 'entry', cssClasses: ['ld-apps'], vscrollbarPolicy: Gtk.PolicyType.NEVER}))[$]
             .bind_property_full(getv, this.$bin, 'child', T.SYNC, (_b, v) => [true, new UI.Box(v?.map(x => this.$genApp(x)))[$]
-                .set({hexpand: true, tooltipText: _('Click the app icon to remove')})], null);
-        this.$btn[$_].set_tooltip_text(tip, tip).set_icon_name('list-add-symbolic');
+                .set({hexpand: true, tooltipText: _('Click the app icon to remove')})], null)
+            .$btn.set({tooltipText: tip || '', iconName: 'list-add-symbolic'});
     }
 
     $genDialog(opt) {
@@ -48,8 +46,8 @@ class Apps extends UI.DialogButtonBase {
             let model = new Gio.ListStore(),
                 title = new Gtk.Button({child: new UI.Sign('edit-clear-symbolic', true), cssClasses: ['flat']})[$]
                     .connect('clicked', () => Iterator.from(model).forEach(x => x.toggle(false))),
-                factory = new Gtk.SignalListItemFactory()[$s].connect([
-                    ['setup', (_f, x) => x.set_child(new UI.Sign('application-x-executable-symbolic')[$].marginStart(6)[$$](w =>
+                factory = new Gtk.SignalListItemFactory()[$$].connect([
+                    ['setup', (_f, x) => x.set_child(new UI.Sign('application-x-executable-symbolic')[$].marginStart(6)[$_](w =>
                         w.append(w.$check = new Gtk.Image({iconName: 'object-select-symbolic'}))))],
                     ['bind', (_f, {child, item}) => {
                         item.$bind = item.bind_property('chosen', child.$check, 'visible', T.SYNC);
@@ -119,7 +117,7 @@ class SideRow extends Gtk.ListBoxRow {
     }
 
     $buildDND(item, handle) { // Ref: https://blog.gtk.org/2017/06/01/drag-and-drop-in-lists-revisited/
-        handle.add_controller(new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$s].connect([
+        handle.add_controller(new Gtk.DragSource({actions: Gdk.DragAction.MOVE})[$$].connect([
             ['prepare', () => Gdk.ContentProvider.new_for_value(this)],
             ['drag-begin', (_s, drag) => {
                 let width = this.get_width();
@@ -129,21 +127,21 @@ class SideRow extends Gtk.ListBoxRow {
                 drag.set_hotspot(width - this.$img.get_width() / 2, height - this.$img.get_height() / 2);
             }],
         ]));
-        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$s].connect([
+        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$$].connect([
             ['motion', (_t, _x, y) => {
                 if(y < this.get_height() / 2) this[$].remove_css_class('ld-drop-bottom').add_css_class('ld-drop-top');
                 else this[$].remove_css_class('ld-drop-top').add_css_class('ld-drop-bottom');
                 return Gdk.DragAction.MOVE;
             }],
             ['drop', (_t, src, _x, y) => {
-                this[$s].remove_css_class(['ld-drop-top', 'ld-drop-bottom']);
+                this[$$].remove_css_class(['ld-drop-top', 'ld-drop-bottom']);
                 if(src.$grp !== this.$grp) return false;
                 let drag = src.get_index(),
                     target = this.get_index() + (y > this.get_height() / 2),
                     drop = target > drag ? target - 1 : target;
-                return (drag !== drop)[$$](x => x && this.emit('dropped', drag, drop));
+                return (drag !== drop)[$_](x => x && this.emit('dropped', drag, drop));
             }],
-            ['leave', () => void this[$s].remove_css_class(['ld-drop-top', 'ld-drop-bottom'])],
+            ['leave', () => void this[$$].remove_css_class(['ld-drop-top', 'ld-drop-bottom'])],
         ]));
     }
 
@@ -205,7 +203,7 @@ class PrefsBasic extends UI.Page {
     $buildUI() {
         let opencv = '<a href="https://github.com/opencv/opencv-python">opencv-python</a>',
             tesseract = '<a href="https://github.com/madmaze/pytesseract">pytesseract</a>',
-            ocr = new UI.Help()[$].set({popover: new Gtk.Popover()[$].connect('notify::visible', w => w.child?.select_region(-1, -1))})[$$](w => // HACK: workaround for full selection on popup
+            ocr = new UI.Help()[$].set({popover: new Gtk.Popover()[$].connect('notify::visible', w => w.child?.select_region(-1, -1))})[$_](w => // HACK: workaround for full selection on popup
                 T.execute(`python ${T.ROOT}/ldocr.py -h`).then(x => w.setup(x, {selectable: true, cssClasses: ['ld-popover']})).catch(e => w.setup(e.message, null, true)));
         this.$add([null, [
             [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], K.TRAY],
@@ -233,6 +231,7 @@ class PrefsBasic extends UI.Page {
 
 class PrefsPopup extends UI.Page {
     static {
+        Gio._promisify(Gdk.Clipboard.prototype, 'read_text_async');
         UI.enrol(this);
     }
 
@@ -253,7 +252,7 @@ class PrefsPopup extends UI.Page {
         this.$cmds = new Gio.ListStore()[$].splice(0, 0, cmds.map(x => new SideItem(x)));
         this.$list = new Gtk.ListBox({selectionMode: Gtk.SelectionMode.SINGLE, vexpand: true})[$].add_css_class('data-table')[$]
             .connect('row-selected', (_w, row) => row && this.$onSelect(row.get_index()))[$]
-            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMD)[$s].connect([
+            .bind_model(this.$cmds, item => new SideRow(item, field === K.SCMD)[$$].connect([
                 ['dropped', (_w, f, t) => this.$onDrop(f, t)],
                 ['changed', (_w, p, v) => this.$onChange(p, 'name',  v)],
                 ['toggled', (_w, p, v) => this.$onChange(p, 'enable', v)],
@@ -262,7 +261,7 @@ class PrefsPopup extends UI.Page {
     }
 
     grabFocus(index, name) {
-        this.$list.select_row(this.$list.get_row_at_index(index)?.[$_].editName(name));
+        this.$list.select_row(this.$list.get_row_at_index(index)?.[$$].editName(name && [[name]]));
     }
 
     $genPaneWidgets() {
@@ -291,7 +290,7 @@ class PrefsPopup extends UI.Page {
         let ret = new Adw.PreferencesGroup({hexpand: true});
         let addRow = ([title, subtitle = ''], widget, help) => ret.add(new Adw.ActionRow({
             title, subtitle, activatableWidget: widget, useUnderline: true,
-        })[$$](w => [help, widget].forEach(x => x && w.add_suffix(x))));
+        })[$_](w => [help, widget].forEach(x => x && w.add_suffix(x))));
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); ret.set_sensitive(x); };
         this.$pane = T.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             widget instanceof ResultRows ? widget.addToPane(addRow) : addRow(titles, widget, help);
@@ -337,11 +336,11 @@ class PrefsPopup extends UI.Page {
     }
 
     $onDrop(drag, drop) {
-        this.$save(x => x.insert(drop, x.get_item(drag)[$$](() => x.remove(drag))), drop);
+        this.$save(x => x.insert(drop, x.get_item(drag)[$_](() => x.remove(drag))), drop);
     }
 
     $onRemove(pos) {
-        this.$save(x => this.$toast(x.get_item(pos)[$$](() => x.remove(pos))), Math.min(pos, this.$cmds.nItems - 2), false, true);
+        this.$save(x => this.$toast(x.get_item(pos)[$_](() => x.remove(pos))), Math.min(pos, this.$cmds.nItems - 2), false, true);
     }
 
     $onCopy(pos) {
@@ -409,7 +408,7 @@ export default class extends UI.Prefs {
         let path = '/org/gnome/shell/extensions/light-dict/';
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_resource_path(`${path}icons`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), new Gtk.CssProvider()[$]
-            .load_from_resource(`${path}theme/style.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)
+            .load_from_resource(`${path}theme/prefs.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)
         return [
             new PrefsBasic(gset)[$].set({title: _('_Basic'), iconName: 'applications-system-symbolic'}),
             new PrefsSwift(gset, K.SCMD)[$].set({title: _('_Swift'), iconName: 'ld-swift-passive-symbolic'}),
