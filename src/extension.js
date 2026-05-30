@@ -247,7 +247,7 @@ class DictAct extends F.Mortal {
         let mode = T.omap(OCRMode, ([k, v]) => [[v, k.toLowerCase()]]);
         this.$set.tie(ret, [
             K.PRMS, [K.MODE, null, x => this.$src.tray.hub?.$menu.ocr.choose(x)],
-        ], () => { ret.cmd = `python ${T.ROOT}/ldocr.py -m ${mode[ret[K.MODE]]} ${ret[K.PRMS]}`; }, [
+        ], () => { ret.cmd = `python3 ${T.ROOT}/ldocr.py -m ${mode[ret[K.MODE]]} ${ret[K.PRMS]}`; }, [
             [K.TAP, null, x => ret.$src.tap.toggle(x)],
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
             [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
