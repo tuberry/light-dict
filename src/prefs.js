@@ -405,7 +405,7 @@ class PrefsSwift extends PrefsPopup {
 
 export default class extends UI.Prefs {
     $buildWidgets(gset) {
-        let path = '/org/gnome/shell/extensions/light-dict/';
+        let path = gset.settings_schema.get_path();
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_resource_path(`${path}icons`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), new Gtk.CssProvider()[$]
             .load_from_resource(`${path}theme/prefs.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)

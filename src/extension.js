@@ -398,7 +398,7 @@ class LightDict extends F.Mortal {
 
     $onDwell(_a, mdf, [x, y]) {
         let {box, bar, act} = this.$src;
-        if(F.yank(this, 'dwellLock') || box.prect?.contains_point(new Graphene.Point({x, y})) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
+        if(T.steal(this, 'dwellLock') || box.prect?.contains_point(new Graphene.Point({x, y})) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
             (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.$denyMdf(mdf)) return;
         act.OCR('--quiet');
     }

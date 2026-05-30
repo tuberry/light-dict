@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # SPDX-FileCopyrightText: tuberry
 # SPDX-License-Identifier: GPL-3.0-or-later
 # type: ignore
@@ -83,9 +83,9 @@ def dilate_img(img, core):
     binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
     return cv2.dilate(binary, cv2.getStructuringElement(cv2.MORPH_RECT, core), iterations=3)
 
-def scale_img(img, rect=None):
+def retouch_img(img, rect=None):
     if rect: img = img[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
-    return cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR)
+    return cv2.cvtColor(cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR), cv2.COLOR_BGR2RGB)
 
 def debug_img(img, bins = [], point = None, title='LdOCR'):
     if __debug__: return
@@ -111,7 +111,7 @@ def ocr_auto(args):
         bins = [x for x in [y + (y[2] * y[3],) for y in map(cv2.boundingRect, form)] if 0.002 < x[4] / gray.size < 0.95]
         if DEBUG: debug_img(img, bins, ptr) # cv2.drawContours(img, form, -1, (40, 240, 80), 2)
         area = find_bin(bins, ptr)[:-1]
-        return Result(text=pytesseract.image_to_string(scale_img(img, area), lang=args.lang, config=CONFIG), area=area)
+        return Result(text=pytesseract.image_to_string(retouch_img(img, area), lang=args.lang, config=CONFIG), area=area)
 
 def ocr_word(args):
     ptr, display = gs_dbus_call('Get', ('(as)', (['pointer', 'display'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
@@ -120,9 +120,9 @@ def ocr_word(args):
     area = np.concat([ptr - size, size * 2])
     with NamedTemporaryFile(suffix='.png', dir=TMPDIR) as f:
         path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))[1]
-        data = pytesseract.image_to_data(scale_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=args.lang, config=CONFIG)
+        data = pytesseract.image_to_data(retouch_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=args.lang, config=CONFIG)
         bins = [tuple([data[x][i] for x in ('left', 'top', 'width', 'height')] + [y]) for i, y in enumerate(data['text']) if any(c.isalpha() for c in y)]
-        if DEBUG: debug_img(scale_img(read_img(path)), bins, size * SCALE)
+        if DEBUG: debug_img(cv2.cvtColor(retouch_img(read_img(path)), cv2.COLOR_RGB2BGR), bins, size * SCALE)
         *rect, text = find_bin(bins, size * SCALE, lambda x: -len(x[4]))
         rect = np.divide(rect, SCALE)
         spot = np.clip((size[0] - rect[0]) / rect[2], 0, 1) * len(text)
@@ -134,7 +134,7 @@ def ocr_area(args):
     area = gs_dbus_call('SelectArea', None)
     with NamedTemporaryFile(suffix='.png', dir=TMPDIR) as f:
         path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))[1]
-        return Result(text=pytesseract.image_to_string(scale_img(read_img(path)), lang=args.lang, config=CONFIG), area=area)
+        return Result(text=pytesseract.image_to_string(retouch_img(read_img(path)), lang=args.lang, config=CONFIG), area=area)
 
 if __name__ == '__main__':
     main()
