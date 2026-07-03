@@ -9,12 +9,10 @@ import Pango from 'gi://Pango';
 import Shell from 'gi://Shell';
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
-import Graphene from 'gi://Graphene';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as Animation from 'resource:///org/gnome/shell/ui/animation.js';
 import * as BoxPointer from 'resource:///org/gnome/shell/ui/boxpointer.js';
-import * as PointerWatcher from 'resource:///org/gnome/shell/ui/pointerWatcher.js';
 
 import * as T from './util.js';
 import * as M from './menu.js';
@@ -23,7 +21,6 @@ import {Key as K, Result} from './const.js';
 
 const {_} = F;
 const {$, $_, $$, hub} = T;
-const DBusSSS = Main.shellDBusService._screenshotService._senderChecker;
 
 const Trigger = {SWIFT: 0, POPUP: 1, DISABLE: 2};
 const OCRMode = {WORD: 0, PARAGRAPH: 1, AREA: 2, LINE: 3, DIALOG: 4};
@@ -31,10 +28,10 @@ const OCRMode = {WORD: 0, PARAGRAPH: 1, AREA: 2, LINE: 3, DIALOG: 4};
 const approx = (exp, str, nil = true) => T.essay(() => exp ? RegExp(exp, 'u').test(str) : nil, e => (logError(e, exp), nil));
 const allowed = (cmd, app, str) => !!cmd && (!cmd.apps?.length || cmd.apps.includes(app)) && approx(cmd.regexp, str);
 
-class GB {
-    static get pointer() { return global.get_pointer(); };
-    static get display() { return global.display.get_size(); }
-    static get cursor() { return Meta.prefs_get_cursor_size(); }
+class G { // global
+    static get modifier() { return global.get_pointer()[2]; }
+    static get height() { return Main.layoutManager.currentMonitor.height; }
+    static get DBusSSS() { return Main.shellDBusService._screenshotService._senderChecker; }
 }
 
 class DictBar extends BoxPointer.BoxPointer {
@@ -47,13 +44,11 @@ class DictBar extends BoxPointer.BoxPointer {
     }
 
     $buildWidgets() {
-        this.$src = F.Source.tie(this, {hide: F.Source.newTimer(x => [() => this.dispel(), x])});
-        this.$box = new St.BoxLayout({
-            reactive: true, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content',
-        })[$$].connect([
-            ['scroll-event', (...xs) => this.$onScroll(...xs)],
-            ['notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10)],
-        ])[$_](w => this.bin.set_child(w));
+        this.$src = F.Source.tie(this, {hide: new F.Source.Timer(x => [() => this.dispel(), x])});
+        this.$box = new St.BoxLayout({reactive: true, trackHover: true, styleClass: 'light-dict-iconbox candidate-popup-content'})[$]
+            .add_action(new Clutter.ScrollController({flags: Clutter.ScrollControllerFlags.DISCRETE | Clutter.ScrollControllerFlags.SCROLL_VERTICAL})[$]
+                .connect('scroll', (...xs) => { this.$index += xs[4] < 0 ? -1 : 1; this.$updatePages(); }))[$]
+            .connect('notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10))[$_](w => this.bin.set_child(w));
     }
 
     $bindSettings(set) {
@@ -92,15 +87,6 @@ class DictBar extends BoxPointer.BoxPointer {
         }
         }
         return pages;
-    }
-
-    $onScroll(_a, event) {
-        switch(event.get_scroll_direction()) {
-        case Clutter.ScrollDirection.UP: this.$index--; break;
-        case Clutter.ScrollDirection.DOWN: this.$index++; break;
-        default: return;
-        }
-        this.$updatePages();
     }
 
     summon(app, str) {
@@ -149,8 +135,8 @@ class DictBox extends BoxPointer.BoxPointer {
 
     $buildSources() {
         this.$src = F.Source.tie(this, {
-            hide: F.Source.newTimer(x => [() => this.dispel(), x]),
-            head: F.Source.new(() => this.$genLabel(), this[K.HEAD]),
+            hide: new F.Source.Timer(x => [() => this.dispel(), x]),
+            head: new F.Source(() => this.$genLabel(), this[K.HEAD]),
         });
     }
 
@@ -165,7 +151,7 @@ class DictBox extends BoxPointer.BoxPointer {
         let [, , w, h] = this.get_preferred_size(),
             theme = this.$view.get_theme_node(),
             limit = theme.get_max_height();
-        if(limit <= 0) limit = GB.display[1] * 15 / 32;
+        if(limit <= 0) limit = G.height * 15 / 32;
         let scroll = h >= limit;
         this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
         let length = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
@@ -196,7 +182,7 @@ class DictBox extends BoxPointer.BoxPointer {
         try {
             Pango.parse_markup(info, -1, '');
             F.marks(this.$info, info);
-        } catch{
+        } catch {
             this.$info.set_text(info);
         }
         this.$src.head.hub?.set_text(text);
@@ -232,11 +218,11 @@ class DictAct extends F.Mortal {
     }
 
     $buildSources() {
-        let kbd = F.Source.newKeyboard(),
-            cancel = F.Source.newCancel(),
+        let kbd = new F.Source.Keyboard(),
+            cancel = new F.Source.Cancel(),
             tty = new F.Source(() => new Gio.SubprocessLauncher({flags: T.PIPE}), x => x.close(), true),
-            ocr = F.Source.new(() => this.$genOCR(tty.hub), this[K.OCR]),
-            tray = F.Source.new(() => this.$genSystray(ocr.hub), this[K.TRAY]),
+            ocr = new F.Source(() => this.$genOCR(tty.hub), this[K.OCR]),
+            tray = new F.Source(() => this.$genSystray(ocr.hub), this[K.TRAY]),
             stroke = new F.Source(kss => kss.split(/\s+/).map((ks, i) => setTimeout(() => kbd.stroke(ks.split('+').map(k =>
                 DictAct.Modifier[k] ?? Clutter[`KEY_${k}`] ?? Clutter.KEY_VoidSymbol)), i * 50)), x => x.forEach(clearTimeout));
         this.$src = F.Source.tie(this, {cancel, ocr, tray, tty, stroke, kbd});
@@ -252,23 +238,24 @@ class DictAct extends F.Mortal {
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
             [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ]);
-        let emit = F.Source.newTimer(x => [() => this.emit('dwell', GB.pointer[2], ret.ppt), ret.EMIT][$_](() => { ret.ppt = ret.pt; ret.pt = x; })),
-            dwell = new F.Source(() => PointerWatcher.getPointerWatcher().addWatch(ret.EMIT - 10, (...xs) => emit.revive(xs)), x => x.remove(), ret[K.DWLL]),
-            spawn = F.Source.newInvoker(() => F.Source.newInjector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$_](p => { spawn.pid = parseInt(p.get_identifier()); })},
-                DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
+        let timer = new F.Source.Timer(x => [() => this.emit('dwell', G.modifier, x), 200]),
+            dwell = new F.Source.Handler(global.backend.get_cursor_tracker(), 'position-invalidated', x => timer.revive(x.get_pointer()[0]), ret[K.DWLL]),
+            spawn = new F.Source.Invoker(() => new F.Source.Injector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$_](p => { spawn.pid = parseInt(p.get_identifier()); })},
+                G.DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
                     'GetConnectionUnixProcessID', T.pickle(xs, '(s)'), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
-                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)),
-            keys = F.Source.newKeys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]),
-            tap = F.Source.newHandler(global.stage, 'captured-event::touchpad', (_a, event) => {
-                if(event.type() !== Clutter.EventType.TOUCHPAD_HOLD || event.get_touchpad_gesture_finger_count() < 3) return;
-                switch(event.get_gesture_phase()) {
-                case Clutter.TouchpadGesturePhase.BEGIN: tap.only = true; tap.time = event.get_time(); break;
-                case Clutter.TouchpadGesturePhase.END: if(tap.only && event.get_time() - tap.time < 2002) spawn.invoke(); break;
-                default: tap.only = false;
-                } // NOTE: blocked by popups
+                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)), // NOTE: https://gitlab.gnome.org/GNOME/glib/-/work_items/1866
+            keys = new F.Source.Keys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]),
+            tap = new F.Source.Handler(global.stage, 'captured-event::touchpad', (_a, event) => {
+                if(event.type() !== Clutter.EventType.TOUCHPAD_HOLD || event.get_touchpad_gesture_finger_count() < 3) { tap.only = false; } else {
+                    switch(event.get_gesture_phase()) {
+                    case Clutter.TouchpadGesturePhase.BEGIN: tap.only = true; tap.time = event.get_time(); break;
+                    case Clutter.TouchpadGesturePhase.END: if(tap.only && event.get_time() - tap.time < 2002) spawn.invoke(); break;
+                    default: tap.only = false;
+                    }
+                } // NOTE: false positives & blocked by shell popups due to the abstraction barrier
             }, ret[K.TAP]);
         return ret.set({
-            $src: F.Source.tie(ret, {spawn, dwell, keys, tap}, emit),
+            $src: F.Source.tie(ret, {spawn, dwell, keys, tap}, timer),
             genDwellItem: () => new M.SwitchItem(_('Hover OCR'), ret[K.DWLL], x => this.$set.set(K.DWLL, x)),
             genModeItem: () => new M.RadioItem(_('OCR'), M.RadioItem.getopt(OCRMode), ret[K.MODE], x => this.$set.set(K.MODE, x)),
         });
@@ -290,21 +277,14 @@ class DictAct extends F.Mortal {
             .$setDwell(function (dwell) {
                 dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
                 this.$menu.dwell.setToggleState(dwell);
-            })[$].connect('scroll-event', (_a, event) => {
-                switch(event.get_scroll_direction()) {
-                case Clutter.ScrollDirection.UP: this.$set.set(K.TRG, (this[K.TRG] + 1) % 2); break;
-                case Clutter.ScrollDirection.DOWN: this.$set.set(K.PSV, this[K.PSV] ? 0 : 1); break;
-                }
-            });
+            })[$].add_action(new Clutter.ScrollController({
+                flags: Clutter.ScrollControllerFlags.DISCRETE | Clutter.ScrollControllerFlags.SCROLL_VERTICAL,
+            })[$].connect('scroll', (...xs) => { xs[4] > 0 ? this.$set.set(K.TRG, (this[K.TRG] + 1) % 2) : this.$set.set(K.PSV, 1 - this[K.PSV]); }));
     }
 
-    get trigger() {
-        return DictAct.Trigger[this[K.TRG]];
-    }
+    get trigger() { return DictAct.Trigger[this[K.TRG]]; }
 
-    get icon() {
-        return `ld-${this.trigger}-${this[K.PSV] ? 'passive' : 'proactive'}-symbolic`;
-    }
+    get icon() { return `ld-${this.trigger}-${this[K.PSV] ? 'passive' : 'proactive'}-symbolic`; }
 
     $onEnableOcrSet(enable) {
         this.$src.ocr.toggle(enable);
@@ -337,12 +317,12 @@ class DictAct extends F.Mortal {
 }
 
 class LightDict extends F.Mortal {
-    static EvalMask = Object.getOwnPropertyNames(globalThis).filter(x => x !== 'eval').join(',');
+    static EvalMask = Object.getOwnPropertyNames(globalThis).filter(x => x !== 'eval' && x !== 'encodeURIComponent').join(',');
     static evaluate = (script, scope) => Function(Object.keys(scope)[$].push(this.EvalMask).join(','),
         `'use strict'; return eval(${JSON.stringify(script)})`)(...Object.values(scope)); // NOTE: https://github.com/tc39/proposal-shadowrealm
 
     $bindSettings(gset) {
-        this.$set = new F.Setting(gset, this, [K.FLTR, [K.APPS, x => new Set(x)], K.APP, K.JOIN]);
+        this.$set = new F.Setting(gset).tie(this, [K.FLTR, [K.APPS, x => new Set(x)], K.APP, K.JOIN]);
     }
 
     $buildSources() {
@@ -350,20 +330,19 @@ class LightDict extends F.Mortal {
             act = new DictAct(this.$set)[$].connect('dwell', (...xs) => this.$onDwell(...xs)),
             bar = new DictBar(this.$set)[$].connect('click', (_a, x) => { this.dwellLock = true; this.runCmd(x); }),
             csr = new Clutter.Actor({opacity: 0, x: 1, y: 1})[$_](w => Main.uiGroup.add_child(w)), // HACK: init pos to avoid misplacing at the first occurrence
-            dbus = F.Source.newDBus(this, 'org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', true),
-            poll = F.Source.newDefer(() => this.$postPoll(), () => !(GB.pointer[2] & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
-            wait = F.Source.newInvoker(() => F.Source.new(() => this.$genSpinner(), true), (...xs) => act.execute(...xs)),
-            dog = F.Source.newHandler(global.display.get_selection(), 'owner-changed', (...xs) => this.$onSelect(...xs),
-                global.display, 'notify::focus-window', () => { this.dispelAll(); this.$syncApp(); });
+            dbus = new F.Source.DBus(this, 'org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', true),
+            poll = new F.Source.Defer(() => this.$postPoll(), () => !(G.modifier & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
+            wait = new F.Source.Invoker(() => new F.Source(() => this.$genSpinner(), true), (...xs) => act.execute(...xs)),
+            dog = new F.Source.Handler(global.display.get_selection(), 'owner-changed', (...xs) => this.$onSelect(...xs),
+                global.display, 'notify::focus-window', () => { this.hide(); this.$syncApp(); });
         this.$src = F.Source.tie(this, {box, csr, act, bar, dbus, poll, wait}, dog);
         this.$syncApp();
     }
 
     $genSpinner() {
-        let s = GB.cursor / 2;
-        let [x, y] = GB.pointer;
+        let [x, y, w, h] = F.cursor();
         return new St.Bin({styleClass: 'light-dict-spinner', child: new Animation.Spinner(18)[$].play()})[$]
-            .set_position(x + s, y + s)[$_](w => Main.layoutManager.addTopChrome(w));
+            .set_position(x + w, y + h)[$_](it => Main.layoutManager.addTopChrome(it));
     }
 
     $onSelect(_s, type, src) {
@@ -373,13 +352,12 @@ class LightDict extends F.Mortal {
     }
 
     $postPoll() {
-        F.paste(true).then(x => (this.$src.act[K.PSV] || !approx(this[K.FLTR], x, false)) && this.run('auto', x)).catch(T.nop);
+        F.paste(true).then(x => (this.$src.act[K.PSV] || !approx(this[K.FLTR], x, false)) && this.run('auto', x));
     }
 
     $setSourceArea(area) {
-        this.dispelAll();
-        let [x, y, w, h] = area && area[3] < GB.display[1] / 2 ? area
-            : (s => (([a, b], c, d) => [a - c, b - c, d, d])(GB.pointer, s / 2, s * 1.15))(GB.cursor);
+        this.hide();
+        let [x, y, w, h] = area && area[3] < G.height / 2 ? area : F.cursor();
         this.$src.csr[$].set_position(x, y).set_size(w, h);
         this.$align = area && w > 250 ? 1 / 2 : 1 / 10;
     }
@@ -392,14 +370,14 @@ class LightDict extends F.Mortal {
         return this[K.APPS].size && T.xnor(this[K.APP], this[K.APPS].has(this.app));
     }
 
-    $denyMdf(mdf = GB.pointer[2]) {
-        return this.$src.act[K.PSV] && !(mdf & Clutter.ModifierType.MOD1_MASK);
+    $denyMdf(modifier = G.modifier) {
+        return this.$src.act[K.PSV] && !(modifier & Clutter.ModifierType.MOD1_MASK);
     }
 
-    $onDwell(_a, mdf, [x, y]) {
+    $onDwell(_a, modifier, point) {
         let {box, bar, act} = this.$src;
-        if(T.steal(this, 'dwellLock') || box.prect?.contains_point(new Graphene.Point({x, y})) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
-            (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.$denyMdf(mdf)) return;
+        if(T.steal(this, 'dwellLock') || box.prect?.contains_point(point) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
+            (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.$denyMdf(modifier)) return;
         act.OCR('--quiet');
     }
 
@@ -414,7 +392,7 @@ class LightDict extends F.Mortal {
         let env = {LDWORD: this.txt, LDAPPID: this.app};
         if(result) {
             await (result & Result.AWAIT ? this.$src.wait.invoke(cmd, env) : this.$src.act.execute(cmd, env))
-                .then(output => this.$postRun(output, result)).catch(e => F.Source.cancelled(e) || this.print(e.message, true));
+                .then(output => this.$postRun(output, result)).catch(e => F.Source.Cancel.expected(e) || this.print(e.message, true));
         } else {
             T.execute(cmd, env).catch(logError);
         }
@@ -434,8 +412,9 @@ class LightDict extends F.Mortal {
         }
     }
 
-    dispelAll() {
-        ['box', 'bar'].forEach(x => this.$src[x].dispel());
+    hide() {
+        this.$src.box.dispel();
+        this.$src.bar.dispel();
     }
 
     async runCmd(cmd) {
@@ -462,27 +441,19 @@ class LightDict extends F.Mortal {
     }
 
     RunAsync([type, text, info, area], invocation) {
-        return this.run(type, text, info, area.length === 4 ? area : null).catch(T.nop).finally(() => invocation.return_value(null));
+        F.Source.DBus.respond(invocation, () => this.run(type, text, info, area.length === 4 ? area : null));
     }
 
-    async GetAsync([props], invocation) {
-        try {
-            await DBusSSS.checkInvocation(invocation);
-            invocation.return_value(T.pickle([props.map(prop => {
-                switch(prop) {
-                case 'display': return GB.display;
-                case 'pointer': return GB.pointer.slice(0, 2);
-                default: throw Error(`Unknown property: ${prop}`);
-                }
-            })], '(aai)'));
-        } catch(e) {
-            if(e instanceof GLib.Error) invocation.return_gerror(e);
-            else invocation.return_error_literal(Gio.DBusError, Gio.DBusError.FAILED, e.message);
-        }
+    GetAsync(_p, invocation) {
+        F.Source.DBus.respond(invocation, () => G.DBusSSS.checkInvocation(invocation).then(() => {
+            let [u, v] = global.get_pointer();
+            let {x, y, width: w, height: h, geometry_scale: z} = Main.layoutManager.currentMonitor;
+            return T.pickle([[u - x, v - y], z, [x, y, w, h]], '((ii)d(iiii))');
+        }));
     }
 
-    OCR(args) {
-        this[$].dispelAll().$src.act.OCR(args);
+    OCRAsync([args], invocation) {
+        F.Source.DBus.respond(invocation, () => this[$].hide().$src.act.OCR(args));
     }
 }
 

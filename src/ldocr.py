@@ -76,8 +76,8 @@ def find_bin(bins, point, key=lambda x: x[4]):
 
 def read_img(path, point=None):
     img = cv2.imread(path) # Ref: https://stackoverflow.com/a/50900494
-    bgr = img[*point[::-1]] if point else cv2.kmeans(np.float32(img.reshape((-1, 3))), 1, None, None, 5, None)[2][0]
-    return ~img if cv2.cvtColor(np.uint8([[bgr]]), cv2.COLOR_BGR2GRAY)[0, 0] < 128 else img
+    bgr = img[*point[::-1]] if point else cv2.kmeans(np.array(img.reshape((-1, 3)), np.float32), 1, None, None, 5, None)[2][0]
+    return ~img if cv2.cvtColor(np.array([[bgr]], np.uint8), cv2.COLOR_BGR2GRAY)[0, 0] < 128 else img
 
 def dilate_img(img, core):
     binary = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
@@ -85,7 +85,7 @@ def dilate_img(img, core):
 
 def retouch_img(img, rect=None):
     if rect: img = img[rect[1]: rect[1] + rect[3], rect[0]: rect[0] + rect[2]]
-    return cv2.cvtColor(cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_LINEAR), cv2.COLOR_BGR2RGB)
+    return cv2.cvtColor(cv2.resize(img, None, fx=SCALE, fy=SCALE, interpolation=cv2.INTER_CUBIC), cv2.COLOR_BGR2RGB)
 
 def debug_img(img, bins = [], point = None, title='LdOCR'):
     if __debug__: return
@@ -98,10 +98,11 @@ def debug_img(img, bins = [], point = None, title='LdOCR'):
     cv2.destroyAllWindows()
 
 def ocr_auto(args):
-    ptr, = gs_dbus_call('Get', ('(as)', (['pointer'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
+    ptr, zoom, geom = gs_dbus_call('Get', None, '', '/Extensions/LightDict', '.Extensions.LightDict')
+    ptr = tuple(round(x * zoom) for x in ptr)
     with NamedTemporaryFile(suffix='.png', dir=TMPDIR) as f:
-        path = gs_dbus_call('Screenshot', ('(bbs)', (False, False, f.name)))[1]
-        img = read_img(path, args.mode == 'dialog' and ptr)
+        path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*geom, False, f.name)))[1]
+        img  = read_img(path, args.mode == 'dialog' and ptr)
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         core = (6, 3) if args.mode == 'line' else (9, 7) if args.mode == 'paragraph' else (9, 9)
         if args.mode == 'dialog':
@@ -110,21 +111,22 @@ def ocr_auto(args):
         form = cv2.findContours(dilate_img(gray, core), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)[0]
         bins = [x for x in [y + (y[2] * y[3],) for y in map(cv2.boundingRect, form)] if 0.002 < x[4] / gray.size < 0.95]
         if DEBUG: debug_img(img, bins, ptr) # cv2.drawContours(img, form, -1, (40, 240, 80), 2)
-        area = find_bin(bins, ptr)[:-1]
-        return Result(text=pytesseract.image_to_string(retouch_img(img, area), lang=args.lang, config=CONFIG), area=area)
+        rect = find_bin(bins, ptr)[:-1]
+        return Result(text=pytesseract.image_to_string(retouch_img(img, rect), lang=args.lang, config=CONFIG),
+                      area=tuple(np.round(np.array(rect) / zoom + (geom[:2] + (0, 0)))))
 
 def ocr_word(args):
-    ptr, display = gs_dbus_call('Get', ('(as)', (['pointer', 'display'],)), '', '/Extensions/LightDict', '.Extensions.LightDict')[0]
-    size = np.array([min(a, b - a, c) for a, b, c in zip(ptr, display, (256, 64))])
+    ptr, zoom, geom = gs_dbus_call('Get', None, '', '/Extensions/LightDict', '.Extensions.LightDict')
+    size = np.array([min(a, b - a, c) for a, b, c in zip(ptr, geom[2:], (256, 64))])
     if (size < 5).any(): return Result(error=_('Too marginal. (>_<)'))
-    area = np.concat([ptr - size, size * 2])
+    area = np.concat([ptr - size + geom[:2], size * 2])
     with NamedTemporaryFile(suffix='.png', dir=TMPDIR) as f:
         path = gs_dbus_call('ScreenshotArea', ('(iiiibs)', (*area, False, f.name)))[1]
         data = pytesseract.image_to_data(retouch_img(read_img(path)), output_type=pytesseract.Output.DICT, lang=args.lang, config=CONFIG)
         bins = [tuple([data[x][i] for x in ('left', 'top', 'width', 'height')] + [y]) for i, y in enumerate(data['text']) if any(c.isalpha() for c in y)]
-        if DEBUG: debug_img(cv2.cvtColor(retouch_img(read_img(path)), cv2.COLOR_RGB2BGR), bins, size * SCALE)
-        *rect, text = find_bin(bins, size * SCALE, lambda x: -len(x[4]))
-        rect = np.divide(rect, SCALE)
+        if DEBUG: debug_img(cv2.cvtColor(retouch_img(read_img(path)), cv2.COLOR_RGB2BGR), bins, np.round(size * SCALE * zoom).astype(int))
+        *rect, text = find_bin(bins, size * SCALE * zoom, lambda x: -len(x[4]))
+        rect = np.divide(rect, SCALE * zoom)
         spot = np.clip((size[0] - rect[0]) / rect[2], 0, 1) * len(text)
         word = min(re.finditer(r'[^\W\d_]+', text), key=lambda x: max(x.start() - spot, 0, spot - x.end() + 1), default=None)
         init, last = np.array(word.span()) * rect[2] / len(text)

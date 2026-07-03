@@ -1,99 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="@gettext@">
-  <schema id="@rdnn@" path="@path@">
-    <key type="b" name="enable-title">
-        <default>false</default>
-        <summary>enable panel title</summary>
-    </key>
-    <key type="b" name="enable-splice">
-        <default>false</default>
-        <summary>enable text concatenation</summary>
-    </key>
-    <key type="b" name="enable-tooltip">
-        <default>false</default>
-        <summary>enable tooltip for icon bar</summary>
-    </key>
-    <key type="b" name="enable-systray">
-        <default>true</default>
-        <summary>enable systray</summary>
-    </key>
-    <key type="b" name="enable-ocr">
-        <default>true</default>
-        <summary>enable ocr</summary>
-    </key>
-    <key type="b" name="dwell-ocr">
-        <default>false</default>
-        <summary>dwell/hover to ocr</summary>
-    </key>
-    <key type="b" name="tap-ocr">
-        <default>true</default>
-        <summary>tap to ocr</summary>
-    </key>
-    <key type="u" name="passive-mode">
-        <range min="0" max="1"/>
-        <default>0</default>
-        <summary>need modifier to trigger (1) or not (0)</summary>
-    </key>
-    <key type="u" name="autohide-timeout">
-        <range min="1000" max="20000"/>
-        <default>2500</default>
-        <summary>autohide interval</summary>
-    </key>
-    <key type="u" name="icon-page-size">
-        <range min="1" max="10"/>
-        <default>5</default>
-        <summary>icon bar page size</summary>
-    </key>
-    <key type="u" name="trigger-style">
-        <range min="0" max="2"/>
-        <default>0</default>
-        <summary>trigger style (0 - swift, 1 - popup, 2 - disable)</summary>
-    </key>
-    <key type="u" name="app-list-type">
-        <range min="0" max="1"/>
-        <default>1</default>
-        <summary>global app list type (0 - whitelist, 1 - blacklist)</summary>
-    </key>
-    <key type="u" name="ocr-mode">
-        <range min="0" max="5"/>
-        <default>0</default>
-        <summary>ocr mode (0 - word, 1 - paragraph, 2 - area, 3 - line, 4 - dialog)</summary>
-    </key>
-    <key type="i" name="swift-command-index">
-        <default>0</default>
-        <summary>command index of swift trigger</summary>
-    </key>
-    <key type="s" name="text-filter">
-        <default>''</default>
-        <summary>text filter in proactive mode</summary>
-    </key>
-    <key type="s" name="right-command">
-        <default>""</default>
-        <summary>command to execute when right-clicking panel</summary>
-    </key>
-    <key type="s" name="left-command">
-        <default>""</default>
-        <summary>command to execute when left-clicking panel</summary>
-    </key>
-    <key type="s" name="ocr-parameters">
-        <default>""</default>
-        <summary>parameters passed to the ocr script</summary>
-    </key>
-    <key type="as" name="app-list">
-        <default>[]</default>
-        <summary>global app whitelist/blacklist</summary>
-    </key>
-    <key type="as" name="light-dict-ocr-shortcut">
-        <default><![CDATA[['<Super>e']]]></default>
-        <summary>shortcut to invoke the OCR script</summary>
-    </key>
-    <key type="av" name="swift-commands">
-        <default><![CDATA[[<{'name': <'Echo'>, 'command': <'echo echo "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
-        <summary>alternative commands for swift trigger</summary>
-    </key>
-    <key type="av" name="popup-commands">
-        <default><![CDATA[[<{'name': <'Search'>, 'enable': <true>, 'type': <int64 1>, 'command': <'search(LDWORD)'>, 'icon': <'system-search-symbolic'>}>]]]></default>
-        <summary>commands for popup trigger</summary>
-    </key>
-  </schema>
+    <schema id="@rdnn@" path="@path@">
+        <key type="b" name="enable-title">
+            <default>false</default>
+            <summary>enable panel title</summary>
+        </key>
+        <key type="b" name="enable-splice">
+            <default>false</default>
+            <summary>enable text concatenation</summary>
+        </key>
+        <key type="b" name="enable-tooltip">
+            <default>false</default>
+            <summary>enable tooltip for icon bar</summary>
+        </key>
+        <key type="b" name="enable-systray">
+            <default>true</default>
+            <summary>enable systray</summary>
+        </key>
+        <key type="b" name="enable-ocr">
+            <default>true</default>
+            <summary>enable ocr</summary>
+        </key>
+        <key type="b" name="dwell-ocr">
+            <default>false</default>
+            <summary>dwell/hover to ocr</summary>
+        </key>
+        <key type="b" name="tap-ocr">
+            <default>true</default>
+            <summary>tap to ocr</summary>
+        </key>
+        <key type="u" name="passive-mode">
+            <range min="0" max="1"/>
+            <default>0</default>
+            <summary>need modifier to trigger (1) or not (0)</summary>
+        </key>
+        <key type="u" name="autohide-timeout">
+            <range min="1000" max="20000"/>
+            <default>2500</default>
+            <summary>autohide interval</summary>
+        </key>
+        <key type="u" name="icon-page-size">
+            <range min="1" max="10"/>
+            <default>5</default>
+            <summary>icon bar page size</summary>
+        </key>
+        <key type="u" name="trigger-style">
+            <range min="0" max="2"/>
+            <default>0</default>
+            <summary>trigger style (0 - swift, 1 - popup, 2 - disable)</summary>
+        </key>
+        <key type="u" name="app-list-type">
+            <range min="0" max="1"/>
+            <default>1</default>
+            <summary>global app list type (0 - whitelist, 1 - blacklist)</summary>
+        </key>
+        <key type="u" name="ocr-mode">
+            <range min="0" max="5"/>
+            <default>0</default>
+            <summary>ocr mode (0 - word, 1 - paragraph, 2 - area, 3 - line, 4 - dialog)</summary>
+        </key>
+        <key type="i" name="swift-command-index">
+            <default>0</default>
+            <summary>command index of swift trigger</summary>
+        </key>
+        <key type="s" name="text-filter">
+            <default>''</default>
+            <summary>text filter in proactive mode</summary>
+        </key>
+        <key type="s" name="right-command">
+            <default>""</default>
+            <summary>command to execute when right-clicking panel</summary>
+        </key>
+        <key type="s" name="left-command">
+            <default>""</default>
+            <summary>command to execute when left-clicking panel</summary>
+        </key>
+        <key type="s" name="ocr-parameters">
+            <default>""</default>
+            <summary>parameters passed to the ocr script</summary>
+        </key>
+        <key type="as" name="app-list">
+            <default>[]</default>
+            <summary>global app whitelist/blacklist</summary>
+        </key>
+        <key type="as" name="light-dict-ocr-shortcut">
+            <default><![CDATA[['<Super>e']]]></default>
+            <summary>shortcut to invoke the OCR script</summary>
+        </key>
+        <key type="av" name="swift-commands">
+            <default><![CDATA[[<{'name': <'Echo'>, 'command': <'echo echo "$LDWORD"'>, 'result': <int64 1>}>]]]></default>
+            <summary>alternative commands for swift trigger</summary>
+        </key>
+        <key type="av" name="popup-commands">
+            <default><![CDATA[[<{'name': <'Search'>, 'enable': <true>, 'type': <int64 1>, 'command': <'search(LDWORD)'>, 'icon': <'system-search-symbolic'>}>]]]></default>
+            <summary>commands for popup trigger</summary>
+        </key>
+    </schema>
 </schemalist>

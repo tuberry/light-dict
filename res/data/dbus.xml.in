@@ -1,11 +1,8 @@
-<!DOCTYPE node PUBLIC
-'-//freedesktop//DTD D-BUS Object Introspection 1.0//EN'
-'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
-
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 <!--
      NOTE: Maybe - https://gitlab.freedesktop.org/dbus/dbus/-/issues/25
 -->
-
 <node>
     <interface name="@dbus@">
         <method name="OCR">
@@ -18,8 +15,9 @@
             <arg type="ai" direction="in" name="area"/>
         </method>
         <method name="Get">
-            <arg type="as" direction="in" name="props"/>
-            <arg type="aai" direction="out" name="results"/>
+            <arg type="(ii)" direction="out" name="pointer"/>
+            <arg type="d" direction="out" name="zoom"/>
+            <arg type="(iiii)" direction="out" name="geometry"/>
         </method>
     </interface>
 </node>

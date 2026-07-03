@@ -14,23 +14,22 @@ foreach p: ['passive', 'proactive']
     _icon += {f'icon_@t@_@p@': f'ld-@t@-@p@-symbolic.svg'}
   endforeach
 endforeach
-_theme = 'prefs.css'
+_theme = 'style.css'
 
 _gres = me + _icon + {'theme': _theme}
 
 _deps = [] + custom_target(
+  input: ['../../cli/gen-icon.js'],
   output: _icon.values(),
   build_subdir: 'scalable/status',
-  build_by_default: true,
-  build_always_stale: true,
   command: [
     find_program('gjs'),
     '-m',
-    '@SOURCE_ROOT@' / 'cli/gen-icon.js',
+    '@INPUT@',
     '@OUTDIR@',
   ],
 ) + custom_target(
-  input: fs.replace_suffix(_theme, '.scss'),
+  input: 'prefs.scss',
   output: _theme,
   command: [
     find_program('sassc'),

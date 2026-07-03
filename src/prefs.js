@@ -29,22 +29,23 @@ class AppItem extends GObject.Object {
 
 class Apps extends UI.DialogButtonBase {
     static {
-        UI.enrol(this, ['boxed', GLib.strv_get_type()]);
+        UI.enrol(this, GLib.strv_get_type());
     }
 
     constructor(tip, param) {
         super(null, null, false, param)[$]
             .set({$getInitial() { return new Set(this[getv]); }})[$]
-            .prepend(this.$bin = new Gtk.ScrolledWindow({vexpand: false, cssName: 'entry', cssClasses: ['ld-apps'], vscrollbarPolicy: Gtk.PolicyType.NEVER}))[$]
+            .prepend(this.$bin = new Gtk.ScrolledWindow({vexpand: false, cssName: 'entry', vscrollbarPolicy: Gtk.PolicyType.NEVER})[$]
+                .add_css_class('ld-apps'))[$]
             .bind_property_full(getv, this.$bin, 'child', T.SYNC, (_b, v) => [true, new UI.Box(v?.map(x => this.$genApp(x)))[$]
                 .set({hexpand: true, tooltipText: _('Click the app icon to remove')})], null)
             .$btn.set({tooltipText: tip || '', iconName: 'list-add-symbolic'});
     }
 
-    $genDialog(opt) {
+    $genDialog() {
         return new UI.Dialog(dlg => {
-            let model = new Gio.ListStore(),
-                title = new Gtk.Button({child: new UI.Sign('edit-clear-symbolic', true), cssClasses: ['flat']})[$]
+            let model = new Gio.ListStore()[$].$chosen(function () { return Iterator.from(this).reduce((p, x) => p + x.chosen, 0); }),
+                title = new Gtk.Button({child: new UI.Sign('edit-clear-symbolic', true)})[$].add_css_class('flat')[$]
                     .connect('clicked', () => Iterator.from(model).forEach(x => x.toggle(false))),
                 factory = new Gtk.SignalListItemFactory()[$$].connect([
                     ['setup', (_f, x) => x.set_child(new UI.Sign('application-x-executable-symbolic')[$].marginStart(6)[$_](w =>
@@ -55,12 +56,12 @@ class Apps extends UI.DialogButtonBase {
                     }],
                     ['unbind', (_f, {item}) => item.$bind.unbind()],
                 ]),
-                filter = Gtk.CustomFilter.new(null)[$].set({set_search(s) { this.set_filter_func(s ? (a => x => a.has(x.app.get_id()))(new Set(GioUnix.DesktopAppInfo.search(s).flat())) : null); }}),
+                filter = Gtk.CustomFilter.new(null)[$].set({set_search(s) { this.set_filter_func(UI.App.filter(s)); }}),
                 select = new Gtk.SingleSelection({model: new Gtk.FilterListModel({model, filter})}),
                 content = new Gtk.ListView({singleClickActivate: true, model: select, factory, vexpand: true})[$]
                     .connect('activate', () => select.get_selected_item().toggle()),
-                timer, count = () => { clearTimeout(timer); timer = setTimeout(() => title.child.setup(null, String(Iterator.from(model).reduce((p, x) => x.chosen ? p + 1 : p, 0)), 50)); };
-            model.splice(0, 0, (x => opt?.noDisplay ? x : x.filter(y => y.should_show()))(Gio.AppInfo.get_all()).map(x => new AppItem(x, count)));
+                timer, count = () => { clearTimeout(timer); timer = setTimeout(() => title.child.setup(null, String(model.$chosen()), 50)); };
+            model.splice(0, 0, Gio.AppInfo.get_all().map(x => new AppItem(x, count)));
             dlg[$].initChosen(s => Iterator.from(model).forEach(x => x.toggle(s.has(x.app.get_id()))))[$]
                 .getChosen(() => Iterator.from(model).reduce((p, x) => x.chosen ? p[$].push(x.app.get_id()) : p, []))
                 .connect('close-request', () => { clearTimeout(timer); timer = null; });
@@ -123,7 +124,7 @@ class SideRow extends Gtk.ListBoxRow {
                 let width = this.get_width();
                 let height = this.get_height();
                 Gtk.DragIcon.get_for_drag(drag).set_child(new SideRow(item, this.$grp ? new UI.Check() : null)[$]
-                    .set({widthRequest: width, heightRequest: height, cssClasses: ['ld-dragging']}));
+                    .set({widthRequest: width, heightRequest: height})[$].add_css_class('ld-dragging'));
                 drag.set_hotspot(width - this.$img.get_width() / 2, height - this.$img.get_height() / 2);
             }],
         ]));
@@ -152,7 +153,7 @@ class SideRow extends Gtk.ListBoxRow {
 
 class ResultRows extends GObject.Object {
     static {
-        UI.enrol(this, ['uint', 0, GLib.MAXINT32, 0]);
+        UI.enrol(this, 0);
     }
 
     addToPane(addRow) {
@@ -203,8 +204,8 @@ class PrefsBasic extends UI.Page {
     $buildUI() {
         let opencv = '<a href="https://github.com/opencv/opencv-python">opencv-python</a>',
             tesseract = '<a href="https://github.com/madmaze/pytesseract">pytesseract</a>',
-            ocr = new UI.Help()[$].set({popover: new Gtk.Popover()[$].connect('notify::visible', w => w.child?.select_region(-1, -1))})[$_](w => // HACK: workaround for full selection on popup
-                T.execute(`python ${T.ROOT}/ldocr.py -h`).then(x => w.setup(x, {selectable: true, cssClasses: ['ld-popover']})).catch(e => w.setup(e.message, null, true)));
+            ocr = new UI.Help()[$_](it => (it[$].add_css_class('ld-popover').connect('notify::visible', w => w.child?.select_region(-1, -1)),  // HACK: workaround for full selection on popup
+            T.execute(`python3 ${T.ROOT}/ldocr.py -h`).then(x => it.setup(x, {selectable: true})).catch(e => it.setup(e.message, null, true))));
         this.$add([null, [
             [[_('Enable s_ystray'), _('Scroll to toggle the trigger style')], K.TRAY],
             [[_('_Trigger style'), _('Passive means pressing Alt to trigger')], K.PSV, K.TRG],
@@ -295,7 +296,7 @@ class PrefsPopup extends UI.Page {
         this.$pane = T.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             widget instanceof ResultRows ? widget.addToPane(addRow) : addRow(titles, widget, help);
             let prop = widget[UI.esse];
-            widget[$][UI.dftv](fallback)[$].notify(prop)
+            widget[$][UI.dflt](fallback)[$].notify(prop)
                 .connect(`notify::${prop}`, ({[prop]: value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
             return [[key, widget]];
         });
@@ -308,12 +309,10 @@ class PrefsPopup extends UI.Page {
             ['list-remove-symbolic', _('Remove'), () => this.$select(p => this.$onRemove(p))],
             ['edit-copy-symbolic',   _('Copy'),   () => this.$select(p => this.$onCopy(p))],
             ['edit-paste-symbolic',  _('Paste'),  () => this.$onPaste()],
-        ].map(([x, y, z]) => new Gtk.Button({iconName: x, tooltipText: y, hasFrame: false})[$].connect('clicked', z)));
+        ].map(([iconName, tooltipText, cb]) => new Gtk.Button({iconName, tooltipText, hasFrame: false})[$].connect('clicked', cb)));
     }
 
-    get selected() {
-        return this.$list.get_selected_row()?.get_index() ?? -1;
-    }
+    get selected() { return this.$list.get_selected_row()?.get_index() ?? -1; }
 
     $select(callback) {
         let pos = this.selected;
@@ -364,7 +363,7 @@ class PrefsPopup extends UI.Page {
 
 class PrefsSwift extends PrefsPopup {
     static {
-        T.enrol(this, {enabled: ['int', -1, GLib.MAXINT32, -1]});
+        T.enrol(this, {enabled: -1});
     }
 
     constructor(gset, field) {
@@ -408,7 +407,7 @@ export default class extends UI.Prefs {
         let path = gset.settings_schema.get_path();
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_resource_path(`${path}icons`);
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), new Gtk.CssProvider()[$]
-            .load_from_resource(`${path}theme/prefs.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)
+            .load_from_resource(`${path}theme/style.css`), Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION); // HACK: unable (too late) to win.set_resource_base_path after inited (promised)
         return [
             new PrefsBasic(gset)[$].set({title: _('_Basic'), iconName: 'applications-system-symbolic'}),
             new PrefsSwift(gset, K.SCMD)[$].set({title: _('_Swift'), iconName: 'ld-swift-passive-symbolic'}),
