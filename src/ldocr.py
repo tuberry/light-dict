@@ -16,7 +16,7 @@ from tempfile import NamedTemporaryFile
 
 SCALE = 2
 DEBUG = False
-CONFIG = r'-c preserve_interword_spaces=1' # HACK: workaround for https://github.com/tesseract-ocr/tesseract/issues/991
+CONFIG = r'-c preserve_interword_spaces=1' # HACK: workaround for https://github.com/tesseract-ocr/tesseract/issues/991 & fixed in tessdata_fast (Debian/Feodra)
 TMPDIR = f'{GLib.get_user_runtime_dir()}/gnome-shell'
 
 _ = gettext.gettext

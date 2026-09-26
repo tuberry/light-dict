@@ -17,11 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/ui.js:375
-msgid "Mismatched filetype"
-msgstr "文件类型不匹配"
-
-#: src/ui.js:564
+#: src/ui.js:567
 msgid "Click or press ENTER to apply changes"
 msgstr "单击或按回车应用更改"
 
@@ -72,27 +68,27 @@ msgstr "禁言报错消息"
 msgid "Too marginal. (>_<)"
 msgstr "太靠边了。(>_<)"
 
-#: src/extension.js:259
+#: src/extension.js:253
 msgid "Hover OCR"
 msgstr "悬停取词"
 
-#: src/extension.js:260 src/prefs.js:223
+#: src/extension.js:254 src/prefs.js:223
 msgid "OCR"
 msgstr "取词"
 
-#: src/extension.js:267
+#: src/extension.js:261
 msgid "Passive mode"
 msgstr "被动模式"
 
-#: src/extension.js:269
+#: src/extension.js:263
 msgid "Trigger"
 msgstr "触发"
 
-#: src/extension.js:270 src/prefs.js:197
+#: src/extension.js:264 src/prefs.js:197
 msgid "Swift"
 msgstr "即时"
 
-#: src/extension.js:273
+#: src/extension.js:267
 msgid "Settings"
 msgstr "设置"
 
@@ -382,6 +378,10 @@ msgstr "即时(_S)"
 #: src/prefs.js:414
 msgid "_Popup"
 msgstr "弹出(_P)"
+
+#, javascript-format
+#~ msgid "Expected filetype: %s"
+#~ msgstr "预期文件类型: %s"
 
 #~ msgid "Dwell OCR"
 #~ msgstr "悬停取词"

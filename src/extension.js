@@ -93,15 +93,15 @@ class DictBar extends BoxPointer.BoxPointer {
         this.cmds.forEach(x => { x[hub] = allowed(x, app, str); });
         if(!this.$updatePages()) return;
         if(F.offstage(this)) Main.layoutManager.addTopChrome(this);
-        this.open(BoxPointer.PopupAnimation.NONE);
+        this.open(BoxPointer.PopupAnimation.FULL);
         this.$src.hide.revive(this[K.TIME]);
     }
 
     dispel() {
         if(F.offstage(this)) return;
         this.$src.hide.dispel();
-        this.close(BoxPointer.PopupAnimation.FADE);
-        Main.layoutManager.removeChrome(this); // HACK: workaround for unexpected leave event on reappearing in entered prect
+        this.close(BoxPointer.PopupAnimation.NONE); // HACK: close immediately to update visible for `dwellLocked` before `removeChrome`
+        Main.layoutManager.removeChrome(this); // HACK: ?? workaround for expired positions on reappearing
     }
 }
 
@@ -122,15 +122,12 @@ class DictBox extends BoxPointer.BoxPointer {
             styleClass: 'light-dict-view', overlayScrollbars: true, reactive: true, trackHover: true,
             child: new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL, styleClass: 'light-dict-content'}),
         })[$].add_action(new Clutter.ClickGesture()[$].connect('recognize', a => this.$onClick(a)))[$]
-            .connect('notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10))[$_](w => this.bin.set_child(w));
+            .connect('notify::hover', ({hover}) => this.$src.hide.switch(!hover, this[K.TIME] / 10))[$_](it => this.bin.set_child(it));
         this.$info = this.$genLabel('light-dict-info');
     }
 
     $bindSettings(set) {
-        this.$set = set.tie(this, [
-            K.LCMD, K.RCMD, K.TIME,
-            [K.HEAD, null, x => this.$src.head.toggle(x)],
-        ]);
+        this.$set = set.tie(this, [K.LCMD, K.RCMD, K.TIME, [K.HEAD, null, x => this.$src.head.toggle(x)]]);
     }
 
     $buildSources() {
@@ -162,8 +159,8 @@ class DictBox extends BoxPointer.BoxPointer {
     $onClick(gesture) {
         switch(gesture.get_button()) {
         case Clutter.BUTTON_MIDDLE: F.copy(this.$info.get_text().slice(1)); break; // HACK: remove workaround ZWSP
-        case Clutter.BUTTON_PRIMARY: if(this[K.LCMD]) T.execute(this[K.LCMD], {LDWORD: this.$txt}).catch(T.nop); break;
-        case Clutter.BUTTON_SECONDARY: if(this[K.RCMD]) T.execute(this[K.RCMD], {LDWORD: this.$txt}).catch(T.nop); this.dispel(); break;
+        case Clutter.BUTTON_PRIMARY: if(this[K.LCMD]) T.execute(this[K.LCMD], null, {LDWORD: this.$txt}).catch(T.nop); break;
+        case Clutter.BUTTON_SECONDARY: if(this[K.RCMD]) T.execute(this[K.RCMD], null, {LDWORD: this.$txt}).catch(T.nop); this.dispel(); break;
         }
     }
 
@@ -191,13 +188,7 @@ class DictBox extends BoxPointer.BoxPointer {
         this.$src.hide.revive(this.$delay);
     }
 
-    dispel() {
-        if(F.offstage(this)) return;
-        this.$src.hide.dispel();
-        this.prect = this.get_transformed_extents();
-        this.close(BoxPointer.PopupAnimation.FADE);
-        Main.layoutManager.removeChrome(this);
-    }
+    dispel = DictBar.prototype.dispel;
 }
 
 class DictAct extends F.Mortal {
@@ -238,12 +229,15 @@ class DictAct extends F.Mortal {
             [K.KEYS, x => !!x.length, x => ret.$src.keys.toggle(x)],
             [K.DWLL, null, x => { ret.$src.dwell.toggle(x); this.$src.tray.hub?.$setDwell(x); }],
         ]);
-        let timer = new F.Source.Timer(x => [() => this.emit('dwell', G.modifier, x), 200]),
-            dwell = new F.Source.Handler(global.backend.get_cursor_tracker(), 'position-invalidated', x => timer.revive(x.get_pointer()[0]), ret[K.DWLL]),
-            spawn = new F.Source.Invoker(() => new F.Source.Injector([tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$_](p => { spawn.pid = parseInt(p.get_identifier()); })},
-                G.DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session.call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus',
-                    'GetConnectionUnixProcessID', T.pickle(xs, '(s)'), null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]]], true), x =>
-                this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)), // NOTE: https://gitlab.gnome.org/GNOME/glib/-/work_items/1866
+        let spawn = new F.Source.Invoker(() => new F.Source.Injector([
+                G.DBusSSS, [['_isSenderAllowed', async (_a, _f, xs) => spawn.pid === (await Gio.DBus.session
+                    .call('org.freedesktop.DBus', '/', 'org.freedesktop.DBus', 'GetConnectionUnixProcessID', T.pickle(xs, '(s)'),
+                        null, Gio.DBusCallFlags.NONE, -1, null)).recursiveUnpack()[0]]],
+                tty, {spawnv: (a, f, xs) => f.apply(a, xs)[$_](p => { spawn.pid = parseInt(p.get_identifier()); })},
+            ], true), x => this.execute(x ? `${ret.cmd} ${x}` : ret.cmd).catch(T.nop).finally(() => delete spawn.pid)), // NOTE: https://gitlab.gnome.org/GNOME/glib/-/work_items/1866
+            timer = new F.Source.Timer(() => [() => spawn.invoke('--quiet'), 200]),
+            dwell = new F.Source.Handler(global.backend.get_cursor_tracker(), 'position-invalidated',
+                () => timer.switch(!(this.$dwellLocked() || this.passive || ret[K.MODE] === OCRMode.AREA)), ret[K.DWLL]),
             keys = new F.Source.Keys(this.$set.hub, K.KEYS, () => spawn.invoke(), ret[K.KEYS]),
             tap = new F.Source.Handler(global.stage, 'captured-event::touchpad', (_a, event) => {
                 if(event.type() !== Clutter.EventType.TOUCHPAD_HOLD || event.get_touchpad_gesture_finger_count() < 3) { tap.only = false; } else {
@@ -275,8 +269,8 @@ class DictAct extends F.Mortal {
             .add_style_class_name('light-dict-systray')[$$]
             .add_style_pseudo_class(ocr?.[K.DWLL] && [['state-busy']])[$]
             .$setDwell(function (dwell) {
-                dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
                 this.$menu.dwell.setToggleState(dwell);
+                dwell ? this.add_style_pseudo_class('state-busy') : this.remove_style_pseudo_class('state-busy');
             })[$].add_action(new Clutter.ScrollController({
                 flags: Clutter.ScrollControllerFlags.DISCRETE | Clutter.ScrollControllerFlags.SCROLL_VERTICAL,
             })[$].connect('scroll', (...xs) => { xs[4] > 0 ? this.$set.set(K.TRG, (this[K.TRG] + 1) % 2) : this.$set.set(K.PSV, 1 - this[K.PSV]); }));
@@ -285,6 +279,8 @@ class DictAct extends F.Mortal {
     get trigger() { return DictAct.Trigger[this[K.TRG]]; }
 
     get icon() { return `ld-${this.trigger}-${this[K.PSV] ? 'passive' : 'proactive'}-symbolic`; }
+
+    get passive() { return this[K.PSV] && !(G.modifier & Clutter.ModifierType.MOD1_MASK); };
 
     $onEnableOcrSet(enable) {
         this.$src.ocr.toggle(enable);
@@ -312,7 +308,7 @@ class DictAct extends F.Mortal {
     }
 
     execute(cmd, env) {
-        return T.execute(cmd, env, this.$src.cancel.reborn(), this.$src.tty.hub);
+        return T.execute(cmd, this.$src.cancel.reborn(), env, this.$src.tty.hub);
     }
 }
 
@@ -326,28 +322,31 @@ class LightDict extends F.Mortal {
     }
 
     $buildSources() {
+        let syncApp = ((window = global.display.get_focus_window()) => {
+            this.app = window ? Shell.WindowTracker.get_default().get_window_app(window)?.get_id() ?? '' : '';
+        })[$].call();
         let box = new DictBox(this.$set),
-            act = new DictAct(this.$set)[$].connect('dwell', (...xs) => this.$onDwell(...xs)),
-            bar = new DictBar(this.$set)[$].connect('click', (_a, x) => { this.dwellLock = true; this.runCmd(x); }),
+            bar = new DictBar(this.$set)[$].connect('click', (_a, x) => void this.runCmd(x)),
+            act = new DictAct(this.$set).set({$dwellLocked: () => box.visible || bar.visible}),
             csr = new Clutter.Actor({opacity: 0, x: 1, y: 1})[$_](w => Main.uiGroup.add_child(w)), // HACK: init pos to avoid misplacing at the first occurrence
             dbus = new F.Source.DBus(this, 'org.gnome.Shell.Extensions.LightDict', '/org/gnome/Shell/Extensions/LightDict', true),
             poll = new F.Source.Defer(() => this.$postPoll(), () => !(G.modifier & Clutter.ModifierType.BUTTON1_MASK), 50), // debounce for GTK+
             wait = new F.Source.Invoker(() => new F.Source(() => this.$genSpinner(), true), (...xs) => act.execute(...xs)),
             dog = new F.Source.Handler(global.display.get_selection(), 'owner-changed', (...xs) => this.$onSelect(...xs),
-                global.display, 'notify::focus-window', () => { this.hide(); this.$syncApp(); });
+                global.display, 'notify::focus-window', () => { this.dispelAll(); syncApp(); });
         this.$src = F.Source.tie(this, {box, csr, act, bar, dbus, poll, wait}, dog);
-        this.$syncApp();
     }
 
     $genSpinner() {
         let [x, y, w, h] = F.cursor();
         return new St.Bin({styleClass: 'light-dict-spinner', child: new Animation.Spinner(18)[$].play()})[$]
-            .set_position(x + w, y + h)[$_](it => Main.layoutManager.addTopChrome(it));
+            .set_position(x + w / 2, y + h * 3 / 4)[$_](it => Main.layoutManager.addTopChrome(it));
     }
 
     $onSelect(_s, type, src) {
         if(type !== St.ClipboardType.PRIMARY || !src || src instanceof Meta.SelectionSourceMemory ||
-            this.$denyApp() || this.$denyMdf() || this.$src.act[K.TRG] === Trigger.DISABLE) return;
+            (this[K.APPS].size && T.xnor(this[K.APP], this[K.APPS].has(this.app))) ||
+            this.$src.act.passive || this.$src.act[K.TRG] === Trigger.DISABLE) return;
         this.$src.poll.revive();
     }
 
@@ -356,29 +355,10 @@ class LightDict extends F.Mortal {
     }
 
     $setSourceArea(area) {
-        this.hide();
+        this.dispelAll();
         let [x, y, w, h] = area && area[3] < G.height / 2 ? area : F.cursor();
-        this.$src.csr[$].set_position(x, y).set_size(w, h);
+        this.$src.csr[$].set_position(x, y).set_size(w * 7 / 8, h * 7 / 8);
         this.$align = area && w > 250 ? 1 / 2 : 1 / 10;
-    }
-
-    $syncApp(win = global.display.get_focus_window()) {
-        this.app = win ? Shell.WindowTracker.get_default().get_window_app(win)?.get_id() ?? '' : '';
-    }
-
-    $denyApp() {
-        return this[K.APPS].size && T.xnor(this[K.APP], this[K.APPS].has(this.app));
-    }
-
-    $denyMdf(modifier = G.modifier) {
-        return this.$src.act[K.PSV] && !(modifier & Clutter.ModifierType.MOD1_MASK);
-    }
-
-    $onDwell(_a, modifier, point) {
-        let {box, bar, act} = this.$src;
-        if(T.steal(this, 'dwellLock') || box.prect?.contains_point(point) || act.$src.ocr.hub?.[K.MODE] === OCRMode.AREA ||
-            (box.visible && box.$view.hover) || (bar.visible && bar.$box.hover) || this.$denyMdf(modifier)) return;
-        act.OCR('--quiet');
     }
 
     $postRun(output, result) {
@@ -394,7 +374,7 @@ class LightDict extends F.Mortal {
             await (result & Result.AWAIT ? this.$src.wait.invoke(cmd, env) : this.$src.act.execute(cmd, env))
                 .then(output => this.$postRun(output, result)).catch(e => F.Source.Cancel.expected(e) || this.print(e.message, true));
         } else {
-            T.execute(cmd, env).catch(logError);
+            T.execute(cmd, null, env).catch(logError);
         }
     }
 
@@ -412,7 +392,7 @@ class LightDict extends F.Mortal {
         }
     }
 
-    hide() {
+    dispelAll() {
         this.$src.box.dispel();
         this.$src.bar.dispel();
     }
@@ -453,7 +433,7 @@ class LightDict extends F.Mortal {
     }
 
     OCRAsync([args], invocation) {
-        F.Source.DBus.respond(invocation, () => this[$].hide().$src.act.OCR(args));
+        F.Source.DBus.respond(invocation, () => this[$].dispelAll().$src.act.OCR(args));
     }
 }
 

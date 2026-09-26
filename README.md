@@ -2,12 +2,13 @@
 SPDX-FileCopyrightText: tuberry
 SPDX-License-Identifier: CC-BY-SA-4.0
 -->
+
 # Light Dict
 
 GNOME Shell extension to manipulate primary selections on the fly, typically used as Lightweight Dictionaries.
 
->L, you know what? The Shinigami only eats apples. —— *Light Yagami*\
-[![license]](/LICENSE.md)
+> L, you know what? The Shinigami only eats apples. —— _Light Yagami_\
+> [![license]](/LICENSE.md)
 
 ![ld](https://user-images.githubusercontent.com/17917040/91119018-d33a1900-e6c4-11ea-9bf0-b1c1a742cfeb.gif)
 
@@ -20,7 +21,7 @@ The latest and supported version should only work on the [current stable version
 ```bash
 git clone https://github.com/tuberry/light-dict.git && cd light-dict
 just install || (meson setup build && meson compile -C build && meson install -C build)
-# meson setup build -Dtarget=system && meson install -C build # system-wide
+# meson setup build -Dtarget=system && meson compile -C build && meson install -C build # system-wide
 ```
 
 For older versions, it's recommended to install via:
@@ -40,7 +41,7 @@ It's quite the same as installing from:
 
 ### DBus
 
-For the [DBus] usage, refer to [_ldocr.sh](/cli/_ldocr.sh).
+For the [DBus] usage, refer to [\_ldocr.sh](/cli/_ldocr.sh).
 
 #### Methods
 
@@ -48,20 +49,20 @@ For the [DBus] usage, refer to [_ldocr.sh](/cli/_ldocr.sh).
 gdbus introspect --session --dest org.gnome.Shell --object-path /org/gnome/Shell/Extensions/LightDict
 ```
 
-* The `Get` method is private for the built-in OCR [script](/src/ldocr.py).
+- The `Get` method is private for the built-in OCR [script](/src/ldocr.py).
 
 #### Arguments
 
 ##### OCR
 
-* args: `a string` (temporary OCR arguments)
+- args: `a string` (temporary OCR arguments)
 
 ##### Run
 
-* type: `'auto'` (follow the trigger) | `'^swift(:.+)?$'` | `'popup'` | `'print'` (directly show the following `text` & `info`)
-* text: `a string` | `''` (for primary selection)
-* info: `a string` (for the `'print'` type) | `''` (for the other types)
-* area: `[]` (default to the cursor) | `[x, y, width, height]` (the source area)
+- type: `'auto'` (follow the trigger) | `'^swift(:.+)?$'` | `'popup'` | `'print'` (directly show the following `text` & `info`)
+- text: `a string` | `''` (for primary selection)
+- info: `a string` (for the `'print'` type) | `''` (for the other types)
+- area: `[]` (default to the cursor) | `[x, y, width, height]` (the source area)
 
 ### OCR
 
@@ -69,8 +70,8 @@ OCR here is subject to factors such as fonts, colors, and backgrounds, which say
 
 #### Dependencies
 
-* [opencv-python]
-* [pytesseract]
+- [opencv-python]
+- [pytesseract]
 
 #### Screencast
 
@@ -78,15 +79,15 @@ OCR here is subject to factors such as fonts, colors, and backgrounds, which say
 
 ## Notes
 
-* By lightweight, I mean that it doesn't come with any dictionary sources. :)
-* For English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
-* To customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
+- By lightweight, I mean that it doesn't come with any dictionary sources. :)
+- For English-Chinese offline dictionaries, try [dict-ecdict] or [dict-cedict].
+- To customize appearances of some [widgets](/res/style/stylesheet.scss), try [user-theme-x].
 
 ## Contributions
 
-Feel free to open an issue in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
+Feel free to open issues/discussions in the repo for any questions or ideas, **particularly before making significant changes or introducing new features**.
 
-Also, *just* so you know:
+Also, _just_ so you know:
 
 ```bash
 just --list
@@ -95,18 +96,18 @@ just --list
 
 ## Acknowledgements
 
-* [youdaodict]: the idea of panel
-* [swift-selection-search]: the stylesheet of popup
-* [capture2text]: the idea of bubble OCR (dialog OCR here)
+- [youdaodict]: the idea of panel
+- [swift-selection-search]: the stylesheet of popup
+- [capture2text]: the idea of bubble OCR (dialog OCR here)
 
-[opencv-python]:https://github.com/opencv/opencv-python
-[dict-cedict]:https://github.com/tuberry/dict-cedict
-[dict-ecdict]:https://github.com/tuberry/dict-ecdict
-[DBus]:https://www.freedesktop.org/wiki/Software/dbus/
-[user-theme-x]:https://github.com/tuberry/user-theme-x
-[youdaodict]:https://github.com/HalfdogStudio/youdaodict
-[EGO]:https://extensions.gnome.org/extension/2959/light-dict/
-[license]:https://img.shields.io/badge/license-GPLv3+-green.svg
-[swift-selection-search]:https://github.com/CanisLupus/swift-selection-search
-[pytesseract]:https://github.com/madmaze/pytesseract
-[capture2text]:https://capture2text.sourceforge.net/
+[opencv-python]: https://github.com/opencv/opencv-python
+[dict-cedict]: https://github.com/tuberry/dict-cedict
+[dict-ecdict]: https://github.com/tuberry/dict-ecdict
+[DBus]: https://www.freedesktop.org/wiki/Software/dbus/
+[user-theme-x]: https://github.com/tuberry/user-theme-x
+[youdaodict]: https://github.com/HalfdogStudio/youdaodict
+[EGO]: https://extensions.gnome.org/extension/2959/light-dict/
+[license]: https://img.shields.io/badge/license-GPLv3+-green.svg
+[swift-selection-search]: https://github.com/CanisLupus/swift-selection-search
+[pytesseract]: https://github.com/madmaze/pytesseract
+[capture2text]: https://capture2text.sourceforge.net/

@@ -6,7 +6,7 @@ $contrast: 'normal';
 @import 'gnome-shell-sass/_colors';
 
 $pfx: 'light-dict';
-$radius: 0.4em;
+$radius: 0.36em;
 $spacing: $radius / 3;
 
 @function tone($color, $percent: 10%, $reverse: true){
@@ -34,7 +34,7 @@ $spacing: $radius / 3;
 }
 
 .#{$pfx}-view-bin {
-    border-radius: $radius;
+    border-radius: $radius * 1.5;
     background-color: tone($bg_color, 7%, false); /* for scroll fade */
 }
 

@@ -128,7 +128,8 @@ class SideRow extends Gtk.ListBoxRow {
                 drag.set_hotspot(width - this.$img.get_width() / 2, height - this.$img.get_height() / 2);
             }],
         ]));
-        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$$].connect([
+        this.add_controller(Gtk.DropTarget.new(SideRow, Gdk.DragAction.MOVE)[$].set_preload(true)[$$].connect([
+            ['notify::value', t => { if(t.value?.$grp !== this.$grp) t.reject(); }],
             ['motion', (_t, _x, y) => {
                 if(y < this.get_height() / 2) this[$].remove_css_class('ld-drop-bottom').add_css_class('ld-drop-top');
                 else this[$].remove_css_class('ld-drop-top').add_css_class('ld-drop-bottom');
@@ -136,11 +137,10 @@ class SideRow extends Gtk.ListBoxRow {
             }],
             ['drop', (_t, src, _x, y) => {
                 this[$$].remove_css_class(['ld-drop-top', 'ld-drop-bottom']);
-                if(src.$grp !== this.$grp) return false;
                 let drag = src.get_index(),
                     target = this.get_index() + (y > this.get_height() / 2),
                     drop = target > drag ? target - 1 : target;
-                return (drag !== drop)[$_](x => x && this.emit('dropped', drag, drop));
+                return (drag !== drop)[$_](it => it && this.emit('dropped', drag, drop));
             }],
             ['leave', () => void this[$$].remove_css_class(['ld-drop-top', 'ld-drop-bottom'])],
         ]));
@@ -291,13 +291,13 @@ class PrefsPopup extends UI.Page {
         let ret = new Adw.PreferencesGroup({hexpand: true});
         let addRow = ([title, subtitle = ''], widget, help) => ret.add(new Adw.ActionRow({
             title, subtitle, activatableWidget: widget, useUnderline: true,
-        })[$_](w => [help, widget].forEach(x => x && w.add_suffix(x))));
+        })[$$].add_suffix([help, widget].filter(T.id)));
         this.$updatePaneSensitive = x => { if(!x) this.$onSelect(); ret.set_sensitive(x); };
         this.$pane = T.omap(this.$genPaneWidgets(), ([key, [fallback, titles, widget, help]]) => {
             widget instanceof ResultRows ? widget.addToPane(addRow) : addRow(titles, widget, help);
             let prop = widget[UI.esse];
-            widget[$][UI.dflt](fallback)[$].notify(prop)
-                .connect(`notify::${prop}`, ({[prop]: value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
+            widget[$][UI.dflt](fallback)[$].notify(prop).connect(`notify::${prop}`,
+                ({[prop]: value}) => { if(!this.$syncing) this.$select(p => this.$onChange(p, key, value)); });
             return [[key, widget]];
         });
         return ret;
