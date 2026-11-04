@@ -151,7 +151,7 @@ class DictBox extends BoxPointer.BoxPointer {
         if(limit <= 0) limit = G.height * 15 / 32;
         let scroll = h >= limit;
         this.$view[$].vscrollbarPolicy(scroll ? St.PolicyType.ALWAYS : St.PolicyType.NEVER).vadjustment.set_value(0); // HACK: workaround for trailing lines with default policy (AUTOMATIC)
-        let length = scroll ? w * limit / (Clutter.Settings.get_default().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
+        let length = scroll ? w * limit / (this.get_context().get_settings().fontDpi / 1024 * theme.get_font().get_size() / 1024 / 72) ** 2
             : T.glyphs(this.$info.get_text(), (p, x) => p + DictBox.uniwidth(x.segment));
         this.$delay = Math.clamp(this[K.TIME] * length / 36, 1000, 20000); // TODO: ? WPM
     }
