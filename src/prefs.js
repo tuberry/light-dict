@@ -202,7 +202,9 @@ class PrefsBasic extends UI.Page {
     }
 
     $buildUI() {
-        let opencv = '<a href="https://github.com/opencv/opencv-python">opencv-python</a>',
+        let scipy = '<a href="https://github.com/scipy/scipy">scipy</a>',
+            pillow = '<a href="https://github.com/python-pillow/Pillow">Pillow</a>',
+            opencv = '<a href="https://github.com/opencv/opencv-python">opencv-python</a>',
             tesseract = '<a href="https://github.com/madmaze/pytesseract">pytesseract</a>',
             ocr = new UI.Help()[$_](it => (it[$].add_css_class('ld-popover').connect('notify::visible', w => w.child?.select_region(-1, -1)),  // HACK: workaround for full selection on popup
             T.execute(`python3 ${T.ROOT}/ldocr.py -h`).then(x => it.setup(x, {selectable: true})).catch(e => it.setup(e.message, null, true))));
@@ -220,7 +222,7 @@ class PrefsBasic extends UI.Page {
         ]], [[[_('Popup'), _('Scroll to flip pages')]], [
             [[_('Enable toolt_ip')], K.TIP],
             [[_('Page si_ze')], K.PAGE],
-        ]], [[[_('OCR'), `${_('Depends on: ')} ${opencv} &amp; ${tesseract}`], K.OCR], [
+        ]], [[[_('OCR'), `${_('Depends on: ')} ${pillow}, ${tesseract}, ${opencv}/${scipy}`], K.OCR], [
             [[_('S_hortcut')], K.KEYS], // NOTE:  https://gitlab.gnome.org/GNOME/mutter/-/issues/207
             [[_('T_ouchpad'), _('Tap with 3 or more fingers')], K.TAP],
             [[_('Ho_ver'), _('Trigger when the pointer hovers')], K.DWLL],
